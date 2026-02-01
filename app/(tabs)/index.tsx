@@ -40,6 +40,7 @@ export default function HomeScreen() {
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [selectedPending, setSelectedPending] = useState<PendingFoodEntry | null>(null);
   const [pendingServings, setPendingServings] = useState(1);
+  const [lastPendingCount, setLastPendingCount] = useState(0);
   
   const caloriesAnimValue = useRef(new Animated.Value(0)).current;
   const proteinAnimValue = useRef(new Animated.Value(0)).current;
@@ -68,6 +69,15 @@ export default function HomeScreen() {
       useNativeDriver: false,
     }).start();
   }, [progress?.caloriesRemaining, remainingAnimValue]);
+
+  useEffect(() => {
+    const donePending = pendingEntries.find(p => p.status === 'done');
+    if (donePending && pendingEntries.length > lastPendingCount) {
+      setSelectedPending(donePending);
+      setPendingServings(1);
+    }
+    setLastPendingCount(pendingEntries.length);
+  }, [pendingEntries]);
 
   const getFormattedDate = (dateKey: string) => {
     const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -454,11 +464,7 @@ export default function HomeScreen() {
                             <X size={18} color="#EF4444" />
                           </View>
                         )}
-                        {isDone && (
-                          <View style={[styles.pendingOverlay, styles.pendingDoneOverlay]}>
-                            <Check size={18} color="#10B981" />
-                          </View>
-                        )}
+
                       </View>
                       <View style={styles.foodInfo}>
                         <View style={styles.foodHeader}>
@@ -757,10 +763,38 @@ export default function HomeScreen() {
             
             <View style={[styles.pendingModalContent, { backgroundColor: theme.card }]}>
               <View style={[styles.pendingModalHeader, { borderBottomColor: theme.border }]}>
-                <Text style={[styles.pendingModalTitle, { color: theme.text }]}>
-                  {selectedPending?.status === 'analyzing' ? 'Menganalisis...' : 
-                   selectedPending?.status === 'error' ? 'Gagal Analisis' : 'Detail Makanan'}
-                </Text>
+                {selectedPending?.status === 'done' && selectedPending.analysis ? (
+                  <View style={styles.pendingModalTitleContainer}>
+                    <Text style={[styles.pendingModalTitle, { color: theme.text }]} numberOfLines={1}>
+                      {(() => {
+                        const items = selectedPending.analysis.items.map(i => i.name);
+                        const mainDish = items[0] || 'Makanan';
+                        return mainDish
+                          .replace(/\s*\/\s*/g, ' ')
+                          .replace(/\s+or\s+/gi, ' ')
+                          .replace(/about\s+/gi, '')
+                          .trim();
+                      })()}
+                    </Text>
+                    <Text style={[styles.pendingModalSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                      {selectedPending.analysis.items.map(item => {
+                        const cleanName = item.name
+                          .replace(/\s*\/\s*/g, ', ')
+                          .replace(/\s+or\s+/gi, ', ')
+                          .replace(/about\s+/gi, '')
+                          .split(',')
+                          .map(s => s.trim())
+                          .filter(Boolean)[0] || item.name;
+                        return cleanName;
+                      }).join(' • ')}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.pendingModalTitle, { color: theme.text }]}>
+                    {selectedPending?.status === 'analyzing' ? 'Menganalisis...' : 
+                     selectedPending?.status === 'error' ? 'Gagal Analisis' : 'Detail Makanan'}
+                  </Text>
+                )}
                 <TouchableOpacity onPress={() => setSelectedPending(null)}>
                   <X size={24} color={theme.textSecondary} />
                 </TouchableOpacity>
@@ -867,12 +901,23 @@ export default function HomeScreen() {
                       </View>
                     </View>
 
-                    <Text style={[styles.pendingItemsTitle, { color: theme.text }]}>Item Terdeteksi</Text>
+                    <Text style={[styles.pendingItemsTitle, { color: theme.text }]}>Komponen Makanan</Text>
                     {selectedPending.analysis.items.map((item, index) => (
                       <View key={index} style={[styles.pendingItemCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                        <View>
-                          <Text style={[styles.pendingItemName, { color: theme.text }]}>{item.name}</Text>
-                          <Text style={[styles.pendingItemPortion, { color: theme.textSecondary }]}>{item.portion}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.pendingItemName, { color: theme.text }]}>
+                            {item.name
+                              .replace(/\s*\/\s*/g, ' ')
+                              .replace(/\s+or\s+/gi, ' ')
+                              .replace(/about\s+/gi, '')
+                              .trim()}
+                          </Text>
+                          <Text style={[styles.pendingItemPortion, { color: theme.textSecondary }]}>
+                            {item.portion
+                              .replace(/about\s+/gi, '')
+                              .replace(/approximately\s+/gi, '')
+                              .trim()}
+                          </Text>
                         </View>
                         <Text style={[styles.pendingItemCalories, { color: theme.textTertiary }]}>
                           {Math.round((item.caloriesMin + item.caloriesMax) / 2 * pendingServings)} kcal
@@ -1385,9 +1430,7 @@ const styles = StyleSheet.create({
   pendingErrorOverlay: {
     backgroundColor: 'rgba(239, 68, 68, 0.3)',
   },
-  pendingDoneOverlay: {
-    backgroundColor: 'rgba(16, 185, 129, 0.3)',
-  },
+
   pendingModalContainer: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -1412,9 +1455,19 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 1,
   },
+  pendingModalTitleContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
   pendingModalTitle: {
     fontSize: 20,
     fontWeight: '700' as const,
+  },
+  pendingModalSubtitle: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    lineHeight: 16,
+    marginTop: 2,
   },
   pendingModalBody: {
     padding: 20,
