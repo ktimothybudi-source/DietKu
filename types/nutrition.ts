@@ -22,6 +22,7 @@ export interface FoodEntry {
   protein: number;
   carbs: number;
   fat: number;
+  photoUri?: string;
 }
 
 export interface DailyTargets {

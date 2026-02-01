@@ -127,6 +127,7 @@ export default function HomeScreen() {
         protein: avgProtein,
         carbs: avgCarbs,
         fat: avgFat,
+        photoUri: donePending.photoUri,
       });
       
       const items = analysis.items.map(item => ({
@@ -385,6 +386,7 @@ export default function HomeScreen() {
       protein: totals.protein,
       carbs: totals.carbs,
       fat: totals.fat,
+      photoUri: viewingEntry.photoUri,
     });
     
     setViewingEntry(null);
@@ -529,6 +531,7 @@ export default function HomeScreen() {
         protein: totals.protein,
         carbs: totals.carbs,
         fat: totals.fat,
+        photoUri: selectedPending.photoUri,
       });
     }
     
@@ -1681,9 +1684,13 @@ export default function HomeScreen() {
                   </View>
 
                   <ScrollView style={styles.pendingModalBody} showsVerticalScrollIndicator={false}>
-                    <View style={[styles.viewEntryImageContainer, { backgroundColor: theme.background }]}>
-                      <Camera size={48} color={theme.textTertiary} />
-                    </View>
+                    {viewingEntry.photoUri ? (
+                      <Image source={{ uri: viewingEntry.photoUri }} style={styles.pendingModalImage} />
+                    ) : (
+                      <View style={[styles.viewEntryImageContainer, { backgroundColor: theme.background }]}>
+                        <Camera size={48} color={theme.textTertiary} />
+                      </View>
+                    )}
 
                     <View style={styles.pendingResultState}>
                       {(() => {
