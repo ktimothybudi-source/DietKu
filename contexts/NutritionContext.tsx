@@ -1,9 +1,11 @@
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useState, useEffect, useMemo } from 'react';
-import { UserProfile, FoodEntry, DailyTargets } from '@/types/nutrition';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { UserProfile, FoodEntry, DailyTargets, MealAnalysis } from '@/types/nutrition';
 import { calculateDailyTargets, getTodayKey } from '@/utils/nutritionCalculations';
+import { analyzeMealPhoto } from '@/utils/photoAnalysis';
+import * as Haptics from 'expo-haptics';
 
 interface FoodLog {
   [date: string]: FoodEntry[];
@@ -22,6 +24,16 @@ interface WeightEntry {
   timestamp: number;
 }
 
+export interface PendingFoodEntry {
+  id: string;
+  photoUri: string;
+  base64: string;
+  timestamp: number;
+  status: 'analyzing' | 'done' | 'error';
+  analysis?: MealAnalysis;
+  error?: string;
+}
+
 const PROFILE_KEY = 'nutrition_profile';
 const FOOD_LOG_KEY = 'nutrition_food_log';
 const STREAK_KEY = 'nutrition_streak';
@@ -32,6 +44,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   const [foodLog, setFoodLog] = useState<FoodLog>({});
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayKey());
+  const [pendingEntries, setPendingEntries] = useState<PendingFoodEntry[]>([]);
   const [streakData, setStreakData] = useState<StreakData>({
     currentStreak: 0,
     bestStreak: 0,
@@ -229,6 +242,104 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     updateStreak(todayKey);
   };
 
+  const addPendingEntry = useCallback((photoUri: string, base64: string) => {
+    const newPending: PendingFoodEntry = {
+      id: Date.now().toString(),
+      photoUri,
+      base64,
+      timestamp: Date.now(),
+      status: 'analyzing',
+    };
+    setPendingEntries(prev => [...prev, newPending]);
+
+    analyzeMealPhoto(base64)
+      .then((analysis) => {
+        setPendingEntries(prev =>
+          prev.map(entry =>
+            entry.id === newPending.id
+              ? { ...entry, status: 'done' as const, analysis }
+              : entry
+          )
+        );
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      })
+      .catch((error) => {
+        console.error('Photo analysis error:', error);
+        setPendingEntries(prev =>
+          prev.map(entry =>
+            entry.id === newPending.id
+              ? { ...entry, status: 'error' as const, error: 'Gagal menganalisis foto' }
+              : entry
+          )
+        );
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      });
+
+    return newPending.id;
+  }, []);
+
+  const confirmPendingEntry = useCallback((pendingId: string, servings: number = 1) => {
+    const pending = pendingEntries.find(p => p.id === pendingId);
+    if (!pending || pending.status !== 'done' || !pending.analysis) return;
+
+    const analysis = pending.analysis;
+    const avgCalories = Math.round((analysis.totalCaloriesMin + analysis.totalCaloriesMax) / 2) * servings;
+    const avgProtein = Math.round((analysis.totalProteinMin + analysis.totalProteinMax) / 2) * servings;
+    const avgCarbs = analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0) * servings;
+    const avgFat = analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0) * servings;
+    const foodNames = analysis.items.map(item => item.name).join(', ');
+
+    addFoodEntry({
+      name: foodNames,
+      calories: Math.round(avgCalories),
+      protein: Math.round(avgProtein),
+      carbs: Math.round(avgCarbs),
+      fat: Math.round(avgFat),
+    });
+
+    setPendingEntries(prev => prev.filter(p => p.id !== pendingId));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [pendingEntries, addFoodEntry]);
+
+  const removePendingEntry = useCallback((pendingId: string) => {
+    setPendingEntries(prev => prev.filter(p => p.id !== pendingId));
+  }, []);
+
+  const retryPendingEntry = useCallback((pendingId: string) => {
+    const pending = pendingEntries.find(p => p.id === pendingId);
+    if (!pending) return;
+
+    setPendingEntries(prev =>
+      prev.map(entry =>
+        entry.id === pendingId
+          ? { ...entry, status: 'analyzing' as const, error: undefined }
+          : entry
+      )
+    );
+
+    analyzeMealPhoto(pending.base64)
+      .then((analysis) => {
+        setPendingEntries(prev =>
+          prev.map(entry =>
+            entry.id === pendingId
+              ? { ...entry, status: 'done' as const, analysis }
+              : entry
+          )
+        );
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      })
+      .catch((error) => {
+        console.error('Photo analysis error:', error);
+        setPendingEntries(prev =>
+          prev.map(entry =>
+            entry.id === pendingId
+              ? { ...entry, status: 'error' as const, error: 'Gagal menganalisis foto' }
+              : entry
+          )
+        );
+      });
+  }, [pendingEntries]);
+
   const deleteFoodEntry = (entryId: string) => {
     const todayKey = getTodayKey();
     const todayEntries = foodLog[todayKey] || [];
@@ -294,6 +405,11 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     streakData,
     selectedDate,
     setSelectedDate,
+    pendingEntries,
+    addPendingEntry,
+    confirmPendingEntry,
+    removePendingEntry,
+    retryPendingEntry,
     isLoading: profileQuery.isLoading || foodLogQuery.isLoading || streakQuery.isLoading || weightHistoryQuery.isLoading,
     isSaving: saveProfileMutation.isPending || saveFoodLogMutation.isPending || saveStreakMutation.isPending || saveWeightHistoryMutation.isPending,
   };

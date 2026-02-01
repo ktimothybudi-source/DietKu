@@ -6,33 +6,22 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  ActivityIndicator,
-  ScrollView,
   Modal,
   Pressable,
   Linking,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { X, HelpCircle, Zap, ZapOff, MoreVertical, Share2, Bookmark, Plus, Minus } from 'lucide-react-native';
+import { X, HelpCircle, Zap, ZapOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { analyzeMealPhoto } from '@/utils/photoAnalysis';
-import { MealAnalysis } from '@/types/nutrition';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type ScreenState = 'camera' | 'analyzing' | 'results';
 type FlashMode = 'off' | 'auto' | 'on';
 
 export default function CameraScanScreen() {
   const insets = useSafeAreaInsets();
-  const { addFoodEntry } = useNutrition();
+  const { addPendingEntry } = useNutrition();
 
-  const [screenState, setScreenState] = useState<ScreenState>('camera');
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
-  const [servings, setServings] = useState(1);
-
-  const scrollViewRef = useRef<ScrollView>(null);
   const cameraRef = useRef<CameraView>(null);
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -56,22 +45,6 @@ export default function CameraScanScreen() {
     }
   };
 
-  const analyzeBase64 = async (base64: string) => {
-    setAnalysis(null);
-    setScreenState('analyzing');
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    try {
-      const result = await analyzeMealPhoto(base64);
-      setAnalysis(result);
-      setScreenState('results');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error) {
-      console.error('Photo analysis error:', error);
-      setScreenState('camera');
-    }
-  };
-
   const handleTakePhoto = async () => {
     const ok = await ensureCameraPermission();
     if (!ok) return;
@@ -86,20 +59,15 @@ export default function CameraScanScreen() {
         base64: true,
       });
 
-      if (!photo?.uri) return;
-
-      setPhotoUri(photo.uri);
-
-      if (!photo.base64) {
-        console.error('No base64 returned from camera');
-        setScreenState('camera');
+      if (!photo?.uri || !photo.base64) {
+        console.error('No photo or base64 returned from camera');
         return;
       }
 
-      await analyzeBase64(photo.base64);
+      addPendingEntry(photo.uri, photo.base64);
+      router.back();
     } catch (error) {
       console.error(error);
-      setScreenState('camera');
     }
   };
 
@@ -108,36 +76,8 @@ export default function CameraScanScreen() {
     setFlashMode((prev) => (prev === 'off' ? 'auto' : prev === 'auto' ? 'on' : 'off'));
   };
 
-  const handleDone = () => {
-    if (!analysis) return;
-
-    const avgCalories =
-      Math.round((analysis.totalCaloriesMin + analysis.totalCaloriesMax) / 2) * servings;
-    const avgProtein =
-      Math.round((analysis.totalProteinMin + analysis.totalProteinMax) / 2) * servings;
-
-    const avgCarbs =
-      analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0) * servings;
-
-    const avgFat =
-      analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0) * servings;
-
-    const foodNames = analysis.items.map((item) => item.name).join(', ');
-
-    addFoodEntry({
-      name: foodNames,
-      calories: Math.round(avgCalories),
-      protein: Math.round(avgProtein),
-      carbs: Math.round(avgCarbs),
-      fat: Math.round(avgFat),
-    });
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
-  };
-
   // ---------------- CAMERA SCREEN ----------------
-  if (screenState === 'camera') {
+  {
     const granted = !!permission?.granted;
     const canAsk = permission?.status !== 'denied';
 
@@ -304,221 +244,6 @@ export default function CameraScanScreen() {
       </>
     );
   }
-
-  // ---------------- ANALYZING SCREEN ----------------
-  if (screenState === 'analyzing') {
-    return (
-      <>
-        <Stack.Screen options={{ headerShown: false }} />
-        <View style={styles.analyzingContainer}>
-          <ActivityIndicator size="large" color="#10B981" />
-          <Text style={styles.analyzingText}>Menganalisis makanan Anda...</Text>
-          <Text style={styles.analyzingSubtext}>Mohon tunggu</Text>
-        </View>
-      </>
-    );
-  }
-
-  // ---------------- RESULTS SCREEN ----------------
-  if (screenState === 'results' && photoUri) {
-    if (!analysis) {
-      return (
-        <>
-          <Stack.Screen options={{ headerShown: false }} />
-          <View style={styles.resultsContainer}>
-            <View style={[styles.resultsTopBar, { paddingTop: insets.top + 12 }]}>
-              <TouchableOpacity style={styles.resultButton} onPress={() => router.back()} activeOpacity={0.9}>
-                <X size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.resultsTitle}>Nutrisi</Text>
-              <View style={styles.resultButtonGroup} />
-            </View>
-
-            <View style={styles.resultsImageContainer}>
-              <Image source={{ uri: photoUri }} style={styles.resultsImage} />
-            </View>
-
-            <View style={{ padding: 24 }}>
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '600' }}>
-                Foto tersimpan, analisis belum dijalankan
-              </Text>
-              <Text style={{ color: '#888', marginTop: 8 }}>
-                Coba ambil foto ulang.
-              </Text>
-            </View>
-          </View>
-        </>
-      );
-    }
-
-    const avgCalories =
-      Math.round((analysis.totalCaloriesMin + analysis.totalCaloriesMax) / 2) * servings;
-    const avgProtein =
-      Math.round((analysis.totalProteinMin + analysis.totalProteinMax) / 2) * servings;
-
-    const avgCarbs =
-      analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0) * servings;
-
-    const avgFat =
-      analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0) * servings;
-
-    const currentTime = new Date().toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-
-    const mainFoodName = analysis.items.map((i) => i.name).join(' with ');
-
-    return (
-      <>
-        <Stack.Screen options={{ headerShown: false }} />
-        <View style={styles.resultsContainer}>
-          <View style={[styles.resultsTopBar, { paddingTop: insets.top + 12 }]}>
-            <TouchableOpacity
-              style={styles.resultButton}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.back();
-              }}
-              activeOpacity={0.9}
-            >
-              <X size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            <Text style={styles.resultsTitle}>Nutrisi</Text>
-
-            <View style={styles.resultButtonGroup}>
-              <TouchableOpacity style={styles.resultButton} activeOpacity={0.9}>
-                <Share2 size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.resultButton} activeOpacity={0.9}>
-                <MoreVertical size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.resultsImageContainer}>
-            <Image source={{ uri: photoUri }} style={styles.resultsImage} />
-          </View>
-
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.resultsContent}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
-          >
-            <View style={styles.resultsCard}>
-              <View style={styles.handleBar} />
-              <View style={styles.timeRow}>
-                <Bookmark size={20} color="#888" />
-                <Text style={styles.timeText}>{currentTime}</Text>
-              </View>
-
-              <View style={styles.foodNameRow}>
-                <Text style={styles.foodNameText}>{mainFoodName}</Text>
-                <View style={styles.servingControls}>
-                  <TouchableOpacity
-                    style={styles.servingButton}
-                    onPress={() => {
-                      if (servings > 1) {
-                        setServings(servings - 1);
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }
-                    }}
-                    activeOpacity={0.9}
-                  >
-                    <Minus size={20} color="#888" />
-                  </TouchableOpacity>
-                  <Text style={styles.servingText}>{servings}</Text>
-                  <TouchableOpacity
-                    style={styles.servingButton}
-                    onPress={() => {
-                      setServings(servings + 1);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }}
-                    activeOpacity={0.9}
-                  >
-                    <Plus size={20} color="#888" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.caloriesSection}>
-                <View style={styles.flameIcon}>
-                  <Text style={styles.flameEmoji}>🔥</Text>
-                </View>
-                <View>
-                  <Text style={styles.caloriesLabel}>Kalori</Text>
-                  <Text style={styles.caloriesValue}>{avgCalories}</Text>
-                </View>
-              </View>
-
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.macroCardsContainer}>
-                <View style={styles.macroCard}>
-                  <Text style={styles.macroIcon}>🥩</Text>
-                  <Text style={styles.macroLabel}>Protein</Text>
-                  <Text style={styles.macroValue}>{Math.round(avgProtein)}g</Text>
-                </View>
-
-                <View style={styles.macroCard}>
-                  <Text style={styles.macroIcon}>🌾</Text>
-                  <Text style={styles.macroLabel}>Karbo</Text>
-                  <Text style={styles.macroValue}>{Math.round(avgCarbs)}g</Text>
-                </View>
-
-                <View style={styles.macroCard}>
-                  <Text style={styles.macroIcon}>🥑</Text>
-                  <Text style={styles.macroLabel}>Lemak</Text>
-                  <Text style={styles.macroValue}>{Math.round(avgFat)}g</Text>
-                </View>
-              </ScrollView>
-
-              <View style={styles.paginationDots}>
-                <View style={[styles.dot, styles.dotActive]} />
-                <View style={styles.dot} />
-              </View>
-
-              <View style={styles.ingredientsSection}>
-                <Text style={styles.ingredientsTitle}>Bahan</Text>
-                <TouchableOpacity activeOpacity={0.9}>
-                  <Text style={styles.addMoreText}>+ Tambah</Text>
-                </TouchableOpacity>
-              </View>
-
-              {analysis.items.map((item, index) => (
-                <View key={index} style={styles.ingredientItem}>
-                  <View style={styles.ingredientInfo}>
-                    <Text style={styles.ingredientName}>{item.name}</Text>
-                    <Text style={styles.ingredientCalories}>
-                      {Math.round(((item.caloriesMin + item.caloriesMax) / 2) * servings)} cal
-                    </Text>
-                  </View>
-                  <Text style={styles.ingredientPortion}>{item.portion}</Text>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-
-          <View style={[styles.resultsFooter, { paddingBottom: insets.bottom + 16 }]}>
-            <TouchableOpacity
-              style={styles.fixButton}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-              activeOpacity={0.9}
-            >
-              <Plus size={20} color="#FFFFFF" />
-              <Text style={styles.fixButtonText}>Perbaiki</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.doneButton} onPress={handleDone} activeOpacity={0.95}>
-              <Text style={styles.doneButtonText}>Selesai</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </>
-    );
-  }
-
-  return null;
 }
 
 const FOCUS_SIZE = 230;
@@ -530,12 +255,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-
   overlay: {
     flex: 1,
     justifyContent: 'space-between',
   },
-
   header: {
     paddingHorizontal: 16,
     paddingBottom: 10,
@@ -543,7 +266,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-
   headerIconButton: {
     width: 54,
     height: 54,
@@ -554,7 +276,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
   },
-
   brandPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -565,39 +286,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
   },
-
   brandLogo: {
     width: 28,
     height: 28,
     borderRadius: 8,
     marginRight: 10,
   },
-
   brandTitle: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '900' as const,
     letterSpacing: 0.2,
   },
-
   focusFrameWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   focusFrame: {
     width: FOCUS_SIZE,
     height: FOCUS_SIZE,
   },
-
   corner: {
     position: 'absolute',
     width: CORNER,
     height: CORNER,
     borderColor: 'rgba(255,255,255,0.85)',
   },
-
   tl: {
     left: 0,
     top: 0,
@@ -605,7 +320,6 @@ const styles = StyleSheet.create({
     borderTopWidth: STROKE,
     borderTopLeftRadius: 10,
   },
-
   tr: {
     right: 0,
     top: 0,
@@ -613,7 +327,6 @@ const styles = StyleSheet.create({
     borderTopWidth: STROKE,
     borderTopRightRadius: 10,
   },
-
   bl: {
     left: 0,
     bottom: 0,
@@ -621,7 +334,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: STROKE,
     borderBottomLeftRadius: 10,
   },
-
   br: {
     right: 0,
     bottom: 0,
@@ -629,7 +341,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: STROKE,
     borderBottomRightRadius: 10,
   },
-
   bottomBar: {
     paddingHorizontal: 22,
     paddingTop: 12,
@@ -638,7 +349,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: 'rgba(0,0,0,0.10)',
   },
-
   flashButton: {
     width: 78,
     height: 78,
@@ -649,14 +359,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
   },
-
   flashLabel: {
     marginTop: 4,
     fontSize: 11,
     color: 'rgba(255,255,255,0.85)',
-    fontWeight: '800',
+    fontWeight: '800' as const,
   },
-
   shutterOuter: {
     width: 92,
     height: 92,
@@ -666,7 +374,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 7,
   },
-
   shutterInner: {
     width: '100%',
     height: '100%',
@@ -675,21 +382,17 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: '#000000',
   },
-
-  // Permission UI
   permissionPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
     backgroundColor: '#0A0A0A',
   },
-
   permissionTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '900' as const,
   },
-
   permissionSub: {
     color: '#AAAAAA',
     fontSize: 14,
@@ -697,20 +400,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-
   permissionButton: {
     paddingHorizontal: 18,
     paddingVertical: 12,
     borderRadius: 12,
     backgroundColor: '#10B981',
   },
-
   permissionButtonText: {
     color: '#FFFFFF',
-    fontWeight: '900',
+    fontWeight: '900' as const,
   },
-
-  // Help modal
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',
@@ -718,7 +417,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 18,
   },
-
   modalCard: {
     width: '100%',
     maxWidth: 420,
@@ -728,7 +426,6 @@ const styles = StyleSheet.create({
     borderColor: '#1F1F1F',
     overflow: 'hidden',
   },
-
   modalHeader: {
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -738,13 +435,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#1F1F1F',
   },
-
   modalTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '900' as const,
   },
-
   modalClose: {
     width: 34,
     height: 34,
@@ -753,312 +448,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   modalBody: {
     padding: 16,
   },
-
   modalBullet: {
     color: '#DDDDDD',
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 10,
   },
-
   modalFooter: {
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#1F1F1F',
   },
-
   modalPrimary: {
     backgroundColor: '#10B981',
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
   },
-
   modalPrimaryText: {
     color: '#FFFFFF',
-    fontWeight: '900',
-  },
-
-  // Existing screens (unchanged)
-  analyzingContainer: {
-    flex: 1,
-    backgroundColor: '#0A0A0A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  analyzingText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginTop: 16,
-  },
-  analyzingSubtext: {
-    fontSize: 14,
-    color: '#888',
-    marginTop: 6,
-  },
-
-  resultsContainer: {
-    flex: 1,
-    backgroundColor: '#0A0A0A',
-  },
-  resultsTopBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: '#0A0A0A',
-  },
-  resultsImageContainer: {
-    height: 300,
-    marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  resultsImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#1A1A1A',
-  },
-  resultButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  resultButtonGroup: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  resultsTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  resultsContent: {
-    flex: 1,
-  },
-  resultsCard: {
-    backgroundColor: '#0A0A0A',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-  },
-  handleBar: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#2A2A2A',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 20,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  timeText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  foodNameRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 24,
-  },
-  foodNameText: {
-    flex: 1,
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    lineHeight: 32,
-  },
-  servingControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 24,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    gap: 16,
-  },
-  servingButton: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  servingText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    minWidth: 24,
-    textAlign: 'center',
-  },
-  caloriesSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 24,
-  },
-  flameIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flameEmoji: {
-    fontSize: 28,
-  },
-  caloriesLabel: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 4,
-  },
-  caloriesValue: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  macroCardsContainer: {
-    marginBottom: 16,
-  },
-  macroCard: {
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    borderRadius: 16,
-    padding: 16,
-    marginRight: 12,
-    minWidth: 110,
-    alignItems: 'center',
-  },
-  macroIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  macroLabel: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 4,
-  },
-  macroValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  paginationDots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 24,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#2A2A2A',
-  },
-  dotActive: {
-    backgroundColor: '#10B981',
-  },
-  ingredientsSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  ingredientsTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  addMoreText: {
-    fontSize: 16,
-    color: '#888',
-  },
-  ingredientItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1A1A1A',
-  },
-  ingredientInfo: {
-    flex: 1,
-  },
-  ingredientName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  ingredientCalories: {
-    fontSize: 14,
-    color: '#888',
-  },
-  ingredientPortion: {
-    fontSize: 16,
-    color: '#888',
-  },
-  resultsFooter: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    backgroundColor: '#0A0A0A',
-    borderTopWidth: 1,
-    borderTopColor: '#1A1A1A',
-  },
-  fixButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 24,
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-  },
-  fixButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  doneButton: {
-    flex: 2,
-    paddingVertical: 16,
-    borderRadius: 24,
-    backgroundColor: '#10B981',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  doneButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontWeight: '900' as const,
   },
 });

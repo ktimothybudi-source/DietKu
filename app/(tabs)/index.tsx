@@ -15,8 +15,8 @@ import {
   Animated,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar } from 'lucide-react-native';
-import { useNutrition, useTodayProgress } from '@/contexts/NutritionContext';
+import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Minus } from 'lucide-react-native';
+import { useNutrition, useTodayProgress, PendingFoodEntry } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FoodEntry, MealAnalysis } from '@/types/nutrition';
 import * as Haptics from 'expo-haptics';
@@ -26,7 +26,7 @@ import { getTodayKey } from '@/utils/nutritionCalculations';
 import ProgressRing from '@/components/ProgressRing';
 
 export default function HomeScreen() {
-  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, updateFoodEntry, isLoading, streakData, selectedDate, setSelectedDate } = useNutrition();
+  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, updateFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry } = useNutrition();
   const { theme } = useTheme();
   const progress = useTodayProgress();
   const [modalVisible, setModalVisible] = useState(false);
@@ -38,6 +38,8 @@ export default function HomeScreen() {
   const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
   const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [selectedPending, setSelectedPending] = useState<PendingFoodEntry | null>(null);
+  const [pendingServings, setPendingServings] = useState(1);
   
   const caloriesAnimValue = useRef(new Animated.Value(0)).current;
   const proteinAnimValue = useRef(new Animated.Value(0)).current;
@@ -162,6 +164,32 @@ export default function HomeScreen() {
     setCalories(entry.calories.toString());
     setProtein(entry.protein.toString());
     setModalVisible(true);
+  };
+
+  const handlePendingPress = (pending: PendingFoodEntry) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedPending(pending);
+    setPendingServings(1);
+  };
+
+  const handleConfirmPending = () => {
+    if (!selectedPending) return;
+    confirmPendingEntry(selectedPending.id, pendingServings);
+    setSelectedPending(null);
+    setPendingServings(1);
+  };
+
+  const handleRemovePending = () => {
+    if (!selectedPending) return;
+    removePendingEntry(selectedPending.id);
+    setSelectedPending(null);
+    setPendingServings(1);
+  };
+
+  const handleRetryPending = () => {
+    if (!selectedPending) return;
+    retryPendingEntry(selectedPending.id);
+    setSelectedPending(null);
   };
 
   const handleUpdateFood = () => {
@@ -388,10 +416,10 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Makanan {isToday ? 'Hari Ini' : 'pada Tanggal Ini'}</Text>
-              <Text style={[styles.foodCount, { color: theme.textSecondary }]}>{todayEntries.length} item</Text>
+              <Text style={[styles.foodCount, { color: theme.textSecondary }]}>{todayEntries.length + pendingEntries.length} item</Text>
             </View>
 
-            {todayEntries.length === 0 ? (
+            {todayEntries.length === 0 && pendingEntries.length === 0 ? (
               <View style={styles.emptyState}>
                 <View style={styles.emptyIcon}>
                   <Flame size={48} color={theme.textTertiary} />
@@ -401,6 +429,51 @@ export default function HomeScreen() {
               </View>
             ) : (
               <View style={styles.foodList}>
+                {pendingEntries.map((pending) => {
+                  const { label, time } = getMealTimeLabel(pending.timestamp);
+                  const isAnalyzing = pending.status === 'analyzing';
+                  const hasError = pending.status === 'error';
+                  const isDone = pending.status === 'done';
+                  
+                  return (
+                    <TouchableOpacity
+                      key={pending.id}
+                      style={[styles.foodItem, { backgroundColor: theme.card, borderColor: theme.border }]}
+                      onPress={() => handlePendingPress(pending)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.pendingThumbnailContainer}>
+                        <Image source={{ uri: pending.photoUri }} style={styles.pendingThumbnail} />
+                        {isAnalyzing && (
+                          <View style={styles.pendingOverlay}>
+                            <ActivityIndicator size="small" color="#10B981" />
+                          </View>
+                        )}
+                        {hasError && (
+                          <View style={[styles.pendingOverlay, styles.pendingErrorOverlay]}>
+                            <X size={18} color="#EF4444" />
+                          </View>
+                        )}
+                        {isDone && (
+                          <View style={[styles.pendingOverlay, styles.pendingDoneOverlay]}>
+                            <Check size={18} color="#10B981" />
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.foodInfo}>
+                        <View style={styles.foodHeader}>
+                          <Text style={[styles.mealTimeLabel, { color: theme.text }]}>
+                            {isAnalyzing ? 'Menganalisis...' : hasError ? 'Gagal analisis' : isDone && pending.analysis ? pending.analysis.items.map(i => i.name).join(', ') : label}
+                          </Text>
+                          <Text style={[styles.mealTime, { color: theme.textSecondary }]}>{time}</Text>
+                        </View>
+                        <Text style={[styles.foodCalories, { color: isAnalyzing ? '#10B981' : hasError ? '#EF4444' : theme.textTertiary }]}>
+                          {isAnalyzing ? 'Sedang diproses...' : hasError ? 'Ketuk untuk coba lagi' : isDone && pending.analysis ? `${Math.round((pending.analysis.totalCaloriesMin + pending.analysis.totalCaloriesMax) / 2)} kcal` : ''}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
                 {todayEntries.map((entry) => {
                   const { label, time } = getMealTimeLabel(entry.timestamp);
                   
@@ -667,6 +740,169 @@ export default function HomeScreen() {
               </ScrollView>
             </View>
           </KeyboardAvoidingView>
+        </Modal>
+        {/* Pending Entry Detail Modal */}
+        <Modal
+          visible={!!selectedPending}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSelectedPending(null)}
+        >
+          <View style={styles.pendingModalContainer}>
+            <TouchableOpacity
+              style={styles.pendingModalOverlay}
+              activeOpacity={1}
+              onPress={() => setSelectedPending(null)}
+            />
+            
+            <View style={[styles.pendingModalContent, { backgroundColor: theme.card }]}>
+              <View style={[styles.pendingModalHeader, { borderBottomColor: theme.border }]}>
+                <Text style={[styles.pendingModalTitle, { color: theme.text }]}>
+                  {selectedPending?.status === 'analyzing' ? 'Menganalisis...' : 
+                   selectedPending?.status === 'error' ? 'Gagal Analisis' : 'Detail Makanan'}
+                </Text>
+                <TouchableOpacity onPress={() => setSelectedPending(null)}>
+                  <X size={24} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.pendingModalBody} showsVerticalScrollIndicator={false}>
+                {selectedPending?.photoUri && (
+                  <Image source={{ uri: selectedPending.photoUri }} style={styles.pendingModalImage} />
+                )}
+
+                {selectedPending?.status === 'analyzing' && (
+                  <View style={styles.pendingAnalyzingState}>
+                    <ActivityIndicator size="large" color="#10B981" />
+                    <Text style={[styles.pendingAnalyzingText, { color: theme.text }]}>Menganalisis makanan Anda...</Text>
+                    <Text style={[styles.pendingAnalyzingSubtext, { color: theme.textSecondary }]}>Mohon tunggu sebentar</Text>
+                  </View>
+                )}
+
+                {selectedPending?.status === 'error' && (
+                  <View style={styles.pendingErrorState}>
+                    <Text style={[styles.pendingErrorText, { color: theme.text }]}>Gagal menganalisis foto</Text>
+                    <Text style={[styles.pendingErrorSubtext, { color: theme.textSecondary }]}>{selectedPending.error || 'Terjadi kesalahan'}</Text>
+                    <View style={styles.pendingErrorButtons}>
+                      <TouchableOpacity
+                        style={[styles.pendingRetryButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                        onPress={handleRetryPending}
+                        activeOpacity={0.7}
+                      >
+                        <RefreshCw size={18} color={theme.text} />
+                        <Text style={[styles.pendingRetryText, { color: theme.text }]}>Coba Lagi</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.pendingDeleteButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
+                        onPress={handleRemovePending}
+                        activeOpacity={0.7}
+                      >
+                        <Trash2 size={18} color="#EF4444" />
+                        <Text style={styles.pendingDeleteText}>Hapus</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {selectedPending?.status === 'done' && selectedPending.analysis && (
+                  <View style={styles.pendingResultState}>
+                    <View style={[styles.pendingTotalCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                      <View style={styles.pendingTotalHeader}>
+                        <Text style={[styles.pendingFoodName, { color: theme.text }]}>
+                          {selectedPending.analysis.items.map(i => i.name).join(', ')}
+                        </Text>
+                        <View style={[styles.pendingServingControls, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                          <TouchableOpacity
+                            style={styles.pendingServingBtn}
+                            onPress={() => {
+                              if (pendingServings > 1) {
+                                setPendingServings(pendingServings - 1);
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              }
+                            }}
+                          >
+                            <Minus size={16} color={theme.textSecondary} />
+                          </TouchableOpacity>
+                          <Text style={[styles.pendingServingText, { color: theme.text }]}>{pendingServings}</Text>
+                          <TouchableOpacity
+                            style={styles.pendingServingBtn}
+                            onPress={() => {
+                              setPendingServings(pendingServings + 1);
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            }}
+                          >
+                            <Plus size={16} color={theme.textSecondary} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      <View style={styles.pendingCaloriesRow}>
+                        <Text style={styles.pendingCaloriesEmoji}>🔥</Text>
+                        <Text style={[styles.pendingCaloriesValue, { color: theme.text }]}>
+                          {Math.round((selectedPending.analysis.totalCaloriesMin + selectedPending.analysis.totalCaloriesMax) / 2 * pendingServings)}
+                        </Text>
+                        <Text style={[styles.pendingCaloriesUnit, { color: theme.textSecondary }]}>kcal</Text>
+                      </View>
+                      <View style={styles.pendingMacros}>
+                        <View style={styles.pendingMacro}>
+                          <Text style={styles.pendingMacroEmoji}>🥩</Text>
+                          <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
+                            {Math.round((selectedPending.analysis.totalProteinMin + selectedPending.analysis.totalProteinMax) / 2 * pendingServings)}g
+                          </Text>
+                          <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Protein</Text>
+                        </View>
+                        <View style={styles.pendingMacro}>
+                          <Text style={styles.pendingMacroEmoji}>🌾</Text>
+                          <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
+                            {Math.round(selectedPending.analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0) * pendingServings)}g
+                          </Text>
+                          <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Karbo</Text>
+                        </View>
+                        <View style={styles.pendingMacro}>
+                          <Text style={styles.pendingMacroEmoji}>🥑</Text>
+                          <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
+                            {Math.round(selectedPending.analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0) * pendingServings)}g
+                          </Text>
+                          <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Lemak</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    <Text style={[styles.pendingItemsTitle, { color: theme.text }]}>Item Terdeteksi</Text>
+                    {selectedPending.analysis.items.map((item, index) => (
+                      <View key={index} style={[styles.pendingItemCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                        <View>
+                          <Text style={[styles.pendingItemName, { color: theme.text }]}>{item.name}</Text>
+                          <Text style={[styles.pendingItemPortion, { color: theme.textSecondary }]}>{item.portion}</Text>
+                        </View>
+                        <Text style={[styles.pendingItemCalories, { color: theme.textTertiary }]}>
+                          {Math.round((item.caloriesMin + item.caloriesMax) / 2 * pendingServings)} kcal
+                        </Text>
+                      </View>
+                    ))}
+
+                    <View style={styles.pendingResultButtons}>
+                      <TouchableOpacity
+                        style={[styles.pendingCancelButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                        onPress={handleRemovePending}
+                        activeOpacity={0.7}
+                      >
+                        <Trash2 size={18} color={theme.textSecondary} />
+                        <Text style={[styles.pendingCancelText, { color: theme.textSecondary }]}>Hapus</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.pendingConfirmButton}
+                        onPress={handleConfirmPending}
+                        activeOpacity={0.9}
+                      >
+                        <Check size={20} color="#FFFFFF" />
+                        <Text style={styles.pendingConfirmText}>Tambah ke Log</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
         </Modal>
       </View>
     </>
@@ -1124,5 +1360,262 @@ const styles = StyleSheet.create({
   },
   bottomOptionDivider: {
     height: 1,
+  },
+  pendingThumbnailContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  pendingThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  pendingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingErrorOverlay: {
+    backgroundColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  pendingDoneOverlay: {
+    backgroundColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  pendingModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  pendingModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  pendingModalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+  },
+  pendingModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+  },
+  pendingModalTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+  },
+  pendingModalBody: {
+    padding: 20,
+  },
+  pendingModalImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 16,
+    marginBottom: 20,
+  },
+  pendingAnalyzingState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  pendingAnalyzingText: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+  },
+  pendingAnalyzingSubtext: {
+    fontSize: 14,
+  },
+  pendingErrorState: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    gap: 8,
+  },
+  pendingErrorText: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+  },
+  pendingErrorSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  pendingErrorButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+  },
+  pendingRetryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  pendingRetryText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+  },
+  pendingDeleteButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  pendingDeleteText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#EF4444',
+  },
+  pendingResultState: {
+    gap: 16,
+    paddingBottom: 40,
+  },
+  pendingTotalCard: {
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+  },
+  pendingTotalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  pendingFoodName: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '600' as const,
+    lineHeight: 24,
+    marginRight: 12,
+  },
+  pendingServingControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    gap: 8,
+  },
+  pendingServingBtn: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingServingText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    minWidth: 20,
+    textAlign: 'center',
+  },
+  pendingCaloriesRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+    marginBottom: 16,
+  },
+  pendingCaloriesEmoji: {
+    fontSize: 24,
+  },
+  pendingCaloriesValue: {
+    fontSize: 36,
+    fontWeight: '700' as const,
+  },
+  pendingCaloriesUnit: {
+    fontSize: 16,
+  },
+  pendingMacros: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  pendingMacro: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  pendingMacroEmoji: {
+    fontSize: 20,
+  },
+  pendingMacroValue: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  pendingMacroLabel: {
+    fontSize: 12,
+  },
+  pendingItemsTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    marginTop: 8,
+  },
+  pendingItemCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  pendingItemName: {
+    fontSize: 15,
+    fontWeight: '500' as const,
+    marginBottom: 2,
+  },
+  pendingItemPortion: {
+    fontSize: 13,
+  },
+  pendingItemCalories: {
+    fontSize: 14,
+  },
+  pendingResultButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  pendingCancelButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  pendingCancelText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  pendingConfirmButton: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#10B981',
+  },
+  pendingConfirmText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
   },
 });
