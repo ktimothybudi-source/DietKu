@@ -65,6 +65,7 @@ export default function HomeScreen() {
   const [editItemFat, setEditItemFat] = useState('');
   const [showAddItem, setShowAddItem] = useState(false);
   const [hasEdited, setHasEdited] = useState(false);
+  const [viewingEntry, setViewingEntry] = useState<FoodEntry | null>(null);
   
   const pendingModalScrollRef = useRef<ScrollView>(null);
   
@@ -224,8 +225,13 @@ export default function HomeScreen() {
 
   const handleViewEntry = (entry: FoodEntry) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setViewingEntry(entry);
+  };
+
+  const handleShareEntry = (entry: FoodEntry) => {
     const mealName = entry.name.split(',')[0].replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim();
     const mealSubtitle = entry.name.split(',').map(n => n.trim().split(' ')[0]).join(' • ');
+    setViewingEntry(null);
     router.push({
       pathname: '/story-share',
       params: {
@@ -1460,6 +1466,81 @@ export default function HomeScreen() {
           </View>
         )}
 
+        <Modal
+          visible={viewingEntry !== null}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setViewingEntry(null)}
+        >
+          <View style={styles.foodDetailModalContainer}>
+            <TouchableOpacity
+              style={styles.foodDetailModalOverlay}
+              activeOpacity={1}
+              onPress={() => setViewingEntry(null)}
+            />
+            <View style={[styles.foodDetailModalContent, { backgroundColor: theme.card }]}>
+              <View style={[styles.foodDetailModalHeader, { borderBottomColor: theme.border }]}>
+                <Text style={[styles.foodDetailModalTitle, { color: theme.text }]}>Detail Makanan</Text>
+                <TouchableOpacity onPress={() => setViewingEntry(null)}>
+                  <X size={24} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              {viewingEntry && (
+                <ScrollView style={styles.foodDetailModalBody} showsVerticalScrollIndicator={false}>
+                  <Text style={[styles.foodDetailName, { color: theme.text }]}>
+                    {viewingEntry.name.split(',')[0].replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim()}
+                  </Text>
+                  <Text style={[styles.foodDetailTime, { color: theme.textSecondary }]}>
+                    {new Date(viewingEntry.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  
+                  <View style={[styles.foodDetailStatsContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                    <View style={styles.foodDetailStatItem}>
+                      <Text style={[styles.foodDetailStatValue, { color: theme.text }]}>{viewingEntry.calories}</Text>
+                      <Text style={[styles.foodDetailStatLabel, { color: theme.textSecondary }]}>kcal</Text>
+                    </View>
+                    <View style={[styles.foodDetailStatDivider, { backgroundColor: theme.border }]} />
+                    <View style={styles.foodDetailStatItem}>
+                      <Text style={[styles.foodDetailStatValue, { color: theme.text }]}>{viewingEntry.protein}g</Text>
+                      <Text style={[styles.foodDetailStatLabel, { color: theme.textSecondary }]}>Protein</Text>
+                    </View>
+                    <View style={[styles.foodDetailStatDivider, { backgroundColor: theme.border }]} />
+                    <View style={styles.foodDetailStatItem}>
+                      <Text style={[styles.foodDetailStatValue, { color: theme.text }]}>{viewingEntry.carbs}g</Text>
+                      <Text style={[styles.foodDetailStatLabel, { color: theme.textSecondary }]}>Karbo</Text>
+                    </View>
+                    <View style={[styles.foodDetailStatDivider, { backgroundColor: theme.border }]} />
+                    <View style={styles.foodDetailStatItem}>
+                      <Text style={[styles.foodDetailStatValue, { color: theme.text }]}>{viewingEntry.fat}g</Text>
+                      <Text style={[styles.foodDetailStatLabel, { color: theme.textSecondary }]}>Lemak</Text>
+                    </View>
+                  </View>
+
+                  {viewingEntry.name.includes(',') && (
+                    <View style={styles.foodDetailItemsSection}>
+                      <Text style={[styles.foodDetailItemsTitle, { color: theme.text }]}>Komponen</Text>
+                      {viewingEntry.name.split(',').map((item, index) => (
+                        <Text key={index} style={[styles.foodDetailItemText, { color: theme.textSecondary }]}>
+                          • {item.trim()}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.foodDetailShareButton}
+                    onPress={() => handleShareEntry(viewingEntry)}
+                    activeOpacity={0.8}
+                  >
+                    <Share2 size={20} color="#FFFFFF" />
+                    <Text style={styles.foodDetailShareButtonText}>Bagikan ke Story</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        </Modal>
+
         {showSuggestFavorite && (
           <View style={[styles.suggestFavoriteToast, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <Text style={[styles.suggestFavoriteText, { color: theme.text }]}>
@@ -1849,6 +1930,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  foodThumbnailImage: {
+    width: '100%',
+    height: '100%',
   },
   foodInfo: {
     flex: 1,
@@ -2117,6 +2203,96 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239, 68, 68, 0.3)',
   },
 
+  foodDetailModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  foodDetailModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  foodDetailModalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '70%',
+  },
+  foodDetailModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+  },
+  foodDetailModalTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+  },
+  foodDetailModalBody: {
+    padding: 20,
+  },
+  foodDetailName: {
+    fontSize: 24,
+    fontWeight: '700' as const,
+    marginBottom: 4,
+  },
+  foodDetailTime: {
+    fontSize: 14,
+    marginBottom: 20,
+  },
+  foodDetailStatsContainer: {
+    flexDirection: 'row',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 20,
+  },
+  foodDetailStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  foodDetailStatValue: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    marginBottom: 2,
+  },
+  foodDetailStatLabel: {
+    fontSize: 12,
+  },
+  foodDetailStatDivider: {
+    width: 1,
+    marginHorizontal: 8,
+  },
+  foodDetailItemsSection: {
+    marginBottom: 20,
+  },
+  foodDetailItemsTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    marginBottom: 8,
+  },
+  foodDetailItemText: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  foodDetailShareButton: {
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  foodDetailShareButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
   pendingModalContainer: {
     flex: 1,
     justifyContent: 'flex-end',
