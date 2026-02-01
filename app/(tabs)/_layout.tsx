@@ -26,30 +26,34 @@ export default function TabLayout() {
           paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "500" as const,
+          fontSize: 11,
+          fontWeight: "600" as const,
+          letterSpacing: 0.2,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color }) => <Flame size={24} color={color} />,
+          title: "Dietku",
+          tabBarLabel: "Dietku",
+          tabBarIcon: ({ color }) => <Flame size={22} color={color} fill={color} />,
         }}
       />
       <Tabs.Screen
         name="analytics"
         options={{
-          title: "Analytics",
-          tabBarIcon: ({ color }) => <BarChart3 size={24} color={color} />,
+          title: "Analitik",
+          tabBarLabel: "Analitik",
+          tabBarIcon: ({ color }) => <BarChart3 size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
-          tabBarIcon: ({ color }) => <User size={24} color={color} />,
+          title: "Profil",
+          tabBarLabel: "Profil",
+          tabBarIcon: ({ color }) => <User size={22} color={color} />,
         }}
       />
     </Tabs>
