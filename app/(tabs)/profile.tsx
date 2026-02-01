@@ -84,7 +84,6 @@ export default function ProfileScreen() {
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.headerSection}>
           <Text style={[styles.greeting, { color: theme.text }]}>Profil</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Kelola akun, pengaturan, dan data Anda</Text>
         </View>
 
         <ScrollView style={styles.scrollContent} contentContainerStyle={styles.content}>

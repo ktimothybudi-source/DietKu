@@ -499,7 +499,6 @@ export default function AnalyticsScreen() {
           <View style={styles.header}>
             <View>
               <Text style={[styles.greeting, { color: theme.text }]}>Analitik</Text>
-              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Lengkapi profil untuk mulai</Text>
             </View>
           </View>
           <View style={[styles.card, { marginHorizontal: 24, backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -519,7 +518,6 @@ export default function AnalyticsScreen() {
         <View style={styles.header}>
           <View>
             <Text style={[styles.greeting, { color: theme.text }]}>Analitik</Text>
-            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Lacak kemajuan Anda</Text>
           </View>
 
           {!!streakData?.currentStreak && streakData.currentStreak > 0 && (
