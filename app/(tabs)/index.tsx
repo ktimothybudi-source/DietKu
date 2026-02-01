@@ -26,7 +26,7 @@ import { getTodayKey } from '@/utils/nutritionCalculations';
 import ProgressRing from '@/components/ProgressRing';
 
 export default function HomeScreen() {
-  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, isFavorite, logFromFavorite, logFromRecent, shouldSuggestFavorite } = useNutrition();
+  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, shouldSuggestFavorite } = useNutrition();
   const { theme } = useTheme();
   const progress = useTodayProgress();
   const [modalVisible, setModalVisible] = useState(false);
@@ -43,6 +43,7 @@ export default function HomeScreen() {
   const [addFoodModalVisible, setAddFoodModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'recent' | 'favorit' | 'scan'>('recent');
   const [showFavoriteToast, setShowFavoriteToast] = useState(false);
+  const [favoriteToastMessage, setFavoriteToastMessage] = useState('');
   const [showSuggestFavorite, setShowSuggestFavorite] = useState(false);
   const [suggestedMealName, setSuggestedMealName] = useState('');
   
@@ -202,23 +203,35 @@ export default function HomeScreen() {
   const handleSaveToFavorite = () => {
     if (!selectedPending || !selectedPending.analysis) return;
     const analysis = selectedPending.analysis;
-    const avgCalories = Math.round((analysis.totalCaloriesMin + analysis.totalCaloriesMax) / 2);
-    const avgProtein = Math.round((analysis.totalProteinMin + analysis.totalProteinMax) / 2);
-    const avgCarbs = Math.round(analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0));
-    const avgFat = Math.round(analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0));
     const mealName = analysis.items.map(i => i.name).join(', ');
     
-    const added = addToFavorites({
-      name: mealName,
-      calories: avgCalories,
-      protein: avgProtein,
-      carbs: avgCarbs,
-      fat: avgFat,
-    });
-    
-    if (added) {
-      setShowFavoriteToast(true);
-      setTimeout(() => setShowFavoriteToast(false), 2000);
+    if (isFavorite(mealName)) {
+      const favorite = favorites.find(f => f.name.toLowerCase().trim() === mealName.toLowerCase().trim());
+      if (favorite) {
+        removeFromFavorites(favorite.id);
+        setFavoriteToastMessage('Dihapus dari Favorit');
+        setShowFavoriteToast(true);
+        setTimeout(() => setShowFavoriteToast(false), 2000);
+      }
+    } else {
+      const avgCalories = Math.round((analysis.totalCaloriesMin + analysis.totalCaloriesMax) / 2);
+      const avgProtein = Math.round((analysis.totalProteinMin + analysis.totalProteinMax) / 2);
+      const avgCarbs = Math.round(analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0));
+      const avgFat = Math.round(analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0));
+      
+      const added = addToFavorites({
+        name: mealName,
+        calories: avgCalories,
+        protein: avgProtein,
+        carbs: avgCarbs,
+        fat: avgFat,
+      });
+      
+      if (added) {
+        setFavoriteToastMessage('Disimpan ke Favorit ⭐');
+        setShowFavoriteToast(true);
+        setTimeout(() => setShowFavoriteToast(false), 2000);
+      }
     }
   };
 
@@ -252,7 +265,6 @@ export default function HomeScreen() {
     if (!selectedPending) return;
     removePendingEntry(selectedPending.id);
     setSelectedPending(null);
-    setPendingServings(1);
   };
 
   const handleRetryPending = () => {
@@ -816,9 +828,10 @@ export default function HomeScreen() {
                           const avgProtein = Math.round((analysis.totalProteinMin + analysis.totalProteinMax) / 2);
                           const avgCarbs = Math.round(analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0));
                           const avgFat = Math.round(analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0));
+                          const photoUri = selectedPending.photoUri;
+                          const timestamp = selectedPending.timestamp.toString();
                           
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                          setSelectedPending(null);
                           router.push({
                             pathname: '/story-share',
                             params: {
@@ -828,10 +841,11 @@ export default function HomeScreen() {
                               protein: avgProtein.toString(),
                               carbs: avgCarbs.toString(),
                               fat: avgFat.toString(),
-                              photoUri: selectedPending.photoUri,
-                              timestamp: selectedPending.timestamp.toString(),
+                              photoUri,
+                              timestamp,
                             },
                           });
+                          setTimeout(() => setSelectedPending(null), 150);
                         }}
                         activeOpacity={0.7}
                       >
@@ -972,9 +986,9 @@ export default function HomeScreen() {
           </View>
         </Modal>
       {showFavoriteToast && (
-          <View style={styles.favoriteToast}>
-            <Star size={16} color="#FFC107" fill="#FFC107" />
-            <Text style={styles.favoriteToastText}>Disimpan ke Favorit ⭐</Text>
+          <View style={[styles.favoriteToast, favoriteToastMessage.includes('Dihapus') && { backgroundColor: '#6B7280' }]}>
+            <Star size={16} color={favoriteToastMessage.includes('Dihapus') ? '#FFFFFF' : '#FFC107'} fill={favoriteToastMessage.includes('Dihapus') ? 'transparent' : '#FFC107'} />
+            <Text style={styles.favoriteToastText}>{favoriteToastMessage}</Text>
           </View>
         )}
 

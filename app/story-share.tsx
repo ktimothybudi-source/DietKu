@@ -184,7 +184,11 @@ export default function StoryShareScreen() {
 
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.back();
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
   const toggleStickerTray = (show: boolean) => {
@@ -383,11 +387,13 @@ export default function StoryShareScreen() {
 
   const handleShareInstagram = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert(
-      'Share to Instagram',
-      'Image export feature coming soon. For now, you can take a screenshot and share it.',
-      [{ text: 'OK' }]
-    );
+    try {
+      await Share.share({
+        message: `${storyData.mealName} - ${storyData.calories} kcal 🔥\n\nTracked with DietKu`,
+      });
+    } catch (error) {
+      console.error('Share error:', error);
+    }
   };
 
   const handleSaveImage = async () => {
@@ -749,7 +755,12 @@ export default function StoryShareScreen() {
         )}
 
         <Animated.View style={[styles.topBar, { paddingTop: insets.top + 8, opacity: fadeAnim }]}>
-          <TouchableOpacity style={styles.iconButton} onPress={handleClose}>
+          <TouchableOpacity 
+            style={styles.iconButton} 
+            onPress={handleClose}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <X size={24} color="#FFFFFF" />
           </TouchableOpacity>
           
