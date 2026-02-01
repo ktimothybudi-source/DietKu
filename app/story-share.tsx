@@ -880,7 +880,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    zIndex: 100,
+    zIndex: 1000,
   },
   iconButton: {
     width: 44,
@@ -906,7 +906,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
-    zIndex: 50,
+    zIndex: 10,
   },
   elementFilled: {
     backgroundColor: 'rgba(255,255,255,0.95)',
@@ -973,6 +973,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 16,
     gap: 12,
+    zIndex: 1000,
   },
   toolButtons: {
     flexDirection: 'row',
