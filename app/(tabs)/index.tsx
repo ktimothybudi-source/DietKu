@@ -117,6 +117,18 @@ export default function HomeScreen() {
         fat: avgFat,
       });
       
+      const items = analysis.items.map(item => ({
+        name: item.name,
+        portion: item.portion,
+        calories: Math.round((item.caloriesMin + item.caloriesMax) / 2),
+        protein: Math.round((item.proteinMin + item.proteinMax) / 2),
+        carbs: Math.round((item.carbsMin + item.carbsMax) / 2),
+        fat: Math.round((item.fatMin + item.fatMax) / 2),
+      }));
+      setEditedItems(items);
+      setHasEdited(false);
+      setSelectedPending(donePending);
+      
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     setLastPendingCount(pendingEntries.length);
