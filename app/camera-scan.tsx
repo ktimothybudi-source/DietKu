@@ -1,5 +1,5 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,13 @@ import {
   Modal,
   Pressable,
   Linking,
+  Animated,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { X, HelpCircle, Zap, ZapOff } from 'lucide-react-native';
+import { X, HelpCircle, Zap, ZapOff, ImageIcon } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -28,8 +31,47 @@ export default function CameraScanScreen() {
 
   const [flashMode, setFlashMode] = useState<FlashMode>('off');
   const [helpOpen, setHelpOpen] = useState(false);
+  const [showHelper, setShowHelper] = useState(false);
 
   const logo = useMemo(() => require('@/assets/images/icon.png'), []);
+
+  const shutterScale = useRef(new Animated.Value(1)).current;
+  const cornerPulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    checkHelperText();
+    startCornerPulse();
+  }, []);
+
+  const checkHelperText = async () => {
+    try {
+      const seen = await AsyncStorage.getItem('camera_helper_seen');
+      if (!seen) {
+        setShowHelper(true);
+        await AsyncStorage.setItem('camera_helper_seen', 'true');
+        setTimeout(() => setShowHelper(false), 4000);
+      }
+    } catch {
+      // no-op
+    }
+  };
+
+  const startCornerPulse = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(cornerPulse, {
+          toValue: 1.08,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cornerPulse, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
 
   const ensureCameraPermission = async () => {
     if (permission?.granted) return true;
@@ -53,6 +95,19 @@ export default function CameraScanScreen() {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+    Animated.sequence([
+      Animated.timing(shutterScale, {
+        toValue: 0.92,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shutterScale, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
     try {
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.85,
@@ -68,6 +123,29 @@ export default function CameraScanScreen() {
       router.back();
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleGalleryPick = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.85,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        if (asset.uri && asset.base64) {
+          addPendingEntry(asset.uri, asset.base64);
+          router.back();
+        }
+      }
+    } catch (error) {
+      console.error('Gallery picker error:', error);
     }
   };
 
@@ -161,11 +239,38 @@ export default function CameraScanScreen() {
 
             {/* Focus frame */}
             <View pointerEvents="none" style={styles.focusFrameWrap}>
+              {showHelper && (
+                <Text style={styles.helperText}>Posisikan makanan di dalam area</Text>
+              )}
               <View style={styles.focusFrame}>
-                <View style={[styles.corner, styles.tl]} />
-                <View style={[styles.corner, styles.tr]} />
-                <View style={[styles.corner, styles.bl]} />
-                <View style={[styles.corner, styles.br]} />
+                <Animated.View 
+                  style={[
+                    styles.corner, 
+                    styles.tl,
+                    { transform: [{ scale: cornerPulse }] }
+                  ]} 
+                />
+                <Animated.View 
+                  style={[
+                    styles.corner, 
+                    styles.tr,
+                    { transform: [{ scale: cornerPulse }] }
+                  ]} 
+                />
+                <Animated.View 
+                  style={[
+                    styles.corner, 
+                    styles.bl,
+                    { transform: [{ scale: cornerPulse }] }
+                  ]} 
+                />
+                <Animated.View 
+                  style={[
+                    styles.corner, 
+                    styles.br,
+                    { transform: [{ scale: cornerPulse }] }
+                  ]} 
+                />
               </View>
             </View>
 
@@ -177,27 +282,33 @@ export default function CameraScanScreen() {
                 activeOpacity={0.9}
                 disabled={!granted}
               >
-                {flashMode === 'off' ? (
-                  <ZapOff size={28} color="#FFFFFF" />
-                ) : (
-                  <Zap size={28} color="#FFFFFF" />
-                )}
-                <Text style={styles.flashLabel}>
-                  {flashMode === 'off' ? 'Off' : flashMode === 'auto' ? 'Auto' : 'On'}
-                </Text>
+                <View style={flashMode !== 'off' ? styles.flashGlow : undefined}>
+                  {flashMode === 'off' ? (
+                    <ZapOff size={22} color="rgba(255,255,255,0.75)" strokeWidth={1.5} />
+                  ) : (
+                    <Zap size={22} color="#FFFFFF" strokeWidth={2} fill={flashMode === 'on' ? '#FFFFFF' : 'transparent'} />
+                  )}
+                </View>
               </TouchableOpacity>
+
+              <Animated.View style={{ transform: [{ scale: shutterScale }] }}>
+                <TouchableOpacity
+                  style={[styles.shutterOuter, !granted && { opacity: 0.55 }]}
+                  onPress={handleTakePhoto}
+                  activeOpacity={0.9}
+                  disabled={!granted}
+                >
+                  <View style={styles.shutterInner} />
+                </TouchableOpacity>
+              </Animated.View>
 
               <TouchableOpacity
-                style={[styles.shutterOuter, !granted && { opacity: 0.55 }]}
-                onPress={handleTakePhoto}
+                style={styles.galleryButton}
+                onPress={handleGalleryPick}
                 activeOpacity={0.9}
-                disabled={!granted}
               >
-                <View style={styles.shutterInner} />
+                <ImageIcon size={22} color="rgba(255,255,255,0.75)" strokeWidth={1.5} />
               </TouchableOpacity>
-
-              {/* Spacer to keep shutter centered */}
-              <View style={{ width: 78 }} />
             </View>
           </View>
 
@@ -246,9 +357,9 @@ export default function CameraScanScreen() {
   }
 }
 
-const FOCUS_SIZE = 230;
-const CORNER = 34;
-const STROKE = 3;
+const FOCUS_SIZE = 288;
+const CORNER = 36;
+const STROKE = 2;
 
 const styles = StyleSheet.create({
   cameraRoot: {
@@ -267,9 +378,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   headerIconButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'rgba(0,0,0,0.40)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -303,6 +414,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  helperText: {
+    position: 'absolute',
+    top: '45%',
+    color: 'rgba(255,255,255,0.60)',
+    fontSize: 13,
+    fontWeight: '500' as const,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
   focusFrame: {
     width: FOCUS_SIZE,
     height: FOCUS_SIZE,
@@ -311,35 +431,35 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: CORNER,
     height: CORNER,
-    borderColor: 'rgba(255,255,255,0.85)',
+    borderColor: 'rgba(255,255,255,0.90)',
   },
   tl: {
     left: 0,
     top: 0,
     borderLeftWidth: STROKE,
     borderTopWidth: STROKE,
-    borderTopLeftRadius: 10,
+    borderTopLeftRadius: 12,
   },
   tr: {
     right: 0,
     top: 0,
     borderRightWidth: STROKE,
     borderTopWidth: STROKE,
-    borderTopRightRadius: 10,
+    borderTopRightRadius: 12,
   },
   bl: {
     left: 0,
     bottom: 0,
     borderLeftWidth: STROKE,
     borderBottomWidth: STROKE,
-    borderBottomLeftRadius: 10,
+    borderBottomLeftRadius: 12,
   },
   br: {
     right: 0,
     bottom: 0,
     borderRightWidth: STROKE,
     borderBottomWidth: STROKE,
-    borderBottomRightRadius: 10,
+    borderBottomRightRadius: 12,
   },
   bottomBar: {
     paddingHorizontal: 22,
@@ -350,35 +470,50 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.10)',
   },
   flashButton: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: 'rgba(0,0,0,0.40)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
   },
-  flashLabel: {
-    marginTop: 4,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.85)',
-    fontWeight: '800' as const,
+  flashGlow: {
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+  },
+  galleryButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(0,0,0,0.40)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
   },
   shutterOuter: {
     width: 92,
     height: 92,
     borderRadius: 46,
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 7,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
   },
   shutterInner: {
     width: '100%',
     height: '100%',
     borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 3,
     borderColor: '#000000',
   },
@@ -441,9 +576,9 @@ const styles = StyleSheet.create({
     fontWeight: '900' as const,
   },
   modalClose: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#1B1B1B',
     alignItems: 'center',
     justifyContent: 'center',
