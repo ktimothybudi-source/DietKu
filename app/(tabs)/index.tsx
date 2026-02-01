@@ -102,6 +102,16 @@ export default function HomeScreen() {
     if (donePending && donePending.analysis && !selectedPending) {
       setSelectedPending(donePending);
       setShownPendingIds(prev => new Set(prev).add(donePending.id));
+      const items = donePending.analysis.items.map(item => ({
+        name: item.name,
+        portion: item.portion,
+        calories: Math.round((item.caloriesMin + item.caloriesMax) / 2),
+        protein: Math.round((item.proteinMin + item.proteinMax) / 2),
+        carbs: Math.round((item.carbsMin + item.carbsMax) / 2),
+        fat: Math.round((item.fatMin + item.fatMax) / 2),
+      }));
+      setEditedItems(items);
+      setHasEdited(false);
     }
     setLastPendingCount(pendingEntries.length);
   }, [pendingEntries, selectedPending, shownPendingIds]);
@@ -1315,14 +1325,16 @@ export default function HomeScreen() {
                       )
                     ))}
 
-                    <TouchableOpacity
-                      style={styles.confirmEditedButton}
-                      onPress={handleConfirmEdited}
-                      activeOpacity={0.8}
-                    >
-                      <Check size={20} color="#FFFFFF" />
-                      <Text style={styles.confirmEditedText}>Konfirmasi & Tambah ke Log</Text>
-                    </TouchableOpacity>
+                    {hasEdited && (
+                      <TouchableOpacity
+                        style={styles.confirmEditedButton}
+                        onPress={handleConfirmEdited}
+                        activeOpacity={0.8}
+                      >
+                        <Check size={20} color="#FFFFFF" />
+                        <Text style={styles.confirmEditedText}>Konfirmasi & Tambah ke Log</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
               </ScrollView>
