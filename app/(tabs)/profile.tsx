@@ -9,14 +9,14 @@ import {
   Alert,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { User, Settings as SettingsIcon, LogIn, LogOut, Globe, Moon, Sun, ChevronRight, UserCircle, Target, Flame } from 'lucide-react-native';
+import { User, Settings as SettingsIcon, LogIn, LogOut, Globe, Moon, Sun, ChevronRight, UserCircle, Target, Flame, Bookmark, Trash2, Star } from 'lucide-react-native';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import * as Haptics from 'expo-haptics';
 
 export default function ProfileScreen() {
-  const { profile, dailyTargets } = useNutrition();
+  const { profile, dailyTargets, favorites, removeFromFavorites } = useNutrition();
   const { theme, themeMode, toggleTheme } = useTheme();
   const { language } = useLanguage();
   const [isSignedIn, setIsSignedIn] = useState(false);
@@ -269,6 +269,58 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardTitleRow}>
+                <Bookmark size={20} color={theme.primary} />
+                <Text style={[styles.cardTitle, { color: theme.text }]}>Makanan Favorit</Text>
+              </View>
+              {favorites.length > 0 && (
+                <Text style={[styles.favoriteCount, { color: theme.textSecondary }]}>{favorites.length} item</Text>
+              )}
+            </View>
+
+            {favorites.length === 0 ? (
+              <View style={styles.emptyFavorites}>
+                <Star size={32} color={theme.textTertiary} />
+                <Text style={[styles.emptyFavoritesText, { color: theme.textSecondary }]}>Belum ada favorit</Text>
+                <Text style={[styles.emptyFavoritesSubtext, { color: theme.textTertiary }]}>Simpan makanan dari detail untuk akses cepat</Text>
+              </View>
+            ) : (
+              <View style={styles.favoritesList}>
+                {favorites.map((favorite, index) => (
+                  <View
+                    key={favorite.id}
+                    style={[
+                      styles.favoriteItem,
+                      { borderBottomColor: theme.border },
+                      index === favorites.length - 1 && { borderBottomWidth: 0 }
+                    ]}
+                  >
+                    <View style={styles.favoriteInfo}>
+                      <Text style={[styles.favoriteName, { color: theme.text }]} numberOfLines={1}>
+                        {favorite.name.split(',')[0]}
+                      </Text>
+                      <Text style={[styles.favoriteCalories, { color: theme.textSecondary }]}>
+                        {favorite.calories} kcal • {favorite.protein}g protein
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.deleteButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        removeFromFavorites(favorite.id);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Trash2 size={16} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
           <TouchableOpacity
             style={[styles.editButton, { backgroundColor: theme.primary }]}
             onPress={handleEditProfile}
@@ -400,5 +452,52 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 40,
+  },
+  favoriteCount: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+  },
+  emptyFavorites: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  emptyFavoritesText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    marginTop: 4,
+  },
+  emptyFavoritesSubtext: {
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  favoritesList: {
+    gap: 0,
+  },
+  favoriteItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  favoriteInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  favoriteName: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    marginBottom: 2,
+  },
+  favoriteCalories: {
+    fontSize: 13,
+  },
+  deleteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

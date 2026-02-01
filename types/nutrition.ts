@@ -55,3 +55,25 @@ export interface MealAnalysis {
   confidence: 'high' | 'medium' | 'low';
   tips?: string[];
 }
+
+export interface FavoriteMeal {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  createdAt: number;
+  logCount: number;
+}
+
+export interface RecentMeal {
+  id: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  lastLogged: number;
+  logCount: number;
+}

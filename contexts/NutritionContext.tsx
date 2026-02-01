@@ -2,7 +2,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { UserProfile, FoodEntry, DailyTargets, MealAnalysis } from '@/types/nutrition';
+import { UserProfile, FoodEntry, DailyTargets, MealAnalysis, FavoriteMeal, RecentMeal } from '@/types/nutrition';
 import { calculateDailyTargets, getTodayKey } from '@/utils/nutritionCalculations';
 import { analyzeMealPhoto } from '@/utils/photoAnalysis';
 import * as Haptics from 'expo-haptics';
@@ -23,6 +23,9 @@ interface WeightEntry {
   weight: number;
   timestamp: number;
 }
+
+const FAVORITES_KEY = 'nutrition_favorites';
+const RECENT_MEALS_KEY = 'nutrition_recent_meals';
 
 export interface PendingFoodEntry {
   id: string;
@@ -51,6 +54,8 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     lastLoggedDate: '',
     graceUsedThisWeek: false,
   });
+  const [favorites, setFavorites] = useState<FavoriteMeal[]>([]);
+  const [recentMeals, setRecentMeals] = useState<RecentMeal[]>([]);
 
   const profileQuery = useQuery({
     queryKey: ['nutrition_profile'],
@@ -85,6 +90,22 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     queryKey: ['nutrition_weight_history'],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(WEIGHT_HISTORY_KEY);
+      return stored ? JSON.parse(stored) : [];
+    },
+  });
+
+  const favoritesQuery = useQuery({
+    queryKey: ['nutrition_favorites'],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(FAVORITES_KEY);
+      return stored ? JSON.parse(stored) : [];
+    },
+  });
+
+  const recentMealsQuery = useQuery({
+    queryKey: ['nutrition_recent_meals'],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(RECENT_MEALS_KEY);
       return stored ? JSON.parse(stored) : [];
     },
   });
@@ -129,6 +150,26 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     },
   });
 
+  const saveFavoritesMutation = useMutation({
+    mutationFn: async (newFavorites: FavoriteMeal[]) => {
+      await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(newFavorites));
+      return newFavorites;
+    },
+    onSuccess: (data) => {
+      setFavorites(data);
+    },
+  });
+
+  const saveRecentMealsMutation = useMutation({
+    mutationFn: async (newRecent: RecentMeal[]) => {
+      await AsyncStorage.setItem(RECENT_MEALS_KEY, JSON.stringify(newRecent));
+      return newRecent;
+    },
+    onSuccess: (data) => {
+      setRecentMeals(data);
+    },
+  });
+
   useEffect(() => {
     if (profileQuery.data !== undefined) {
       setProfile(profileQuery.data);
@@ -152,6 +193,18 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       setWeightHistory(weightHistoryQuery.data);
     }
   }, [weightHistoryQuery.data]);
+
+  useEffect(() => {
+    if (favoritesQuery.data !== undefined) {
+      setFavorites(favoritesQuery.data);
+    }
+  }, [favoritesQuery.data]);
+
+  useEffect(() => {
+    if (recentMealsQuery.data !== undefined) {
+      setRecentMeals(recentMealsQuery.data);
+    }
+  }, [recentMealsQuery.data]);
 
   const updateStreak = (dateKey: string) => {
     const today = new Date();
@@ -240,7 +293,136 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
 
     saveFoodLogMutation.mutate(updatedLog);
     updateStreak(todayKey);
+    updateRecentMeals(entry);
   };
+
+  const updateRecentMeals = (entry: Omit<FoodEntry, 'id' | 'timestamp'>) => {
+    const normalizedName = entry.name.toLowerCase().trim();
+    const existingIndex = recentMeals.findIndex(
+      m => m.name.toLowerCase().trim() === normalizedName
+    );
+
+    let updatedRecent: RecentMeal[];
+    if (existingIndex >= 0) {
+      const existing = recentMeals[existingIndex];
+      updatedRecent = [
+        { ...existing, lastLogged: Date.now(), logCount: existing.logCount + 1 },
+        ...recentMeals.filter((_, i) => i !== existingIndex),
+      ];
+    } else {
+      const newRecent: RecentMeal = {
+        id: Date.now().toString(),
+        name: entry.name,
+        calories: entry.calories,
+        protein: entry.protein,
+        carbs: entry.carbs,
+        fat: entry.fat,
+        lastLogged: Date.now(),
+        logCount: 1,
+      };
+      updatedRecent = [newRecent, ...recentMeals].slice(0, 50);
+    }
+    saveRecentMealsMutation.mutate(updatedRecent);
+  };
+
+  const { mutate: mutateFavorites } = saveFavoritesMutation;
+  const { mutate: mutateFoodLog } = saveFoodLogMutation;
+
+  const addToFavorites = useCallback((meal: Omit<FavoriteMeal, 'id' | 'createdAt' | 'logCount'>) => {
+    const normalizedName = meal.name.toLowerCase().trim();
+    const exists = favorites.some(f => f.name.toLowerCase().trim() === normalizedName);
+    if (exists) return false;
+
+    const newFavorite: FavoriteMeal = {
+      ...meal,
+      id: Date.now().toString(),
+      createdAt: Date.now(),
+      logCount: 0,
+    };
+    mutateFavorites([newFavorite, ...favorites]);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    return true;
+  }, [favorites, mutateFavorites]);
+
+  const removeFromFavorites = useCallback((favoriteId: string) => {
+    const updatedFavorites = favorites.filter(f => f.id !== favoriteId);
+    mutateFavorites(updatedFavorites);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, [favorites, mutateFavorites]);
+
+  const updateFavorite = useCallback((favoriteId: string, updates: Partial<Omit<FavoriteMeal, 'id' | 'createdAt'>>) => {
+    const updatedFavorites = favorites.map(f =>
+      f.id === favoriteId ? { ...f, ...updates } : f
+    );
+    mutateFavorites(updatedFavorites);
+  }, [favorites, mutateFavorites]);
+
+  const reorderFavorites = useCallback((newOrder: FavoriteMeal[]) => {
+    mutateFavorites(newOrder);
+  }, [mutateFavorites]);
+
+  const isFavorite = useCallback((mealName: string) => {
+    const normalizedName = mealName.toLowerCase().trim();
+    return favorites.some(f => f.name.toLowerCase().trim() === normalizedName);
+  }, [favorites]);
+
+  const logFromFavorite = useCallback((favoriteId: string) => {
+    const favorite = favorites.find(f => f.id === favoriteId);
+    if (!favorite) return;
+
+    const todayKey = getTodayKey();
+    const newEntry: FoodEntry = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      name: favorite.name,
+      calories: favorite.calories,
+      protein: favorite.protein,
+      carbs: favorite.carbs,
+      fat: favorite.fat,
+    };
+
+    const updatedLog = {
+      ...foodLog,
+      [todayKey]: [...(foodLog[todayKey] || []), newEntry],
+    };
+    mutateFoodLog(updatedLog);
+
+    const updatedFavorites = favorites.map(f =>
+      f.id === favoriteId ? { ...f, logCount: f.logCount + 1 } : f
+    );
+    mutateFavorites(updatedFavorites);
+  }, [favorites, foodLog, mutateFoodLog, mutateFavorites]);
+
+  const logFromRecent = useCallback((recentId: string) => {
+    const recent = recentMeals.find(r => r.id === recentId);
+    if (!recent) return;
+
+    const todayKey = getTodayKey();
+    const newEntry: FoodEntry = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      name: recent.name,
+      calories: recent.calories,
+      protein: recent.protein,
+      carbs: recent.carbs,
+      fat: recent.fat,
+    };
+
+    const updatedLog = {
+      ...foodLog,
+      [todayKey]: [...(foodLog[todayKey] || []), newEntry],
+    };
+    mutateFoodLog(updatedLog);
+  }, [recentMeals, foodLog, mutateFoodLog]);
+
+  const shouldSuggestFavorite = useCallback((mealName: string): boolean => {
+    const normalizedName = mealName.toLowerCase().trim();
+    if (favorites.some(f => f.name.toLowerCase().trim() === normalizedName)) {
+      return false;
+    }
+    const recent = recentMeals.find(r => r.name.toLowerCase().trim() === normalizedName);
+    return recent ? recent.logCount >= 3 : false;
+  }, [favorites, recentMeals]);
 
   const addPendingEntry = useCallback((photoUri: string, base64: string) => {
     const newPending: PendingFoodEntry = {
@@ -410,8 +592,18 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     confirmPendingEntry,
     removePendingEntry,
     retryPendingEntry,
-    isLoading: profileQuery.isLoading || foodLogQuery.isLoading || streakQuery.isLoading || weightHistoryQuery.isLoading,
-    isSaving: saveProfileMutation.isPending || saveFoodLogMutation.isPending || saveStreakMutation.isPending || saveWeightHistoryMutation.isPending,
+    favorites,
+    recentMeals,
+    addToFavorites,
+    removeFromFavorites,
+    updateFavorite,
+    reorderFavorites,
+    isFavorite,
+    logFromFavorite,
+    logFromRecent,
+    shouldSuggestFavorite,
+    isLoading: profileQuery.isLoading || foodLogQuery.isLoading || streakQuery.isLoading || weightHistoryQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading,
+    isSaving: saveProfileMutation.isPending || saveFoodLogMutation.isPending || saveStreakMutation.isPending || saveWeightHistoryMutation.isPending || saveFavoritesMutation.isPending || saveRecentMealsMutation.isPending,
   };
 });
 

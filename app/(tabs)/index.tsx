@@ -15,7 +15,7 @@ import {
   Animated,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Minus } from 'lucide-react-native';
+import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Minus, Bookmark, Clock, Star } from 'lucide-react-native';
 import { useNutrition, useTodayProgress, PendingFoodEntry } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FoodEntry, MealAnalysis } from '@/types/nutrition';
@@ -26,7 +26,7 @@ import { getTodayKey } from '@/utils/nutritionCalculations';
 import ProgressRing from '@/components/ProgressRing';
 
 export default function HomeScreen() {
-  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, updateFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry } = useNutrition();
+  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, updateFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, isFavorite, logFromFavorite, logFromRecent, shouldSuggestFavorite } = useNutrition();
   const { theme } = useTheme();
   const progress = useTodayProgress();
   const [modalVisible, setModalVisible] = useState(false);
@@ -41,6 +41,11 @@ export default function HomeScreen() {
   const [selectedPending, setSelectedPending] = useState<PendingFoodEntry | null>(null);
   const [pendingServings, setPendingServings] = useState(1);
   const [lastPendingCount, setLastPendingCount] = useState(0);
+  const [addFoodModalVisible, setAddFoodModalVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<'recent' | 'favorit' | 'scan'>('recent');
+  const [showFavoriteToast, setShowFavoriteToast] = useState(false);
+  const [showSuggestFavorite, setShowSuggestFavorite] = useState(false);
+  const [suggestedMealName, setSuggestedMealName] = useState('');
   
   const caloriesAnimValue = useRef(new Animated.Value(0)).current;
   const proteinAnimValue = useRef(new Animated.Value(0)).current;
@@ -183,10 +188,67 @@ export default function HomeScreen() {
   };
 
   const handleConfirmPending = () => {
-    if (!selectedPending) return;
+    if (!selectedPending || !selectedPending.analysis) return;
+    const mealName = selectedPending.analysis.items.map(i => i.name).join(', ');
     confirmPendingEntry(selectedPending.id, pendingServings);
+    
+    if (shouldSuggestFavorite(mealName)) {
+      setSuggestedMealName(mealName);
+      setShowSuggestFavorite(true);
+      setTimeout(() => setShowSuggestFavorite(false), 5000);
+    }
+    
     setSelectedPending(null);
     setPendingServings(1);
+  };
+
+  const handleSaveToFavorite = () => {
+    if (!selectedPending || !selectedPending.analysis) return;
+    const analysis = selectedPending.analysis;
+    const avgCalories = Math.round((analysis.totalCaloriesMin + analysis.totalCaloriesMax) / 2);
+    const avgProtein = Math.round((analysis.totalProteinMin + analysis.totalProteinMax) / 2);
+    const avgCarbs = Math.round(analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0));
+    const avgFat = Math.round(analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0));
+    const mealName = analysis.items.map(i => i.name).join(', ');
+    
+    const added = addToFavorites({
+      name: mealName,
+      calories: avgCalories,
+      protein: avgProtein,
+      carbs: avgCarbs,
+      fat: avgFat,
+    });
+    
+    if (added) {
+      setShowFavoriteToast(true);
+      setTimeout(() => setShowFavoriteToast(false), 2000);
+    }
+  };
+
+  const handleQuickLogFavorite = (favoriteId: string) => {
+    logFromFavorite(favoriteId);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setAddFoodModalVisible(false);
+  };
+
+  const handleQuickLogRecent = (recentId: string) => {
+    logFromRecent(recentId);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setAddFoodModalVisible(false);
+  };
+
+  const handleSaveSuggestedFavorite = () => {
+    const recent = recentMeals.find(r => r.name.toLowerCase().trim() === suggestedMealName.toLowerCase().trim());
+    if (recent) {
+      addToFavorites({
+        name: recent.name,
+        calories: recent.calories,
+        protein: recent.protein,
+        carbs: recent.carbs,
+        fat: recent.fat,
+      });
+    }
+    setShowSuggestFavorite(false);
   };
 
   const handleRemovePending = () => {
@@ -517,10 +579,11 @@ export default function HomeScreen() {
           style={styles.fab}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            router.push('/camera-scan');
+            setActiveTab('recent');
+            setAddFoodModalVisible(true);
           }}
         >
-          <Camera size={28} color="#FFFFFF" />
+          <Plus size={28} color="#FFFFFF" />
         </TouchableOpacity>
 
         <Modal
@@ -795,9 +858,24 @@ export default function HomeScreen() {
                      selectedPending?.status === 'error' ? 'Gagal Analisis' : 'Detail Makanan'}
                   </Text>
                 )}
-                <TouchableOpacity onPress={() => setSelectedPending(null)}>
-                  <X size={24} color={theme.textSecondary} />
-                </TouchableOpacity>
+                <View style={styles.pendingHeaderActions}>
+                  {selectedPending?.status === 'done' && selectedPending.analysis && (
+                    <TouchableOpacity
+                      style={styles.favoriteButton}
+                      onPress={handleSaveToFavorite}
+                      activeOpacity={0.7}
+                    >
+                      <Bookmark
+                        size={22}
+                        color={isFavorite(selectedPending.analysis.items.map(i => i.name).join(', ')) ? '#10B981' : theme.textSecondary}
+                        fill={isFavorite(selectedPending.analysis.items.map(i => i.name).join(', ')) ? '#10B981' : 'transparent'}
+                      />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity onPress={() => setSelectedPending(null)}>
+                    <X size={24} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <ScrollView style={styles.pendingModalBody} showsVerticalScrollIndicator={false}>
@@ -946,6 +1024,166 @@ export default function HomeScreen() {
                   </View>
                 )}
               </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      {showFavoriteToast && (
+          <View style={styles.favoriteToast}>
+            <Star size={16} color="#FFC107" fill="#FFC107" />
+            <Text style={styles.favoriteToastText}>Disimpan ke Favorit ⭐</Text>
+          </View>
+        )}
+
+        {showSuggestFavorite && (
+          <View style={[styles.suggestFavoriteToast, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={[styles.suggestFavoriteText, { color: theme.text }]}>
+              Simpan {suggestedMealName.split(',')[0]} ke Favorit?
+            </Text>
+            <View style={styles.suggestFavoriteButtons}>
+              <TouchableOpacity
+                style={[styles.suggestFavoriteBtn, { backgroundColor: theme.background }]}
+                onPress={() => setShowSuggestFavorite(false)}
+              >
+                <Text style={[styles.suggestFavoriteBtnText, { color: theme.textSecondary }]}>Nanti</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.suggestFavoriteBtn, { backgroundColor: '#10B981' }]}
+                onPress={handleSaveSuggestedFavorite}
+              >
+                <Text style={[styles.suggestFavoriteBtnText, { color: '#FFFFFF' }]}>Simpan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        <Modal
+          visible={addFoodModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setAddFoodModalVisible(false)}
+        >
+          <View style={styles.addFoodModalContainer}>
+            <TouchableOpacity
+              style={styles.addFoodModalOverlay}
+              activeOpacity={1}
+              onPress={() => setAddFoodModalVisible(false)}
+            />
+            
+            <View style={[styles.addFoodModalContent, { backgroundColor: theme.card }]}>
+              <View style={[styles.addFoodModalHeader, { borderBottomColor: theme.border }]}>
+                <Text style={[styles.addFoodModalTitle, { color: theme.text }]}>Tambah Makanan</Text>
+                <TouchableOpacity onPress={() => setAddFoodModalVisible(false)}>
+                  <X size={24} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.tabContainer, { backgroundColor: theme.background }]}>
+                <TouchableOpacity
+                  style={[styles.tab, activeTab === 'recent' && styles.tabActive, activeTab === 'recent' && { backgroundColor: theme.card }]}
+                  onPress={() => setActiveTab('recent')}
+                >
+                  <Clock size={16} color={activeTab === 'recent' ? theme.primary : theme.textSecondary} />
+                  <Text style={[styles.tabText, { color: activeTab === 'recent' ? theme.primary : theme.textSecondary }]}>Terakhir</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tab, activeTab === 'favorit' && styles.tabActive, activeTab === 'favorit' && { backgroundColor: theme.card }]}
+                  onPress={() => setActiveTab('favorit')}
+                >
+                  <Bookmark size={16} color={activeTab === 'favorit' ? theme.primary : theme.textSecondary} />
+                  <Text style={[styles.tabText, { color: activeTab === 'favorit' ? theme.primary : theme.textSecondary }]}>Favorit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tab, activeTab === 'scan' && styles.tabActive, activeTab === 'scan' && { backgroundColor: theme.card }]}
+                  onPress={() => {
+                    setAddFoodModalVisible(false);
+                    router.push('/camera-scan');
+                  }}
+                >
+                  <Camera size={16} color={activeTab === 'scan' ? theme.primary : theme.textSecondary} />
+                  <Text style={[styles.tabText, { color: activeTab === 'scan' ? theme.primary : theme.textSecondary }]}>Scan</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.addFoodModalBody} showsVerticalScrollIndicator={false}>
+                {activeTab === 'recent' && (
+                  <View style={styles.mealList}>
+                    {recentMeals.length === 0 ? (
+                      <View style={styles.emptyMealList}>
+                        <Clock size={40} color={theme.textTertiary} />
+                        <Text style={[styles.emptyMealText, { color: theme.textSecondary }]}>Belum ada makanan terakhir</Text>
+                        <Text style={[styles.emptyMealSubtext, { color: theme.textTertiary }]}>Scan makanan untuk memulai</Text>
+                      </View>
+                    ) : (
+                      recentMeals.slice(0, 20).map((meal) => (
+                        <TouchableOpacity
+                          key={meal.id}
+                          style={[styles.mealItem, { backgroundColor: theme.background, borderColor: theme.border }]}
+                          onPress={() => handleQuickLogRecent(meal.id)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.mealItemInfo}>
+                            <Text style={[styles.mealItemName, { color: theme.text }]} numberOfLines={1}>
+                              {meal.name.split(',')[0]}
+                            </Text>
+                            <Text style={[styles.mealItemCalories, { color: theme.textSecondary }]}>
+                              {meal.calories} kcal
+                            </Text>
+                          </View>
+                          <Plus size={20} color={theme.primary} />
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </View>
+                )}
+
+                {activeTab === 'favorit' && (
+                  <View style={styles.mealList}>
+                    {favorites.length === 0 ? (
+                      <View style={styles.emptyMealList}>
+                        <Bookmark size={40} color={theme.textTertiary} />
+                        <Text style={[styles.emptyMealText, { color: theme.textSecondary }]}>Belum ada favorit</Text>
+                        <Text style={[styles.emptyMealSubtext, { color: theme.textTertiary }]}>Simpan makanan dari detail untuk akses cepat</Text>
+                      </View>
+                    ) : (
+                      favorites.map((meal) => (
+                        <TouchableOpacity
+                          key={meal.id}
+                          style={[styles.mealItem, { backgroundColor: theme.background, borderColor: theme.border }]}
+                          onPress={() => handleQuickLogFavorite(meal.id)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.mealItemInfo}>
+                            <View style={styles.mealItemNameRow}>
+                              <Star size={14} color="#FFC107" fill="#FFC107" />
+                              <Text style={[styles.mealItemName, { color: theme.text }]} numberOfLines={1}>
+                                {meal.name.split(',')[0]}
+                              </Text>
+                            </View>
+                            <Text style={[styles.mealItemCalories, { color: theme.textSecondary }]}>
+                              {meal.calories} kcal
+                            </Text>
+                          </View>
+                          <Plus size={20} color={theme.primary} />
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </View>
+                )}
+              </ScrollView>
+
+              <View style={styles.addFoodModalFooter}>
+                <TouchableOpacity
+                  style={[styles.manualEntryButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                  onPress={() => {
+                    setAddFoodModalVisible(false);
+                    setShowManualEntry(true);
+                    setModalVisible(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.manualEntryText, { color: theme.text }]}>Masukkan Manual</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
@@ -1670,5 +1908,189 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#FFFFFF',
+  },
+  pendingHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  favoriteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favoriteToast: {
+    position: 'absolute',
+    bottom: 120,
+    left: 24,
+    right: 24,
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  favoriteToastText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
+  suggestFavoriteToast: {
+    position: 'absolute',
+    bottom: 120,
+    left: 24,
+    right: 24,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  suggestFavoriteText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  suggestFavoriteButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  suggestFavoriteBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  suggestFavoriteBtnText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  addFoodModalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  addFoodModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  addFoodModalContent: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+  },
+  addFoodModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+  },
+  addFoodModalTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 12,
+    padding: 4,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  tabActive: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  addFoodModalBody: {
+    padding: 20,
+    maxHeight: 400,
+  },
+  mealList: {
+    gap: 10,
+  },
+  mealItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  mealItemInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  mealItemNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  mealItemName: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    flex: 1,
+  },
+  mealItemCalories: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+  emptyMealList: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 8,
+  },
+  emptyMealText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    marginTop: 8,
+  },
+  emptyMealSubtext: {
+    fontSize: 13,
+  },
+  addFoodModalFooter: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  manualEntryButton: {
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  manualEntryText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
   },
 });
