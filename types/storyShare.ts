@@ -1,27 +1,37 @@
 export type HealthRating = 'sangat_sehat' | 'sehat' | 'cukup_sehat' | 'kurang_sehat';
 
-export type StoryTemplate = 'minimal' | 'health_hero' | 'restaurant' | 'weekly_recap';
-
 export type MealTime = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
-export interface StorySticker {
+export type StickerCategory = 'macros' | 'health' | 'labels' | 'location';
+
+export type StickerType = 
+  | 'protein'
+  | 'carbs'
+  | 'fat'
+  | 'sangat_sehat'
+  | 'sehat'
+  | 'cukup_sehat'
+  | 'kurang_sehat'
+  | 'high_protein'
+  | 'homemade'
+  | 'cheat_meal'
+  | 'clean_day'
+  | 'post_workout'
+  | 'add_location';
+
+export interface CanvasElement {
   id: string;
-  type: StickerType;
+  type: 'text' | 'sticker' | 'meal_name' | 'calories' | 'watermark';
   x: number;
   y: number;
   scale: number;
-  style: 'filled' | 'outline' | 'blurred';
+  rotation: number;
+  style: 'filled' | 'outline' | 'blur';
+  content?: string;
+  stickerType?: StickerType;
+  fontStyle?: 'default' | 'bold' | 'light';
+  color?: string;
 }
-
-export type StickerType = 
-  | 'high_protein'
-  | 'meal_prep'
-  | 'homemade'
-  | 'cheat_meal'
-  | 'post_workout'
-  | 'clean_day'
-  | 'under_target'
-  | 'weekend';
 
 export interface StoryShareData {
   mealName: string;
@@ -34,23 +44,14 @@ export interface StoryShareData {
   timestamp: number;
 }
 
-export interface StoryShareSettings {
-  template: StoryTemplate;
-  showMacros: boolean;
-  showHealthRating: boolean;
-  showLocation: boolean;
-  showTime: boolean;
-  showUserName: boolean;
-  showWatermark: boolean;
-  healthRating: HealthRating;
-  location: string | null;
-  stickers: StorySticker[];
+export interface TextStyle {
+  id: string;
+  name: string;
+  fontWeight: 'normal' | 'bold' | '300';
 }
 
-export interface WeeklyRecapData {
-  avgCalories: number;
-  avgProtein: number;
-  totalMeals: number;
-  streakDays: number;
-  bestDay: string;
+export interface ColorOption {
+  id: string;
+  color: string;
+  name: string;
 }

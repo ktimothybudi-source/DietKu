@@ -9,6 +9,11 @@ import {
   PanResponder,
   Share,
   Alert,
+  Dimensions,
+  Image,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,48 +22,45 @@ import {
   X,
   Instagram,
   Download,
-  Link2,
   MoreHorizontal,
+  Undo2,
+  Redo2,
+  Type,
+  Sticker,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
   MapPin,
-  Clock,
-  User,
-  Sparkles,
-  ChevronRight,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNutrition } from '@/contexts/NutritionContext';
-import StoryCard from '@/components/StoryCard';
 import {
+  CanvasElement,
   StoryShareData,
-  StoryShareSettings,
-  StorySticker,
-  StoryTemplate,
   StickerType,
+  StickerCategory,
 } from '@/types/storyShare';
 import {
-  HEALTH_RATING_CONFIG,
+  STICKER_CATEGORIES,
   STICKER_CONFIG,
-  TEMPLATE_CONFIG,
-  HEALTH_RATING_ORDER,
-  DEFAULT_SHARE_SETTINGS,
+  TEXT_STYLES,
+  COLOR_OPTIONS,
 } from '@/constants/storyShare';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CANVAS_SCALE = SCREEN_WIDTH / 1080;
 
-const CARD_PREVIEW_SCALE = 0.35;
-const CARD_PREVIEW_WIDTH = 1080 * CARD_PREVIEW_SCALE;
-const CARD_PREVIEW_HEIGHT = 1920 * CARD_PREVIEW_SCALE;
-
-interface DraggableSticker {
-  sticker: StorySticker;
+interface DraggableElement {
+  element: CanvasElement;
   pan: Animated.ValueXY;
   scale: Animated.Value;
 }
 
 export default function StoryShareScreen() {
-  const { theme } = useTheme();
+  useTheme();
   const insets = useSafeAreaInsets();
-  const { profile, streakData, foodLog } = useNutrition();
+  useNutrition();
   const params = useLocalSearchParams<{
     mealName?: string;
     mealSubtitle?: string;
@@ -69,18 +71,6 @@ export default function StoryShareScreen() {
     photoUri?: string;
     timestamp?: string;
   }>();
-
-  const [settings, setSettings] = useState<StoryShareSettings>({
-    ...DEFAULT_SHARE_SETTINGS,
-  });
-  const [showLocationInput, setShowLocationInput] = useState(false);
-  const [draggableStickers, setDraggableStickers] = useState<DraggableSticker[]>([]);
-  const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
-  const [showStickerTray, setShowStickerTray] = useState(false);
-
-  const templateScrollRef = useRef<ScrollView>(null);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
 
   const storyData: StoryShareData = {
     mealName: params.mealName || 'Delicious Meal',
@@ -93,117 +83,309 @@ export default function StoryShareScreen() {
     timestamp: parseInt(params.timestamp || Date.now().toString()),
   };
 
-  const weeklyData = React.useMemo(() => {
-    const entries = Object.values(foodLog).flat();
-    const totalCalories = entries.reduce((sum, e) => sum + e.calories, 0);
-    const totalProtein = entries.reduce((sum, e) => sum + e.protein, 0);
-    const days = Object.keys(foodLog).length || 1;
-    
-    return {
-      avgCalories: Math.round(totalCalories / days),
-      avgProtein: Math.round(totalProtein / days),
-      totalMeals: entries.length,
-      streakDays: streakData.currentStreak,
-      bestDay: '',
-    };
-  }, [foodLog, streakData]);
+  const [elements, setElements] = useState<DraggableElement[]>([]);
+  const [history, setHistory] = useState<CanvasElement[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [showStickerTray, setShowStickerTray] = useState(false);
+  const [showTextEditor, setShowTextEditor] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<StickerCategory>('macros');
+  const [showWatermark, setShowWatermark] = useState(true);
+  const [newTextContent, setNewTextContent] = useState('');
+  const [selectedTextStyle, setSelectedTextStyle] = useState('default');
+  const [selectedColor, setSelectedColor] = useState('#FFFFFF');
+  const [textAlignment, setTextAlignment] = useState<'left' | 'center' | 'right'>('center');
+  const [showLocationInput, setShowLocationInput] = useState(false);
+  const [locationText, setLocationText] = useState('');
+  const [showCenterGuide, setShowCenterGuide] = useState(false);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const stickerTrayAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fadeAnim, slideAnim]);
+    const mealName = storyData.mealName;
+    const calories = storyData.calories;
+    
+    const initialElements: CanvasElement[] = [
+      {
+        id: 'meal_name_default',
+        type: 'meal_name',
+        x: 540,
+        y: 1400,
+        scale: 1,
+        rotation: 0,
+        style: 'filled',
+        content: mealName,
+      },
+      {
+        id: 'calories_default',
+        type: 'calories',
+        x: 540,
+        y: 1520,
+        scale: 1,
+        rotation: 0,
+        style: 'filled',
+        content: `${calories} kcal`,
+      },
+    ];
+
+    const draggables = initialElements.map(el => ({
+      element: el,
+      pan: new Animated.ValueXY({ x: el.x * CANVAS_SCALE, y: el.y * CANVAS_SCALE }),
+      scale: new Animated.Value(el.scale),
+    }));
+
+    setElements(draggables);
+    setHistory([initialElements]);
+    setHistoryIndex(0);
+
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const saveToHistory = useCallback((newElements: CanvasElement[]) => {
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newElements);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  }, [history, historyIndex]);
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const prevElements = history[historyIndex - 1];
+      const draggables = prevElements.map(el => ({
+        element: el,
+        pan: new Animated.ValueXY({ x: el.x * CANVAS_SCALE, y: el.y * CANVAS_SCALE }),
+        scale: new Animated.Value(el.scale),
+      }));
+      setElements(draggables);
+      setHistoryIndex(historyIndex - 1);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < history.length - 1) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const nextElements = history[historyIndex + 1];
+      const draggables = nextElements.map(el => ({
+        element: el,
+        pan: new Animated.ValueXY({ x: el.x * CANVAS_SCALE, y: el.y * CANVAS_SCALE }),
+        scale: new Animated.Value(el.scale),
+      }));
+      setElements(draggables);
+      setHistoryIndex(historyIndex + 1);
+    }
+  };
 
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.back();
   };
 
-  const handleTemplateSelect = (template: StoryTemplate) => {
+  const toggleStickerTray = (show: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSettings(prev => ({ ...prev, template }));
+    setShowStickerTray(show);
+    setShowTextEditor(false);
+    Animated.spring(stickerTrayAnim, {
+      toValue: show ? 1 : 0,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
   };
 
-  const handleToggle = (key: keyof StoryShareSettings) => {
+  const toggleTextEditor = (show: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSettings(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const handleHealthRatingCycle = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const currentIndex = HEALTH_RATING_ORDER.indexOf(settings.healthRating);
-    const nextIndex = (currentIndex + 1) % HEALTH_RATING_ORDER.length;
-    setSettings(prev => ({ ...prev, healthRating: HEALTH_RATING_ORDER[nextIndex] }));
+    setShowTextEditor(show);
+    setShowStickerTray(false);
+    setNewTextContent('');
   };
 
   const handleAddSticker = (type: StickerType) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const newSticker: StorySticker = {
+    
+    if (type === 'add_location') {
+      setShowLocationInput(true);
+      toggleStickerTray(false);
+      return;
+    }
+
+    const config = STICKER_CONFIG[type];
+    let content = config.label;
+    
+    if (type === 'protein') content = `${storyData.protein}g Protein`;
+    if (type === 'carbs') content = `${storyData.carbs}g Carbs`;
+    if (type === 'fat') content = `${storyData.fat}g Fat`;
+
+    const newElement: CanvasElement = {
       id: Date.now().toString(),
-      type,
-      x: CARD_PREVIEW_WIDTH / 2 - 50,
-      y: CARD_PREVIEW_HEIGHT / 2 - 20,
+      type: 'sticker',
+      x: 540,
+      y: 800,
       scale: 1,
+      rotation: 0,
       style: 'filled',
+      stickerType: type,
+      content,
     };
 
-    const pan = new Animated.ValueXY({ x: newSticker.x, y: newSticker.y });
-    const scale = new Animated.Value(1);
+    const draggable: DraggableElement = {
+      element: newElement,
+      pan: new Animated.ValueXY({ x: newElement.x * CANVAS_SCALE, y: newElement.y * CANVAS_SCALE }),
+      scale: new Animated.Value(1),
+    };
 
-    setDraggableStickers(prev => [...prev, { sticker: newSticker, pan, scale }]);
-    setSettings(prev => ({
-      ...prev,
-      stickers: [...prev.stickers, newSticker],
-    }));
-    setShowStickerTray(false);
+    setElements(prev => [...prev, draggable]);
+    saveToHistory([...elements.map(e => e.element), newElement]);
+    toggleStickerTray(false);
   };
 
-  const handleStickerStyleCycle = (stickerId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const styleOptions: ('filled' | 'outline' | 'blurred')[] = ['filled', 'outline', 'blurred'];
+  const handleAddText = () => {
+    if (!newTextContent.trim()) return;
     
-    setSettings(prev => ({
-      ...prev,
-      stickers: prev.stickers.map(s => {
-        if (s.id === stickerId) {
-          const currentIndex = styleOptions.indexOf(s.style);
-          const nextIndex = (currentIndex + 1) % styleOptions.length;
-          return { ...s, style: styleOptions[nextIndex] };
-        }
-        return s;
-      }),
-    }));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    const newElement: CanvasElement = {
+      id: Date.now().toString(),
+      type: 'text',
+      x: 540,
+      y: 960,
+      scale: 1,
+      rotation: 0,
+      style: 'filled',
+      content: newTextContent,
+      fontStyle: selectedTextStyle as 'default' | 'bold' | 'light',
+      color: selectedColor,
+    };
+
+    const draggable: DraggableElement = {
+      element: newElement,
+      pan: new Animated.ValueXY({ x: newElement.x * CANVAS_SCALE, y: newElement.y * CANVAS_SCALE }),
+      scale: new Animated.Value(1),
+    };
+
+    setElements(prev => [...prev, draggable]);
+    saveToHistory([...elements.map(e => e.element), newElement]);
+    toggleTextEditor(false);
   };
 
-  const handleRemoveSticker = (stickerId: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    setDraggableStickers(prev => prev.filter(d => d.sticker.id !== stickerId));
-    setSettings(prev => ({
-      ...prev,
-      stickers: prev.stickers.filter(s => s.id !== stickerId),
-    }));
-    setSelectedStickerId(null);
-  };
+  const handleAddLocation = () => {
+    if (!locationText.trim()) return;
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-  const handleSetLocation = (location: string) => {
-    setSettings(prev => ({ ...prev, location, showLocation: true }));
+    const newElement: CanvasElement = {
+      id: Date.now().toString(),
+      type: 'sticker',
+      x: 540,
+      y: 800,
+      scale: 1,
+      rotation: 0,
+      style: 'filled',
+      stickerType: 'add_location',
+      content: locationText,
+    };
+
+    const draggable: DraggableElement = {
+      element: newElement,
+      pan: new Animated.ValueXY({ x: newElement.x * CANVAS_SCALE, y: newElement.y * CANVAS_SCALE }),
+      scale: new Animated.Value(1),
+    };
+
+    setElements(prev => [...prev, draggable]);
+    saveToHistory([...elements.map(e => e.element), newElement]);
     setShowLocationInput(false);
+    setLocationText('');
   };
+
+  const handleElementStyleCycle = (elementId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const styleOptions: ('filled' | 'outline' | 'blur')[] = ['filled', 'outline', 'blur'];
+    
+    setElements(prev => prev.map(d => {
+      if (d.element.id === elementId) {
+        const currentIndex = styleOptions.indexOf(d.element.style);
+        const nextIndex = (currentIndex + 1) % styleOptions.length;
+        return {
+          ...d,
+          element: { ...d.element, style: styleOptions[nextIndex] },
+        };
+      }
+      return d;
+    }));
+  };
+
+  const handleRemoveElement = (elementId: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    const newElements = elements.filter(d => d.element.id !== elementId);
+    setElements(newElements);
+    saveToHistory(newElements.map(e => e.element));
+    setSelectedElementId(null);
+  };
+
+  const createPanResponder = useCallback((draggable: DraggableElement) => {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        setSelectedElementId(draggable.element.id);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        draggable.pan.setOffset({
+          x: (draggable.pan.x as any)._value,
+          y: (draggable.pan.y as any)._value,
+        });
+        draggable.pan.setValue({ x: 0, y: 0 });
+        Animated.spring(draggable.scale, {
+          toValue: 1.05,
+          useNativeDriver: true,
+        }).start();
+      },
+      onPanResponderMove: (_, gestureState) => {
+        draggable.pan.setValue({ x: gestureState.dx, y: gestureState.dy });
+        
+        const currentX = (draggable.pan.x as any)._offset + gestureState.dx;
+        const centerX = SCREEN_WIDTH / 2;
+        const threshold = 10;
+        
+        if (Math.abs(currentX - centerX) < threshold) {
+          setShowCenterGuide(true);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } else {
+          setShowCenterGuide(false);
+        }
+      },
+      onPanResponderRelease: () => {
+        draggable.pan.flattenOffset();
+        setShowCenterGuide(false);
+        Animated.spring(draggable.scale, {
+          toValue: 1,
+          useNativeDriver: true,
+        }).start();
+        
+        const currentX = (draggable.pan.x as any)._value;
+        const centerX = SCREEN_WIDTH / 2;
+        const threshold = 15;
+        
+        if (Math.abs(currentX - centerX) < threshold) {
+          Animated.spring(draggable.pan.x, {
+            toValue: centerX,
+            useNativeDriver: false,
+          }).start();
+        }
+      },
+    });
+  }, []);
 
   const handleShareInstagram = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
-      'Bagikan ke Instagram',
-      'Fitur ekspor gambar akan segera hadir. Untuk saat ini, Anda dapat mengambil screenshot dan membagikannya.',
+      'Share to Instagram',
+      'Image export feature coming soon. For now, you can take a screenshot and share it.',
       [{ text: 'OK' }]
     );
   };
@@ -211,8 +393,8 @@ export default function StoryShareScreen() {
   const handleSaveImage = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert(
-      'Simpan Gambar',
-      'Fitur simpan gambar akan segera hadir. Untuk saat ini, Anda dapat mengambil screenshot.',
+      'Save Image',
+      'Image save feature coming soon. For now, you can take a screenshot.',
       [{ text: 'OK' }]
     );
   };
@@ -228,262 +410,311 @@ export default function StoryShareScreen() {
     }
   };
 
-  const createPanResponder = useCallback((draggable: DraggableSticker) => {
-    return PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        setSelectedStickerId(draggable.sticker.id);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        draggable.pan.setOffset({
-          x: (draggable.pan.x as any)._value,
-          y: (draggable.pan.y as any)._value,
-        });
-        draggable.pan.setValue({ x: 0, y: 0 });
-        Animated.spring(draggable.scale, {
-          toValue: 1.1,
-          useNativeDriver: true,
-        }).start();
-      },
-      onPanResponderMove: Animated.event(
-        [null, { dx: draggable.pan.x, dy: draggable.pan.y }],
-        { useNativeDriver: false }
-      ),
-      onPanResponderRelease: () => {
-        draggable.pan.flattenOffset();
-        Animated.spring(draggable.scale, {
-          toValue: 1,
-          useNativeDriver: true,
-        }).start();
-      },
-    });
-  }, []);
+  const renderCanvasElement = (draggable: DraggableElement) => {
+    const panResponder = createPanResponder(draggable);
+    const { element } = draggable;
+    const isSelected = selectedElementId === element.id;
 
-  const renderTemplateCarousel = () => (
-    <View style={styles.templateSection}>
+    const getElementStyle = () => {
+      if (element.style === 'filled') {
+        return styles.elementFilled;
+      } else if (element.style === 'outline') {
+        return styles.elementOutline;
+      } else {
+        return styles.elementBlur;
+      }
+    };
+
+    const renderContent = () => {
+      if (element.type === 'meal_name') {
+        return (
+          <Text style={[styles.mealNameText, element.style !== 'filled' && styles.textLight]}>
+            {element.content}
+          </Text>
+        );
+      }
+      
+      if (element.type === 'calories') {
+        return (
+          <Text style={[styles.caloriesText, element.style !== 'filled' && styles.textLight]}>
+            {element.content}
+          </Text>
+        );
+      }
+      
+      if (element.type === 'sticker' && element.stickerType) {
+        const config = STICKER_CONFIG[element.stickerType];
+        return (
+          <View style={styles.stickerInner}>
+            <Text style={styles.stickerIcon}>{config.icon}</Text>
+            <Text style={[
+              styles.stickerText,
+              element.style !== 'filled' && styles.textLight,
+            ]}>
+              {element.content || config.label}
+            </Text>
+          </View>
+        );
+      }
+      
+      if (element.type === 'text') {
+        const fontWeight = element.fontStyle === 'bold' ? 'bold' : element.fontStyle === 'light' ? '300' : 'normal';
+        return (
+          <Text style={[
+            styles.customText,
+            { color: element.color || '#FFFFFF', fontWeight: fontWeight as any },
+          ]}>
+            {element.content}
+          </Text>
+        );
+      }
+      
+      return null;
+    };
+
+    return (
+      <Animated.View
+        key={element.id}
+        style={[
+          styles.canvasElement,
+          getElementStyle(),
+          isSelected && styles.elementSelected,
+          {
+            transform: [
+              { translateX: Animated.subtract(draggable.pan.x, SCREEN_WIDTH / 2) },
+              { translateY: draggable.pan.y },
+              { scale: draggable.scale },
+            ],
+          },
+        ]}
+        {...panResponder.panHandlers}
+      >
+        <TouchableOpacity
+          onPress={() => handleElementStyleCycle(element.id)}
+          onLongPress={() => handleRemoveElement(element.id)}
+          activeOpacity={0.9}
+          delayLongPress={500}
+        >
+          {renderContent()}
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
+
+  const renderStickerTray = () => (
+    <Animated.View
+      style={[
+        styles.bottomSheet,
+        {
+          transform: [{
+            translateY: stickerTrayAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [400, 0],
+            }),
+          }],
+          opacity: stickerTrayAnim,
+        },
+      ]}
+    >
+      <View style={styles.sheetHandle} />
+      
+      <View style={styles.sheetHeader}>
+        <Text style={styles.sheetTitle}>Stickers</Text>
+        <TouchableOpacity onPress={() => toggleStickerTray(false)}>
+          <X size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
-        ref={templateScrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.templateList}
-        snapToInterval={80}
-        decelerationRate="fast"
+        style={styles.categoryTabs}
+        contentContainerStyle={styles.categoryTabsContent}
       >
-        {(Object.keys(TEMPLATE_CONFIG) as StoryTemplate[]).map((template) => {
-          const isActive = settings.template === template;
+        {STICKER_CATEGORIES.map(cat => (
+          <TouchableOpacity
+            key={cat.id}
+            style={[
+              styles.categoryTab,
+              selectedCategory === cat.id && styles.categoryTabActive,
+            ]}
+            onPress={() => setSelectedCategory(cat.id)}
+          >
+            <Text style={[
+              styles.categoryTabText,
+              selectedCategory === cat.id && styles.categoryTabTextActive,
+            ]}>
+              {cat.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.stickerGrid}
+      >
+        {STICKER_CATEGORIES.find(c => c.id === selectedCategory)?.stickers.map(type => {
+          const config = STICKER_CONFIG[type];
           return (
             <TouchableOpacity
-              key={template}
-              style={[
-                styles.templateItem,
-                isActive && styles.templateItemActive,
-                { borderColor: isActive ? '#10B981' : theme.border },
-              ]}
-              onPress={() => handleTemplateSelect(template)}
+              key={type}
+              style={[styles.stickerItem, { backgroundColor: config.bgColor }]}
+              onPress={() => handleAddSticker(type)}
               activeOpacity={0.7}
             >
-              <View style={[
-                styles.templatePreview,
-                { backgroundColor: isActive ? 'rgba(16, 185, 129, 0.15)' : theme.background }
-              ]}>
-                <Text style={styles.templateEmoji}>
-                  {template === 'minimal' ? '✨' : 
-                   template === 'health_hero' ? '💚' : 
-                   template === 'restaurant' ? '📍' : '📊'}
-                </Text>
-              </View>
-              <Text style={[
-                styles.templateName,
-                { color: isActive ? '#10B981' : theme.text }
-              ]}>
-                {TEMPLATE_CONFIG[template].name}
+              <Text style={styles.stickerItemIcon}>{config.icon}</Text>
+              <Text style={[styles.stickerItemLabel, { color: config.color }]}>
+                {config.label}
               </Text>
             </TouchableOpacity>
           );
         })}
       </ScrollView>
-    </View>
-  );
-
-  const renderToggleChips = () => (
-    <View style={styles.toggleSection}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.toggleList}
-      >
-        <TouchableOpacity
-          style={[
-            styles.toggleChip,
-            settings.showMacros && styles.toggleChipActive,
-            { borderColor: settings.showMacros ? '#10B981' : theme.border }
-          ]}
-          onPress={() => handleToggle('showMacros')}
-          activeOpacity={0.7}
-        >
-          <Sparkles size={14} color={settings.showMacros ? '#10B981' : theme.textSecondary} />
-          <Text style={[
-            styles.toggleChipText,
-            { color: settings.showMacros ? '#10B981' : theme.textSecondary }
-          ]}>Macros</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.toggleChip,
-            settings.showHealthRating && styles.toggleChipActive,
-            { 
-              borderColor: settings.showHealthRating 
-                ? HEALTH_RATING_CONFIG[settings.healthRating].color 
-                : theme.border,
-              backgroundColor: settings.showHealthRating 
-                ? HEALTH_RATING_CONFIG[settings.healthRating].bgColor 
-                : 'transparent',
-            }
-          ]}
-          onPress={() => settings.showHealthRating ? handleHealthRatingCycle() : handleToggle('showHealthRating')}
-          onLongPress={() => handleToggle('showHealthRating')}
-          activeOpacity={0.7}
-        >
-          <Text style={[
-            styles.toggleChipText,
-            { color: settings.showHealthRating ? HEALTH_RATING_CONFIG[settings.healthRating].color : theme.textSecondary }
-          ]}>
-            {settings.showHealthRating ? HEALTH_RATING_CONFIG[settings.healthRating].label : 'Health Rating'}
-          </Text>
-          {settings.showHealthRating && (
-            <ChevronRight size={12} color={HEALTH_RATING_CONFIG[settings.healthRating].color} />
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.toggleChip,
-            settings.showLocation && styles.toggleChipActive,
-            { borderColor: settings.showLocation ? '#10B981' : theme.border }
-          ]}
-          onPress={() => settings.showLocation ? handleToggle('showLocation') : setShowLocationInput(true)}
-          activeOpacity={0.7}
-        >
-          <MapPin size={14} color={settings.showLocation ? '#10B981' : theme.textSecondary} />
-          <Text style={[
-            styles.toggleChipText,
-            { color: settings.showLocation ? '#10B981' : theme.textSecondary }
-          ]}>
-            {settings.location || 'Location'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.toggleChip,
-            settings.showTime && styles.toggleChipActive,
-            { borderColor: settings.showTime ? '#10B981' : theme.border }
-          ]}
-          onPress={() => handleToggle('showTime')}
-          activeOpacity={0.7}
-        >
-          <Clock size={14} color={settings.showTime ? '#10B981' : theme.textSecondary} />
-          <Text style={[
-            styles.toggleChipText,
-            { color: settings.showTime ? '#10B981' : theme.textSecondary }
-          ]}>Time</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.toggleChip,
-            settings.showUserName && styles.toggleChipActive,
-            { borderColor: settings.showUserName ? '#10B981' : theme.border }
-          ]}
-          onPress={() => handleToggle('showUserName')}
-          activeOpacity={0.7}
-        >
-          <User size={14} color={settings.showUserName ? '#10B981' : theme.textSecondary} />
-          <Text style={[
-            styles.toggleChipText,
-            { color: settings.showUserName ? '#10B981' : theme.textSecondary }
-          ]}>Name</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
-  );
-
-  const renderStickerTray = () => (
-    <Animated.View 
-      style={[
-        styles.stickerTray,
-        { backgroundColor: theme.card, borderTopColor: theme.border }
-      ]}
-    >
-      <View style={styles.stickerTrayHeader}>
-        <Text style={[styles.stickerTrayTitle, { color: theme.text }]}>Stickers</Text>
-        <TouchableOpacity onPress={() => setShowStickerTray(false)}>
-          <X size={20} color={theme.textSecondary} />
-        </TouchableOpacity>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.stickerList}
-      >
-        {(Object.keys(STICKER_CONFIG) as StickerType[]).map((type) => (
-          <TouchableOpacity
-            key={type}
-            style={[styles.stickerOption, { backgroundColor: theme.background, borderColor: theme.border }]}
-            onPress={() => handleAddSticker(type)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.stickerOptionEmoji}>{STICKER_CONFIG[type].emoji}</Text>
-            <Text style={[styles.stickerOptionLabel, { color: theme.text }]} numberOfLines={1}>
-              {STICKER_CONFIG[type].label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
     </Animated.View>
   );
 
-  const renderLocationModal = () => {
+  const renderTextEditor = () => {
+    if (!showTextEditor) return null;
+
+    return (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.textEditorOverlay}
+      >
+        <TouchableOpacity
+          style={styles.textEditorBackdrop}
+          onPress={() => toggleTextEditor(false)}
+          activeOpacity={1}
+        />
+        <View style={styles.textEditorSheet}>
+          <View style={styles.sheetHandle} />
+          
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>Add Text</Text>
+            <TouchableOpacity onPress={handleAddText}>
+              <Text style={styles.doneButton}>Done</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TextInput
+            style={styles.textInput}
+            placeholder="Type something..."
+            placeholderTextColor="rgba(255,255,255,0.4)"
+            value={newTextContent}
+            onChangeText={setNewTextContent}
+            multiline
+            autoFocus
+          />
+
+          <View style={styles.textOptions}>
+            <View style={styles.fontStyles}>
+              {TEXT_STYLES.map(style => (
+                <TouchableOpacity
+                  key={style.id}
+                  style={[
+                    styles.fontStyleBtn,
+                    selectedTextStyle === style.id && styles.fontStyleBtnActive,
+                  ]}
+                  onPress={() => setSelectedTextStyle(style.id)}
+                >
+                  <Text style={[
+                    styles.fontStyleText,
+                    { fontWeight: style.fontWeight },
+                    selectedTextStyle === style.id && styles.fontStyleTextActive,
+                  ]}>
+                    Aa
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.colorOptions}>
+              {COLOR_OPTIONS.map(opt => (
+                <TouchableOpacity
+                  key={opt.id}
+                  style={[
+                    styles.colorBtn,
+                    { backgroundColor: opt.color },
+                    selectedColor === opt.color && styles.colorBtnActive,
+                  ]}
+                  onPress={() => setSelectedColor(opt.color)}
+                />
+              ))}
+            </View>
+
+            <View style={styles.alignOptions}>
+              <TouchableOpacity
+                style={[styles.alignBtn, textAlignment === 'left' && styles.alignBtnActive]}
+                onPress={() => setTextAlignment('left')}
+              >
+                <AlignLeft size={18} color={textAlignment === 'left' ? '#10B981' : '#666'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.alignBtn, textAlignment === 'center' && styles.alignBtnActive]}
+                onPress={() => setTextAlignment('center')}
+              >
+                <AlignCenter size={18} color={textAlignment === 'center' ? '#10B981' : '#666'} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.alignBtn, textAlignment === 'right' && styles.alignBtnActive]}
+                onPress={() => setTextAlignment('right')}
+              >
+                <AlignRight size={18} color={textAlignment === 'right' ? '#10B981' : '#666'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  };
+
+  const renderLocationInput = () => {
     if (!showLocationInput) return null;
 
-    const presetLocations = ['Homemade', 'Restaurant', 'Cafe', 'Office'];
+    const presets = ['Homemade', 'Restaurant', 'Cafe', 'Office', 'Gym'];
 
     return (
       <View style={styles.locationOverlay}>
-        <TouchableOpacity 
-          style={styles.locationBackdrop} 
+        <TouchableOpacity
+          style={styles.locationBackdrop}
           onPress={() => setShowLocationInput(false)}
           activeOpacity={1}
         />
-        <View style={[styles.locationModal, { backgroundColor: theme.card }]}>
-          <Text style={[styles.locationModalTitle, { color: theme.text }]}>Tambah Lokasi</Text>
+        <View style={styles.locationSheet}>
+          <View style={styles.sheetHandle} />
           
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>Add Location</Text>
+            <TouchableOpacity onPress={handleAddLocation}>
+              <Text style={styles.doneButton}>Add</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.locationInputRow}>
+            <MapPin size={20} color="#EC4899" />
+            <TextInput
+              style={styles.locationInput}
+              placeholder="Enter location..."
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              value={locationText}
+              onChangeText={setLocationText}
+              autoFocus
+            />
+          </View>
+
           <View style={styles.locationPresets}>
-            {presetLocations.map((loc) => (
+            {presets.map(preset => (
               <TouchableOpacity
-                key={loc}
-                style={[styles.locationPreset, { backgroundColor: theme.background, borderColor: theme.border }]}
-                onPress={() => handleSetLocation(loc)}
-                activeOpacity={0.7}
+                key={preset}
+                style={styles.locationPreset}
+                onPress={() => setLocationText(preset)}
               >
-                <Text style={[styles.locationPresetText, { color: theme.text }]}>{loc}</Text>
+                <Text style={styles.locationPresetText}>{preset}</Text>
               </TouchableOpacity>
             ))}
           </View>
-
-          <TouchableOpacity
-            style={[styles.locationCustom, { borderColor: theme.border }]}
-            onPress={() => {
-              handleSetLocation('My Location');
-            }}
-            activeOpacity={0.7}
-          >
-            <MapPin size={16} color={theme.textSecondary} />
-            <Text style={[styles.locationCustomText, { color: theme.textSecondary }]}>
-              Masukkan lokasi kustom...
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -493,162 +724,118 @@ export default function StoryShareScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       
-      <View style={[styles.container, { backgroundColor: '#0a0a0a' }]}>
+      <View style={styles.container}>
+        {storyData.photoUri ? (
+          <Image
+            source={{ uri: storyData.photoUri }}
+            style={styles.backgroundImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <LinearGradient
+            colors={['#1a1a2e', '#16213e', '#0f0f23']}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+        
         <LinearGradient
-          colors={['#0a0a0a', '#1a1a2e', '#0a0a0a']}
-          style={StyleSheet.absoluteFill}
+          colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.7)']}
+          locations={[0, 0.3, 1]}
+          style={styles.gradientOverlay}
         />
 
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={handleClose}
-            activeOpacity={0.7}
-          >
+        {showCenterGuide && (
+          <View style={styles.centerGuide} pointerEvents="none" />
+        )}
+
+        <Animated.View style={[styles.topBar, { paddingTop: insets.top + 8, opacity: fadeAnim }]}>
+          <TouchableOpacity style={styles.iconButton} onPress={handleClose}>
             <X size={24} color="#FFFFFF" />
           </TouchableOpacity>
           
-          <Text style={styles.headerTitle}>Story Share</Text>
-          
-          <View style={styles.headerRight} />
-        </View>
-
-        <Animated.View 
-          style={[
-            styles.previewContainer,
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-          ]}
-        >
-          <View style={styles.cardWrapper}>
-            <StoryCard
-              data={storyData}
-              settings={settings}
-              weeklyData={weeklyData}
-              userName={profile?.name}
-              scale={CARD_PREVIEW_SCALE}
-            />
-            
-            {draggableStickers.map((draggable) => {
-              const panResponder = createPanResponder(draggable);
-              const config = STICKER_CONFIG[draggable.sticker.type];
-              const stickerSettings = settings.stickers.find(s => s.id === draggable.sticker.id);
-              const style = stickerSettings?.style || 'filled';
-              const isSelected = selectedStickerId === draggable.sticker.id;
-              
-              return (
-                <Animated.View
-                  key={draggable.sticker.id}
-                  style={[
-                    styles.draggableSticker,
-                    style === 'filled' && styles.stickerFilled,
-                    style === 'outline' && styles.stickerOutline,
-                    style === 'blurred' && styles.stickerBlurred,
-                    isSelected && styles.stickerSelected,
-                    {
-                      transform: [
-                        { translateX: draggable.pan.x },
-                        { translateY: draggable.pan.y },
-                        { scale: draggable.scale },
-                      ],
-                    },
-                  ]}
-                  {...panResponder.panHandlers}
-                >
-                  <TouchableOpacity
-                    onPress={() => handleStickerStyleCycle(draggable.sticker.id)}
-                    onLongPress={() => handleRemoveSticker(draggable.sticker.id)}
-                    activeOpacity={0.9}
-                  >
-                    <View style={styles.stickerContent}>
-                      <Text style={styles.stickerEmoji}>{config.emoji}</Text>
-                      <Text style={[
-                        styles.stickerLabel,
-                        style !== 'filled' && styles.stickerLabelLight
-                      ]}>{config.label}</Text>
-                    </View>
-                  </TouchableOpacity>
-                </Animated.View>
-              );
-            })}
+          <View style={styles.historyButtons}>
+            <TouchableOpacity
+              style={[styles.iconButton, historyIndex <= 0 && styles.iconButtonDisabled]}
+              onPress={handleUndo}
+              disabled={historyIndex <= 0}
+            >
+              <Undo2 size={22} color={historyIndex > 0 ? '#FFFFFF' : 'rgba(255,255,255,0.3)'} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.iconButton, historyIndex >= history.length - 1 && styles.iconButtonDisabled]}
+              onPress={handleRedo}
+              disabled={historyIndex >= history.length - 1}
+            >
+              <Redo2 size={22} color={historyIndex < history.length - 1 ? '#FFFFFF' : 'rgba(255,255,255,0.3)'} />
+            </TouchableOpacity>
           </View>
         </Animated.View>
 
-        <View style={styles.controlsContainer}>
-          {renderTemplateCarousel()}
-          {renderToggleChips()}
-
-          <TouchableOpacity
-            style={[styles.addStickerButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-            onPress={() => setShowStickerTray(true)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.addStickerEmoji}>🏷️</Text>
-            <Text style={[styles.addStickerText, { color: theme.text }]}>Tambah Sticker</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.watermarkToggle, { borderColor: theme.border }]}
-            onPress={() => handleToggle('showWatermark')}
-            activeOpacity={0.7}
-          >
-            <View style={[
-              styles.watermarkCheckbox,
-              settings.showWatermark && styles.watermarkCheckboxActive
-            ]}>
-              {settings.showWatermark && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <Text style={[styles.watermarkText, { color: theme.textSecondary }]}>
-              Tampilkan watermark DietKu
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.canvas}>
+          {elements.map(renderCanvasElement)}
         </View>
 
-        <View style={[styles.shareActions, { paddingBottom: insets.bottom + 16 }]}>
-          <TouchableOpacity
-            style={styles.primaryShareButton}
-            onPress={handleShareInstagram}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#833AB4', '#E1306C', '#F77737']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.instagramGradient}
-            >
-              <Instagram size={20} color="#FFFFFF" />
-              <Text style={styles.primaryShareText}>Share to Instagram</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+        {showWatermark && (
+          <View style={[styles.watermark, { bottom: insets.bottom + 140 }]}>
+            <Text style={styles.watermarkText}>DietKu</Text>
+          </View>
+        )}
 
-          <View style={styles.secondaryActions}>
+        <Animated.View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16, opacity: fadeAnim }]}>
+          <View style={styles.toolButtons}>
             <TouchableOpacity
-              style={[styles.secondaryButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-              onPress={handleSaveImage}
-              activeOpacity={0.7}
+              style={styles.toolButton}
+              onPress={() => toggleStickerTray(true)}
             >
-              <Download size={18} color={theme.text} />
+              <Sticker size={22} color="#FFFFFF" />
+              <Text style={styles.toolButtonText}>Sticker</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
-              style={[styles.secondaryButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-              onPress={handleShare}
-              activeOpacity={0.7}
+              style={styles.toolButton}
+              onPress={() => toggleTextEditor(true)}
             >
-              <Link2 size={18} color={theme.text} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.secondaryButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-              onPress={handleShare}
-              activeOpacity={0.7}
-            >
-              <MoreHorizontal size={18} color={theme.text} />
+              <Type size={22} color="#FFFFFF" />
+              <Text style={styles.toolButtonText}>Text</Text>
             </TouchableOpacity>
           </View>
-        </View>
+
+          <View style={styles.shareRow}>
+            <TouchableOpacity style={styles.shareButton} onPress={handleShareInstagram}>
+              <LinearGradient
+                colors={['#833AB4', '#E1306C', '#F77737']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.shareGradient}
+              >
+                <Instagram size={20} color="#FFFFFF" />
+                <Text style={styles.shareButtonText}>Share to Instagram</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.secondaryRow}>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleSaveImage}>
+              <Download size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleShare}>
+              <MoreHorizontal size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.watermarkToggle}
+              onPress={() => setShowWatermark(!showWatermark)}
+            >
+              <View style={[styles.checkbox, showWatermark && styles.checkboxActive]}>
+                {showWatermark && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.watermarkToggleText}>Watermark</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
 
         {showStickerTray && renderStickerTray()}
-        {renderLocationModal()}
+        {renderTextEditor()}
+        {renderLocationInput()}
       </View>
     </>
   );
@@ -657,136 +844,188 @@ export default function StoryShareScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
   },
-  header: {
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  gradientOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  centerGuide: {
+    position: 'absolute',
+    left: SCREEN_WIDTH / 2 - 1,
+    top: 0,
+    bottom: 0,
+    width: 2,
+    backgroundColor: 'rgba(16, 185, 129, 0.6)',
+  },
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    zIndex: 100,
   },
-  closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
+  iconButtonDisabled: {
+    opacity: 0.5,
   },
-  headerRight: {
-    width: 40,
-  },
-  previewContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-  },
-  cardWrapper: {
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.4,
-    shadowRadius: 24,
-    elevation: 20,
-  },
-  controlsContainer: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  templateSection: {
-    marginBottom: 4,
-  },
-  templateList: {
-    paddingHorizontal: 4,
-    gap: 12,
-  },
-  templateItem: {
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 16,
-    borderWidth: 2,
-    width: 72,
-  },
-  templateItemActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-  },
-  templatePreview: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  templateEmoji: {
-    fontSize: 22,
-  },
-  templateName: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-  },
-  toggleSection: {
-    marginBottom: 4,
-  },
-  toggleList: {
-    paddingHorizontal: 4,
+  historyButtons: {
+    flexDirection: 'row',
     gap: 8,
   },
-  toggleChip: {
+  canvas: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  canvasElement: {
+    position: 'absolute',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    zIndex: 50,
+  },
+  elementFilled: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+  },
+  elementOutline: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.9)',
+  },
+  elementBlur: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  elementSelected: {
+    borderWidth: 2,
+    borderColor: '#10B981',
+    borderStyle: 'dashed',
+  },
+  mealNameText: {
+    fontSize: 28,
+    fontWeight: '700' as const,
+    color: '#1a1a2e',
+    textAlign: 'center',
+  },
+  caloriesText: {
+    fontSize: 36,
+    fontWeight: '800' as const,
+    color: '#1a1a2e',
+    textAlign: 'center',
+  },
+  textLight: {
+    color: '#FFFFFF',
+  },
+  stickerInner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    borderWidth: 1.5,
   },
-  toggleChipActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+  stickerIcon: {
+    fontSize: 18,
   },
-  toggleChipText: {
-    fontSize: 13,
+  stickerText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#1a1a2e',
+  },
+  customText: {
+    fontSize: 20,
+    textAlign: 'center',
+  },
+  watermark: {
+    position: 'absolute',
+    right: 20,
+    opacity: 0.25,
+  },
+  watermarkText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  toolButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 32,
+  },
+  toolButton: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  toolButtonText: {
+    fontSize: 12,
+    color: '#FFFFFF',
     fontWeight: '500' as const,
   },
-  addStickerButton: {
+  shareRow: {
+    marginTop: 8,
+  },
+  shareButton: {
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  shareGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    gap: 10,
+    paddingVertical: 14,
   },
-  addStickerEmoji: {
+  shareButtonText: {
     fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
   },
-  addStickerText: {
-    fontSize: 14,
-    fontWeight: '500' as const,
+  secondaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  secondaryBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   watermarkToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
+    gap: 8,
+    marginLeft: 8,
   },
-  watermarkCheckbox: {
+  checkbox: {
     width: 20,
     height: 20,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(255,255,255,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  watermarkCheckboxActive: {
+  checkboxActive: {
     backgroundColor: '#10B981',
     borderColor: '#10B981',
   },
@@ -795,174 +1034,226 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700' as const,
   },
-  watermarkText: {
+  watermarkToggleText: {
     fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
   },
-  shareActions: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    gap: 12,
-  },
-  primaryShareButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  instagramGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
-  },
-  primaryShareText: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
-  },
-  secondaryActions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  secondaryButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  stickerTray: {
+  bottomSheet: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    borderTopWidth: 1,
-    paddingTop: 16,
-    paddingBottom: 32,
+    backgroundColor: 'rgba(20,20,30,0.95)',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    paddingBottom: 40,
+    zIndex: 200,
   },
-  stickerTrayHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 2,
+    alignSelf: 'center',
     marginBottom: 16,
   },
-  stickerTrayTitle: {
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
+  doneButton: {
     fontSize: 16,
     fontWeight: '600' as const,
+    color: '#10B981',
   },
-  stickerList: {
+  categoryTabs: {
+    marginBottom: 16,
+  },
+  categoryTabsContent: {
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  categoryTab: {
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    gap: 10,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  stickerOption: {
+  categoryTabActive: {
+    backgroundColor: '#10B981',
+  },
+  categoryTabText: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  categoryTabTextActive: {
+    color: '#FFFFFF',
+  },
+  stickerGrid: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  stickerItem: {
     alignItems: 'center',
-    padding: 12,
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     borderRadius: 16,
-    borderWidth: 1,
-    width: 80,
+    minWidth: 100,
   },
-  stickerOptionEmoji: {
-    fontSize: 24,
+  stickerItemIcon: {
+    fontSize: 28,
     marginBottom: 6,
   },
-  stickerOptionLabel: {
-    fontSize: 10,
-    fontWeight: '500' as const,
-    textAlign: 'center',
+  stickerItemLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
   },
-  draggableSticker: {
+  textEditorOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 300,
+  },
+  textEditorBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  textEditorSheet: {
     position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(20,20,30,0.98)',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    paddingBottom: 40,
+  },
+  textInput: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  textOptions: {
+    paddingHorizontal: 20,
+    gap: 16,
+  },
+  fontStyles: {
     flexDirection: 'row',
+    gap: 12,
+  },
+  fontStyleBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    zIndex: 100,
+    justifyContent: 'center',
   },
-  stickerFilled: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-  },
-  stickerOutline: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.9)',
-  },
-  stickerBlurred: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  stickerSelected: {
+  fontStyleBtnActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.3)',
     borderWidth: 2,
     borderColor: '#10B981',
-    borderStyle: 'dashed',
   },
-  stickerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  stickerEmoji: {
-    fontSize: 14,
-  },
-  stickerLabel: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-    color: '#1a1a2e',
-  },
-  stickerLabelLight: {
+  fontStyleText: {
+    fontSize: 18,
     color: '#FFFFFF',
+  },
+  fontStyleTextActive: {
+    color: '#10B981',
+  },
+  colorOptions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  colorBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  colorBtnActive: {
+    borderColor: '#10B981',
+    borderWidth: 3,
+  },
+  alignOptions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  alignBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alignBtnActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
   },
   locationOverlay: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 200,
+    zIndex: 300,
   },
   locationBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
   },
-  locationModal: {
+  locationSheet: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
+    backgroundColor: 'rgba(20,20,30,0.98)',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 24,
+    paddingTop: 12,
+    paddingBottom: 40,
   },
-  locationModalTitle: {
-    fontSize: 18,
-    fontWeight: '600' as const,
-    marginBottom: 20,
-    textAlign: 'center',
+  locationInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    marginHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  locationInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#FFFFFF',
   },
   locationPresets: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
+    gap: 8,
+    paddingHorizontal: 20,
   },
   locationPreset: {
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   locationPresetText: {
     fontSize: 14,
+    color: '#FFFFFF',
     fontWeight: '500' as const,
-  },
-  locationCustom: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-  },
-  locationCustomText: {
-    fontSize: 14,
   },
 });
