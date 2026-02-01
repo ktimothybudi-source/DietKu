@@ -15,7 +15,7 @@ import {
   Animated,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2 } from 'lucide-react-native';
+import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2, Edit3, PlusCircle } from 'lucide-react-native';
 import { useNutrition, useTodayProgress, PendingFoodEntry } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FoodEntry, MealAnalysis } from '@/types/nutrition';
@@ -47,6 +47,24 @@ export default function HomeScreen() {
   const [showSuggestFavorite, setShowSuggestFavorite] = useState(false);
   const [suggestedMealName, setSuggestedMealName] = useState('');
   const [shownPendingIds, setShownPendingIds] = useState<Set<string>>(new Set());
+  const [editedItems, setEditedItems] = useState<{
+    name: string;
+    portion: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  }[]>([]);
+  
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [editItemName, setEditItemName] = useState('');
+  const [editItemPortion, setEditItemPortion] = useState('');
+  const [editItemCalories, setEditItemCalories] = useState('');
+  const [editItemProtein, setEditItemProtein] = useState('');
+  const [editItemCarbs, setEditItemCarbs] = useState('');
+  const [editItemFat, setEditItemFat] = useState('');
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [hasEdited, setHasEdited] = useState(false);
   
   const pendingModalScrollRef = useRef<ScrollView>(null);
   
@@ -197,6 +215,110 @@ export default function HomeScreen() {
   const handlePendingPress = (pending: PendingFoodEntry) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedPending(pending);
+    if (pending.status === 'done' && pending.analysis) {
+      const items = pending.analysis.items.map(item => ({
+        name: item.name,
+        portion: item.portion,
+        calories: Math.round((item.caloriesMin + item.caloriesMax) / 2),
+        protein: Math.round((item.proteinMin + item.proteinMax) / 2),
+        carbs: Math.round((item.carbsMin + item.carbsMax) / 2),
+        fat: Math.round((item.fatMin + item.fatMax) / 2),
+      }));
+      setEditedItems(items);
+      setHasEdited(false);
+    }
+  };
+
+  const handleStartEditItem = (index: number) => {
+    const item = editedItems[index];
+    setEditingItemIndex(index);
+    setEditItemName(item.name);
+    setEditItemPortion(item.portion);
+    setEditItemCalories(item.calories.toString());
+    setEditItemProtein(item.protein.toString());
+    setEditItemCarbs(item.carbs.toString());
+    setEditItemFat(item.fat.toString());
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleSaveEditItem = () => {
+    if (editingItemIndex === null) return;
+    const updated = [...editedItems];
+    updated[editingItemIndex] = {
+      name: editItemName || 'Makanan',
+      portion: editItemPortion || '1 porsi',
+      calories: parseInt(editItemCalories) || 0,
+      protein: parseInt(editItemProtein) || 0,
+      carbs: parseInt(editItemCarbs) || 0,
+      fat: parseInt(editItemFat) || 0,
+    };
+    setEditedItems(updated);
+    setEditingItemIndex(null);
+    setHasEdited(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleDeleteItem = (index: number) => {
+    const updated = editedItems.filter((_, i) => i !== index);
+    setEditedItems(updated);
+    setEditingItemIndex(null);
+    setHasEdited(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const handleAddNewItem = () => {
+    setShowAddItem(true);
+    setEditItemName('');
+    setEditItemPortion('');
+    setEditItemCalories('');
+    setEditItemProtein('');
+    setEditItemCarbs('');
+    setEditItemFat('');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleSaveNewItem = () => {
+    const newItem = {
+      name: editItemName || 'Makanan Baru',
+      portion: editItemPortion || '1 porsi',
+      calories: parseInt(editItemCalories) || 0,
+      protein: parseInt(editItemProtein) || 0,
+      carbs: parseInt(editItemCarbs) || 0,
+      fat: parseInt(editItemFat) || 0,
+    };
+    setEditedItems([...editedItems, newItem]);
+    setShowAddItem(false);
+    setHasEdited(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const getEditedTotals = () => {
+    return editedItems.reduce((acc, item) => ({
+      calories: acc.calories + item.calories,
+      protein: acc.protein + item.protein,
+      carbs: acc.carbs + item.carbs,
+      fat: acc.fat + item.fat,
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+  };
+
+  const handleConfirmEdited = () => {
+    if (!selectedPending || editedItems.length === 0) return;
+    const totals = getEditedTotals();
+    const foodNames = editedItems.map(item => item.name).join(', ');
+    
+    addFoodEntry({
+      name: foodNames,
+      calories: totals.calories,
+      protein: totals.protein,
+      carbs: totals.carbs,
+      fat: totals.fat,
+    });
+    
+    removePendingEntry(selectedPending.id);
+    setSelectedPending(null);
+    setEditedItems([]);
+    setHasEdited(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
 
@@ -922,66 +1044,285 @@ export default function HomeScreen() {
 
                 {selectedPending?.status === 'done' && selectedPending.analysis && (
                   <View style={styles.pendingResultState}>
-                    <View style={[styles.pendingTotalCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                      <View style={styles.pendingCaloriesRow}>
-                        <Text style={styles.pendingCaloriesEmoji}>🔥</Text>
-                        <Text style={[styles.pendingCaloriesValue, { color: theme.text }]}>
-                          {Math.round((selectedPending.analysis.totalCaloriesMin + selectedPending.analysis.totalCaloriesMax) / 2)}
-                        </Text>
-                        <Text style={[styles.pendingCaloriesUnit, { color: theme.textSecondary }]}>kcal</Text>
-                      </View>
-                      <View style={styles.pendingMacros}>
-                        <View style={styles.pendingMacro}>
-                          <Text style={styles.pendingMacroEmoji}>🥩</Text>
-                          <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
-                            {Math.round((selectedPending.analysis.totalProteinMin + selectedPending.analysis.totalProteinMax) / 2)}g
-                          </Text>
-                          <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Protein</Text>
+                    {(() => {
+                      const totals = getEditedTotals();
+                      return (
+                        <View style={[styles.pendingTotalCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                          <View style={styles.pendingCaloriesRow}>
+                            <Text style={styles.pendingCaloriesEmoji}>🔥</Text>
+                            <Text style={[styles.pendingCaloriesValue, { color: theme.text }]}>
+                              {totals.calories}
+                            </Text>
+                            <Text style={[styles.pendingCaloriesUnit, { color: theme.textSecondary }]}>kcal</Text>
+                          </View>
+                          <View style={styles.pendingMacros}>
+                            <View style={styles.pendingMacro}>
+                              <Text style={styles.pendingMacroEmoji}>🥩</Text>
+                              <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
+                                {totals.protein}g
+                              </Text>
+                              <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Protein</Text>
+                            </View>
+                            <View style={styles.pendingMacro}>
+                              <Text style={styles.pendingMacroEmoji}>🌾</Text>
+                              <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
+                                {totals.carbs}g
+                              </Text>
+                              <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Karbo</Text>
+                            </View>
+                            <View style={styles.pendingMacro}>
+                              <Text style={styles.pendingMacroEmoji}>🥑</Text>
+                              <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
+                                {totals.fat}g
+                              </Text>
+                              <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Lemak</Text>
+                            </View>
+                          </View>
                         </View>
-                        <View style={styles.pendingMacro}>
-                          <Text style={styles.pendingMacroEmoji}>🌾</Text>
-                          <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
-                            {Math.round(selectedPending.analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0))}g
-                          </Text>
-                          <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Karbo</Text>
-                        </View>
-                        <View style={styles.pendingMacro}>
-                          <Text style={styles.pendingMacroEmoji}>🥑</Text>
-                          <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
-                            {Math.round(selectedPending.analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0))}g
-                          </Text>
-                          <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Lemak</Text>
-                        </View>
-                      </View>
+                      );
+                    })()}
+
+                    <View style={styles.itemsTitleRow}>
+                      <Text style={[styles.pendingItemsTitle, { color: theme.text }]}>Komponen Makanan</Text>
+                      <TouchableOpacity
+                        style={[styles.addItemButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                        onPress={handleAddNewItem}
+                        activeOpacity={0.7}
+                      >
+                        <PlusCircle size={16} color="#10B981" />
+                        <Text style={styles.addItemButtonText}>Tambah</Text>
+                      </TouchableOpacity>
                     </View>
 
-                    <Text style={[styles.pendingItemsTitle, { color: theme.text }]}>Komponen Makanan</Text>
-                    {selectedPending.analysis.items.map((item, index) => (
-                      <View key={index} style={[styles.pendingItemCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.pendingItemName, { color: theme.text }]}>
-                            {item.name
-                              .replace(/\s*\/\s*/g, ' ')
-                              .replace(/\s+or\s+/gi, ' ')
-                              .replace(/about\s+/gi, '')
-                              .trim()}
-                          </Text>
-                          <Text style={[styles.pendingItemPortion, { color: theme.textSecondary }]}>
-                            {item.portion
-                              .replace(/about\s+/gi, '')
-                              .replace(/approximately\s+/gi, '')
-                              .trim()}
-                          </Text>
+                    {showAddItem && (
+                      <View style={[styles.editItemCard, { backgroundColor: theme.background, borderColor: '#10B981' }]}>
+                        <Text style={[styles.editItemTitle, { color: theme.text }]}>Tambah Item Baru</Text>
+                        <View style={styles.editItemRow}>
+                          <View style={styles.editItemField}>
+                            <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Nama</Text>
+                            <TextInput
+                              style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                              placeholder="Nama makanan"
+                              placeholderTextColor={theme.textTertiary}
+                              value={editItemName}
+                              onChangeText={setEditItemName}
+                            />
+                          </View>
                         </View>
-                        <Text style={[styles.pendingItemCalories, { color: theme.textTertiary }]}>
-                          {Math.round((item.caloriesMin + item.caloriesMax) / 2)} kcal
-                        </Text>
+                        <View style={styles.editItemRow}>
+                          <View style={styles.editItemField}>
+                            <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Porsi</Text>
+                            <TextInput
+                              style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                              placeholder="1 porsi"
+                              placeholderTextColor={theme.textTertiary}
+                              value={editItemPortion}
+                              onChangeText={setEditItemPortion}
+                            />
+                          </View>
+                        </View>
+                        <View style={styles.editItemRowMulti}>
+                          <View style={styles.editItemFieldSmall}>
+                            <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Kalori</Text>
+                            <TextInput
+                              style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                              placeholder="0"
+                              placeholderTextColor={theme.textTertiary}
+                              keyboardType="numeric"
+                              value={editItemCalories}
+                              onChangeText={setEditItemCalories}
+                            />
+                          </View>
+                          <View style={styles.editItemFieldSmall}>
+                            <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Protein</Text>
+                            <TextInput
+                              style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                              placeholder="0"
+                              placeholderTextColor={theme.textTertiary}
+                              keyboardType="numeric"
+                              value={editItemProtein}
+                              onChangeText={setEditItemProtein}
+                            />
+                          </View>
+                        </View>
+                        <View style={styles.editItemRowMulti}>
+                          <View style={styles.editItemFieldSmall}>
+                            <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Karbo</Text>
+                            <TextInput
+                              style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                              placeholder="0"
+                              placeholderTextColor={theme.textTertiary}
+                              keyboardType="numeric"
+                              value={editItemCarbs}
+                              onChangeText={setEditItemCarbs}
+                            />
+                          </View>
+                          <View style={styles.editItemFieldSmall}>
+                            <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Lemak</Text>
+                            <TextInput
+                              style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                              placeholder="0"
+                              placeholderTextColor={theme.textTertiary}
+                              keyboardType="numeric"
+                              value={editItemFat}
+                              onChangeText={setEditItemFat}
+                            />
+                          </View>
+                        </View>
+                        <View style={styles.editItemActions}>
+                          <TouchableOpacity
+                            style={[styles.editItemCancelBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+                            onPress={() => setShowAddItem(false)}
+                          >
+                            <Text style={[styles.editItemCancelText, { color: theme.textSecondary }]}>Batal</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.editItemSaveBtn}
+                            onPress={handleSaveNewItem}
+                          >
+                            <Text style={styles.editItemSaveText}>Simpan</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
+                    )}
+
+                    {editedItems.map((item, index) => (
+                      editingItemIndex === index ? (
+                        <View key={index} style={[styles.editItemCard, { backgroundColor: theme.background, borderColor: '#10B981' }]}>
+                          <Text style={[styles.editItemTitle, { color: theme.text }]}>Edit Item</Text>
+                          <View style={styles.editItemRow}>
+                            <View style={styles.editItemField}>
+                              <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Nama</Text>
+                              <TextInput
+                                style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                                placeholder="Nama makanan"
+                                placeholderTextColor={theme.textTertiary}
+                                value={editItemName}
+                                onChangeText={setEditItemName}
+                              />
+                            </View>
+                          </View>
+                          <View style={styles.editItemRow}>
+                            <View style={styles.editItemField}>
+                              <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Porsi</Text>
+                              <TextInput
+                                style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                                placeholder="1 porsi"
+                                placeholderTextColor={theme.textTertiary}
+                                value={editItemPortion}
+                                onChangeText={setEditItemPortion}
+                              />
+                            </View>
+                          </View>
+                          <View style={styles.editItemRowMulti}>
+                            <View style={styles.editItemFieldSmall}>
+                              <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Kalori</Text>
+                              <TextInput
+                                style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                                placeholder="0"
+                                placeholderTextColor={theme.textTertiary}
+                                keyboardType="numeric"
+                                value={editItemCalories}
+                                onChangeText={setEditItemCalories}
+                              />
+                            </View>
+                            <View style={styles.editItemFieldSmall}>
+                              <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Protein</Text>
+                              <TextInput
+                                style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                                placeholder="0"
+                                placeholderTextColor={theme.textTertiary}
+                                keyboardType="numeric"
+                                value={editItemProtein}
+                                onChangeText={setEditItemProtein}
+                              />
+                            </View>
+                          </View>
+                          <View style={styles.editItemRowMulti}>
+                            <View style={styles.editItemFieldSmall}>
+                              <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Karbo</Text>
+                              <TextInput
+                                style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                                placeholder="0"
+                                placeholderTextColor={theme.textTertiary}
+                                keyboardType="numeric"
+                                value={editItemCarbs}
+                                onChangeText={setEditItemCarbs}
+                              />
+                            </View>
+                            <View style={styles.editItemFieldSmall}>
+                              <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Lemak</Text>
+                              <TextInput
+                                style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
+                                placeholder="0"
+                                placeholderTextColor={theme.textTertiary}
+                                keyboardType="numeric"
+                                value={editItemFat}
+                                onChangeText={setEditItemFat}
+                              />
+                            </View>
+                          </View>
+                          <View style={styles.editItemActions}>
+                            <TouchableOpacity
+                              style={[styles.editItemDeleteBtn, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
+                              onPress={() => handleDeleteItem(index)}
+                            >
+                              <Trash2 size={16} color="#EF4444" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.editItemCancelBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+                              onPress={() => setEditingItemIndex(null)}
+                            >
+                              <Text style={[styles.editItemCancelText, { color: theme.textSecondary }]}>Batal</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.editItemSaveBtn}
+                              onPress={handleSaveEditItem}
+                            >
+                              <Text style={styles.editItemSaveText}>Simpan</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          key={index}
+                          style={[styles.pendingItemCard, { backgroundColor: theme.background, borderColor: theme.border }]}
+                          onPress={() => handleStartEditItem(index)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.pendingItemName, { color: theme.text }]}>
+                              {item.name
+                                .replace(/\s*\/\s*/g, ' ')
+                                .replace(/\s+or\s+/gi, ' ')
+                                .replace(/about\s+/gi, '')
+                                .trim()}
+                            </Text>
+                            <Text style={[styles.pendingItemPortion, { color: theme.textSecondary }]}>
+                              {item.portion
+                                .replace(/about\s+/gi, '')
+                                .replace(/approximately\s+/gi, '')
+                                .trim()}
+                            </Text>
+                          </View>
+                          <View style={styles.itemRightSection}>
+                            <Text style={[styles.pendingItemCalories, { color: theme.textTertiary }]}>
+                              {item.calories} kcal
+                            </Text>
+                            <Edit3 size={14} color={theme.textTertiary} />
+                          </View>
+                        </TouchableOpacity>
+                      )
                     ))}
 
-
-
-
+                    <TouchableOpacity
+                      style={styles.confirmEditedButton}
+                      onPress={handleConfirmEdited}
+                      activeOpacity={0.8}
+                    >
+                      <Check size={20} color="#FFFFFF" />
+                      <Text style={styles.confirmEditedText}>Konfirmasi & Tambah ke Log</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </ScrollView>
@@ -1837,6 +2178,117 @@ const styles = StyleSheet.create({
   },
   pendingItemCalories: {
     fontSize: 14,
+  },
+  itemRightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  itemsTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  addItemButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  addItemButtonText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#10B981',
+  },
+  editItemCard: {
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    gap: 12,
+  },
+  editItemTitle: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    marginBottom: 4,
+  },
+  editItemRow: {
+    gap: 4,
+  },
+  editItemRowMulti: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  editItemField: {
+    flex: 1,
+  },
+  editItemFieldSmall: {
+    flex: 1,
+  },
+  editItemLabel: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    marginBottom: 4,
+  },
+  editItemInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  editItemActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  editItemDeleteBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editItemCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  editItemCancelText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  editItemSaveBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+  },
+  editItemSaveText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
+  confirmEditedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#10B981',
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  confirmEditedText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
   },
   pendingResultButtons: {
     flexDirection: 'row',
