@@ -39,13 +39,14 @@ export default function HomeScreen() {
   
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [selectedPending, setSelectedPending] = useState<PendingFoodEntry | null>(null);
-  const [pendingServings, setPendingServings] = useState(1);
   const [lastPendingCount, setLastPendingCount] = useState(0);
   const [addFoodModalVisible, setAddFoodModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<'recent' | 'favorit' | 'scan'>('recent');
   const [showFavoriteToast, setShowFavoriteToast] = useState(false);
   const [showSuggestFavorite, setShowSuggestFavorite] = useState(false);
   const [suggestedMealName, setSuggestedMealName] = useState('');
+  
+  const pendingModalScrollRef = useRef<ScrollView>(null);
   
   
   const caloriesAnimValue = useRef(new Animated.Value(0)).current;
@@ -202,23 +203,9 @@ export default function HomeScreen() {
   const handlePendingPress = (pending: PendingFoodEntry) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelectedPending(pending);
-    setPendingServings(1);
   };
 
-  const handleConfirmPending = () => {
-    if (!selectedPending || !selectedPending.analysis) return;
-    const mealName = selectedPending.analysis.items.map(i => i.name).join(', ');
-    confirmPendingEntry(selectedPending.id, pendingServings);
-    
-    if (shouldSuggestFavorite(mealName)) {
-      setSuggestedMealName(mealName);
-      setShowSuggestFavorite(true);
-      setTimeout(() => setShowSuggestFavorite(false), 5000);
-    }
-    
-    setSelectedPending(null);
-    setPendingServings(1);
-  };
+
 
   const handleSaveToFavorite = () => {
     if (!selectedPending || !selectedPending.analysis) return;
@@ -877,7 +864,16 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              <ScrollView style={styles.pendingModalBody} showsVerticalScrollIndicator={false}>
+              <ScrollView 
+                ref={pendingModalScrollRef}
+                style={styles.pendingModalBody} 
+                showsVerticalScrollIndicator={false}
+                onContentSizeChange={() => {
+                  if (selectedPending?.status === 'done') {
+                    pendingModalScrollRef.current?.scrollTo({ y: 0, animated: true });
+                  }
+                }}
+              >
                 {selectedPending?.photoUri && (
                   <Image source={{ uri: selectedPending.photoUri }} style={styles.pendingModalImage} />
                 )}
@@ -974,24 +970,7 @@ export default function HomeScreen() {
                       </View>
                     ))}
 
-                    <View style={styles.pendingResultButtons}>
-                      <TouchableOpacity
-                        style={[styles.pendingCancelButton, { backgroundColor: theme.background, borderColor: theme.border }]}
-                        onPress={handleRemovePending}
-                        activeOpacity={0.7}
-                      >
-                        <Trash2 size={18} color={theme.textSecondary} />
-                        <Text style={[styles.pendingCancelText, { color: theme.textSecondary }]}>Hapus</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.pendingConfirmButton}
-                        onPress={handleConfirmPending}
-                        activeOpacity={0.9}
-                      >
-                        <Check size={20} color="#FFFFFF" />
-                        <Text style={styles.pendingConfirmText}>Tambah ke Log</Text>
-                      </TouchableOpacity>
-                    </View>
+
 
 
                   </View>
