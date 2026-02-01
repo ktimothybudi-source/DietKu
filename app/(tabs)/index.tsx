@@ -46,7 +46,7 @@ export default function HomeScreen() {
   const [showFavoriteToast, setShowFavoriteToast] = useState(false);
   const [showSuggestFavorite, setShowSuggestFavorite] = useState(false);
   const [suggestedMealName, setSuggestedMealName] = useState('');
-  const [viewingEntry, setViewingEntry] = useState<FoodEntry | null>(null);
+  
   
   const caloriesAnimValue = useRef(new Animated.Value(0)).current;
   const proteinAnimValue = useRef(new Animated.Value(0)).current;
@@ -183,7 +183,20 @@ export default function HomeScreen() {
 
   const handleViewEntry = (entry: FoodEntry) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setViewingEntry(entry);
+    const mealName = entry.name.split(',')[0].replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim();
+    const mealSubtitle = entry.name.split(',').map(n => n.trim().split(' ')[0]).join(' • ');
+    router.push({
+      pathname: '/story-share',
+      params: {
+        mealName,
+        mealSubtitle,
+        calories: entry.calories.toString(),
+        protein: entry.protein.toString(),
+        carbs: entry.carbs.toString(),
+        fat: entry.fat.toString(),
+        timestamp: entry.timestamp.toString(),
+      },
+    });
   };
 
   const handlePendingPress = (pending: PendingFoodEntry) => {
@@ -1148,83 +1161,7 @@ export default function HomeScreen() {
           </View>
         </Modal>
 
-        {/* View Entry Detail Modal */}
-        <Modal
-          visible={!!viewingEntry}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setViewingEntry(null)}
-        >
-          <View style={styles.pendingModalContainer}>
-            <TouchableOpacity
-              style={styles.pendingModalOverlay}
-              activeOpacity={1}
-              onPress={() => setViewingEntry(null)}
-            />
-            
-            <View style={[styles.pendingModalContent, { backgroundColor: theme.card }]}>
-              <View style={[styles.pendingModalHeader, { borderBottomColor: theme.border }]}>
-                <View style={styles.pendingModalTitleContainer}>
-                  <Text style={[styles.pendingModalTitle, { color: theme.text }]} numberOfLines={1}>
-                    {viewingEntry?.name.split(',')[0].replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim()}
-                  </Text>
-                  <Text style={[styles.pendingModalSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
-                    {viewingEntry?.name.split(',').map(n => n.trim().split(' ')[0]).join(' • ')}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={() => setViewingEntry(null)}>
-                  <X size={24} color={theme.textSecondary} />
-                </TouchableOpacity>
-              </View>
 
-              <ScrollView style={styles.pendingModalBody} showsVerticalScrollIndicator={false}>
-                {viewingEntry && (
-                  <View style={styles.pendingResultState}>
-                    <View style={[styles.pendingTotalCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                      <View style={styles.pendingCaloriesRow}>
-                        <Text style={styles.pendingCaloriesEmoji}>🔥</Text>
-                        <Text style={[styles.pendingCaloriesValue, { color: theme.text }]}>
-                          {viewingEntry.calories}
-                        </Text>
-                        <Text style={[styles.pendingCaloriesUnit, { color: theme.textSecondary }]}>kcal</Text>
-                      </View>
-                      <View style={styles.pendingMacros}>
-                        <View style={styles.pendingMacro}>
-                          <Text style={styles.pendingMacroEmoji}>🥩</Text>
-                          <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
-                            {viewingEntry.protein}g
-                          </Text>
-                          <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Protein</Text>
-                        </View>
-                        <View style={styles.pendingMacro}>
-                          <Text style={styles.pendingMacroEmoji}>🌾</Text>
-                          <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
-                            {viewingEntry.carbs}g
-                          </Text>
-                          <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Karbo</Text>
-                        </View>
-                        <View style={styles.pendingMacro}>
-                          <Text style={styles.pendingMacroEmoji}>🥑</Text>
-                          <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
-                            {viewingEntry.fat}g
-                          </Text>
-                          <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Lemak</Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    <View style={[styles.viewEntryTimeCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                      <Clock size={16} color={theme.textSecondary} />
-                      <Text style={[styles.viewEntryTimeText, { color: theme.textSecondary }]}>
-                        {new Date(viewingEntry.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} • {getMealTimeLabel(viewingEntry.timestamp).label}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
       </View>
     </>
   );
