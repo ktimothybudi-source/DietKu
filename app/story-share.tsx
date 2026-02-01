@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
-  PanResponder,
   Share,
   Alert,
   Dimensions,
   Image,
   TextInput,
-  KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -23,44 +21,32 @@ import {
   Instagram,
   Download,
   MoreHorizontal,
-  Undo2,
-  Redo2,
-  Type,
-  Sticker,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
   MapPin,
+  Check,
+  ChevronRight,
+  Clock,
+  Heart,
+  Utensils,
+  User,
+  Navigation,
+  Edit3,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useNutrition } from '@/contexts/NutritionContext';
 import {
-  CanvasElement,
   StoryShareData,
-  StickerType,
-  StickerCategory,
+  IncludeOptions,
+  HealthRating,
+  TemplateId,
+  HEALTH_RATINGS,
 } from '@/types/storyShare';
-import {
-  STICKER_CATEGORIES,
-  STICKER_CONFIG,
-  TEXT_STYLES,
-  COLOR_OPTIONS,
-} from '@/constants/storyShare';
+import { STORY_TEMPLATES, LOCATION_PRESETS, getTemplateById } from '@/constants/storyShare';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CANVAS_SCALE = SCREEN_WIDTH / 1080;
-
-interface DraggableElement {
-  element: CanvasElement;
-  pan: Animated.ValueXY;
-  scale: Animated.Value;
-}
 
 export default function StoryShareScreen() {
   useTheme();
   const insets = useSafeAreaInsets();
-  useNutrition();
   const params = useLocalSearchParams<{
     mealName?: string;
     mealSubtitle?: string;
@@ -83,62 +69,24 @@ export default function StoryShareScreen() {
     timestamp: parseInt(params.timestamp || Date.now().toString()),
   };
 
-  const [elements, setElements] = useState<DraggableElement[]>([]);
-  const [history, setHistory] = useState<CanvasElement[][]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
-  const [showStickerTray, setShowStickerTray] = useState(false);
-  const [showTextEditor, setShowTextEditor] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<StickerCategory>('macros');
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>('minimal');
+  const [includeOptions, setIncludeOptions] = useState<IncludeOptions>({
+    macros: true,
+    healthRating: true,
+    location: false,
+    time: false,
+    name: true,
+  });
+  const [healthRating, setHealthRating] = useState<HealthRating>('sehat');
+  const [locationName, setLocationName] = useState<string>('');
+  const [showLocationSheet, setShowLocationSheet] = useState(false);
+  const [customLocationInput, setCustomLocationInput] = useState('');
   const [showWatermark, setShowWatermark] = useState(true);
-  const [newTextContent, setNewTextContent] = useState('');
-  const [selectedTextStyle, setSelectedTextStyle] = useState('default');
-  const [selectedColor, setSelectedColor] = useState('#FFFFFF');
-  const [textAlignment, setTextAlignment] = useState<'left' | 'center' | 'right'>('center');
-  const [showLocationInput, setShowLocationInput] = useState(false);
-  const [locationText, setLocationText] = useState('');
-  const [showCenterGuide, setShowCenterGuide] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const stickerTrayAnim = useRef(new Animated.Value(0)).current;
+  const locationSheetAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const mealName = storyData.mealName;
-    const calories = storyData.calories;
-    
-    const initialElements: CanvasElement[] = [
-      {
-        id: 'meal_name_default',
-        type: 'meal_name',
-        x: 540,
-        y: 1400,
-        scale: 1,
-        rotation: 0,
-        style: 'filled',
-        content: mealName,
-      },
-      {
-        id: 'calories_default',
-        type: 'calories',
-        x: 540,
-        y: 1520,
-        scale: 1,
-        rotation: 0,
-        style: 'filled',
-        content: `${calories} kcal`,
-      },
-    ];
-
-    const draggables = initialElements.map(el => ({
-      element: el,
-      pan: new Animated.ValueXY({ x: el.x * CANVAS_SCALE, y: el.y * CANVAS_SCALE }),
-      scale: new Animated.Value(el.scale),
-    }));
-
-    setElements(draggables);
-    setHistory([initialElements]);
-    setHistoryIndex(0);
-
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 300,
@@ -147,38 +95,56 @@ export default function StoryShareScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const saveToHistory = useCallback((newElements: CanvasElement[]) => {
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(newElements);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-  }, [history, historyIndex]);
+  const template = getTemplateById(selectedTemplate);
 
-  const handleUndo = () => {
-    if (historyIndex > 0) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const prevElements = history[historyIndex - 1];
-      const draggables = prevElements.map(el => ({
-        element: el,
-        pan: new Animated.ValueXY({ x: el.x * CANVAS_SCALE, y: el.y * CANVAS_SCALE }),
-        scale: new Animated.Value(el.scale),
-      }));
-      setElements(draggables);
-      setHistoryIndex(historyIndex - 1);
+  const toggleOption = (key: keyof IncludeOptions) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (key === 'location' && !includeOptions.location) {
+      setShowLocationSheet(true);
+      openLocationSheet();
+    } else {
+      setIncludeOptions(prev => ({ ...prev, [key]: !prev[key] }));
     }
   };
 
-  const handleRedo = () => {
-    if (historyIndex < history.length - 1) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const nextElements = history[historyIndex + 1];
-      const draggables = nextElements.map(el => ({
-        element: el,
-        pan: new Animated.ValueXY({ x: el.x * CANVAS_SCALE, y: el.y * CANVAS_SCALE }),
-        scale: new Animated.Value(el.scale),
-      }));
-      setElements(draggables);
-      setHistoryIndex(historyIndex + 1);
+  const cycleHealthRating = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const currentIndex = HEALTH_RATINGS.findIndex(r => r.id === healthRating);
+    const nextIndex = (currentIndex + 1) % HEALTH_RATINGS.length;
+    setHealthRating(HEALTH_RATINGS[nextIndex].id);
+  };
+
+  const openLocationSheet = () => {
+    setShowLocationSheet(true);
+    Animated.spring(locationSheetAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
+  };
+
+  const closeLocationSheet = () => {
+    Animated.timing(locationSheetAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowLocationSheet(false);
+    });
+  };
+
+  const selectLocation = (name: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setLocationName(name);
+    setIncludeOptions(prev => ({ ...prev, location: true }));
+    closeLocationSheet();
+  };
+
+  const handleCustomLocation = () => {
+    if (customLocationInput.trim()) {
+      selectLocation(customLocationInput.trim());
+      setCustomLocationInput('');
     }
   };
 
@@ -191,206 +157,23 @@ export default function StoryShareScreen() {
     }
   };
 
-  const toggleStickerTray = (show: boolean) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowStickerTray(show);
-    setShowTextEditor(false);
-    Animated.spring(stickerTrayAnim, {
-      toValue: show ? 1 : 0,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11,
-    }).start();
-  };
-
-  const toggleTextEditor = (show: boolean) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowTextEditor(show);
-    setShowStickerTray(false);
-    setNewTextContent('');
-  };
-
-  const handleAddSticker = (type: StickerType) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
-    if (type === 'add_location') {
-      setShowLocationInput(true);
-      toggleStickerTray(false);
-      return;
-    }
-
-    const config = STICKER_CONFIG[type];
-    let content = config.label;
-    
-    if (type === 'protein') content = `${storyData.protein}g Protein`;
-    if (type === 'carbs') content = `${storyData.carbs}g Carbs`;
-    if (type === 'fat') content = `${storyData.fat}g Fat`;
-
-    const newElement: CanvasElement = {
-      id: Date.now().toString(),
-      type: 'sticker',
-      x: 540,
-      y: 800,
-      scale: 1,
-      rotation: 0,
-      style: 'filled',
-      stickerType: type,
-      content,
-    };
-
-    const draggable: DraggableElement = {
-      element: newElement,
-      pan: new Animated.ValueXY({ x: newElement.x * CANVAS_SCALE, y: newElement.y * CANVAS_SCALE }),
-      scale: new Animated.Value(1),
-    };
-
-    setElements(prev => [...prev, draggable]);
-    saveToHistory([...elements.map(e => e.element), newElement]);
-    toggleStickerTray(false);
-  };
-
-  const handleAddText = () => {
-    if (!newTextContent.trim()) return;
-    
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    const newElement: CanvasElement = {
-      id: Date.now().toString(),
-      type: 'text',
-      x: 540,
-      y: 960,
-      scale: 1,
-      rotation: 0,
-      style: 'filled',
-      content: newTextContent,
-      fontStyle: selectedTextStyle as 'default' | 'bold' | 'light',
-      color: selectedColor,
-    };
-
-    const draggable: DraggableElement = {
-      element: newElement,
-      pan: new Animated.ValueXY({ x: newElement.x * CANVAS_SCALE, y: newElement.y * CANVAS_SCALE }),
-      scale: new Animated.Value(1),
-    };
-
-    setElements(prev => [...prev, draggable]);
-    saveToHistory([...elements.map(e => e.element), newElement]);
-    toggleTextEditor(false);
-  };
-
-  const handleAddLocation = () => {
-    if (!locationText.trim()) return;
-    
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    const newElement: CanvasElement = {
-      id: Date.now().toString(),
-      type: 'sticker',
-      x: 540,
-      y: 800,
-      scale: 1,
-      rotation: 0,
-      style: 'filled',
-      stickerType: 'add_location',
-      content: locationText,
-    };
-
-    const draggable: DraggableElement = {
-      element: newElement,
-      pan: new Animated.ValueXY({ x: newElement.x * CANVAS_SCALE, y: newElement.y * CANVAS_SCALE }),
-      scale: new Animated.Value(1),
-    };
-
-    setElements(prev => [...prev, draggable]);
-    saveToHistory([...elements.map(e => e.element), newElement]);
-    setShowLocationInput(false);
-    setLocationText('');
-  };
-
-  const handleElementStyleCycle = (elementId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const styleOptions: ('filled' | 'outline' | 'blur')[] = ['filled', 'outline', 'blur'];
-    
-    setElements(prev => prev.map(d => {
-      if (d.element.id === elementId) {
-        const currentIndex = styleOptions.indexOf(d.element.style);
-        const nextIndex = (currentIndex + 1) % styleOptions.length;
-        return {
-          ...d,
-          element: { ...d.element, style: styleOptions[nextIndex] },
-        };
-      }
-      return d;
-    }));
-  };
-
-  const handleRemoveElement = (elementId: string) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    const newElements = elements.filter(d => d.element.id !== elementId);
-    setElements(newElements);
-    saveToHistory(newElements.map(e => e.element));
-    setSelectedElementId(null);
-  };
-
-  const createPanResponder = useCallback((draggable: DraggableElement) => {
-    return PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        setSelectedElementId(draggable.element.id);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        draggable.pan.setOffset({
-          x: (draggable.pan.x as any)._value,
-          y: (draggable.pan.y as any)._value,
-        });
-        draggable.pan.setValue({ x: 0, y: 0 });
-        Animated.spring(draggable.scale, {
-          toValue: 1.05,
-          useNativeDriver: true,
-        }).start();
-      },
-      onPanResponderMove: (_, gestureState) => {
-        draggable.pan.setValue({ x: gestureState.dx, y: gestureState.dy });
-        
-        const currentX = (draggable.pan.x as any)._offset + gestureState.dx;
-        const centerX = SCREEN_WIDTH / 2;
-        const threshold = 10;
-        
-        if (Math.abs(currentX - centerX) < threshold) {
-          setShowCenterGuide(true);
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        } else {
-          setShowCenterGuide(false);
-        }
-      },
-      onPanResponderRelease: () => {
-        draggable.pan.flattenOffset();
-        setShowCenterGuide(false);
-        Animated.spring(draggable.scale, {
-          toValue: 1,
-          useNativeDriver: true,
-        }).start();
-        
-        const currentX = (draggable.pan.x as any)._value;
-        const centerX = SCREEN_WIDTH / 2;
-        const threshold = 15;
-        
-        if (Math.abs(currentX - centerX) < threshold) {
-          Animated.spring(draggable.pan.x, {
-            toValue: centerX,
-            useNativeDriver: false,
-          }).start();
-        }
-      },
-    });
-  }, []);
-
   const handleShareInstagram = async () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     try {
-      await Share.share({
-        message: `${storyData.mealName} - ${storyData.calories} kcal 🔥\n\nTracked with DietKu`,
-      });
+      const healthInfo = HEALTH_RATINGS.find(r => r.id === healthRating);
+      let message = `${storyData.mealName} - ${storyData.calories} kcal 🔥`;
+      if (includeOptions.macros) {
+        message += `\n💪 ${storyData.protein}g protein • 🍞 ${storyData.carbs}g carbs • 🥑 ${storyData.fat}g fat`;
+      }
+      if (includeOptions.healthRating && healthInfo) {
+        message += `\n${healthInfo.icon} ${healthInfo.label}`;
+      }
+      if (includeOptions.location && locationName) {
+        message += `\n📍 ${locationName}`;
+      }
+      message += '\n\nTracked with DietKu';
+      
+      await Share.share({ message });
     } catch (error) {
       console.error('Share error:', error);
     }
@@ -405,7 +188,7 @@ export default function StoryShareScreen() {
     );
   };
 
-  const handleShare = async () => {
+  const handleMoreOptions = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await Share.share({
@@ -416,312 +199,325 @@ export default function StoryShareScreen() {
     }
   };
 
-  const renderCanvasElement = (draggable: DraggableElement) => {
-    const panResponder = createPanResponder(draggable);
-    const { element } = draggable;
-    const isSelected = selectedElementId === element.id;
-
-    const getElementStyle = () => {
-      if (element.style === 'filled') {
-        return styles.elementFilled;
-      } else if (element.style === 'outline') {
-        return styles.elementOutline;
-      } else {
-        return styles.elementBlur;
-      }
-    };
-
-    const renderContent = () => {
-      if (element.type === 'meal_name') {
-        return (
-          <Text style={[styles.mealNameText, element.style !== 'filled' && styles.textLight]}>
-            {element.content}
-          </Text>
-        );
-      }
-      
-      if (element.type === 'calories') {
-        return (
-          <Text style={[styles.caloriesText, element.style !== 'filled' && styles.textLight]}>
-            {element.content}
-          </Text>
-        );
-      }
-      
-      if (element.type === 'sticker' && element.stickerType) {
-        const config = STICKER_CONFIG[element.stickerType];
-        return (
-          <View style={styles.stickerInner}>
-            <Text style={styles.stickerIcon}>{config.icon}</Text>
-            <Text style={[
-              styles.stickerText,
-              element.style !== 'filled' && styles.textLight,
-            ]}>
-              {element.content || config.label}
-            </Text>
-          </View>
-        );
-      }
-      
-      if (element.type === 'text') {
-        const fontWeight = element.fontStyle === 'bold' ? 'bold' : element.fontStyle === 'light' ? '300' : 'normal';
-        return (
-          <Text style={[
-            styles.customText,
-            { color: element.color || '#FFFFFF', fontWeight: fontWeight as any },
-          ]}>
-            {element.content}
-          </Text>
-        );
-      }
-      
-      return null;
-    };
-
-    return (
-      <Animated.View
-        key={element.id}
-        style={[
-          styles.canvasElement,
-          getElementStyle(),
-          isSelected && styles.elementSelected,
-          {
-            transform: [
-              { translateX: Animated.subtract(draggable.pan.x, SCREEN_WIDTH / 2) },
-              { translateY: draggable.pan.y },
-              { scale: draggable.scale },
-            ],
-          },
-        ]}
-        {...panResponder.panHandlers}
-      >
-        <TouchableOpacity
-          onPress={() => handleElementStyleCycle(element.id)}
-          onLongPress={() => handleRemoveElement(element.id)}
-          activeOpacity={0.9}
-          delayLongPress={500}
-        >
-          {renderContent()}
-        </TouchableOpacity>
-      </Animated.View>
-    );
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const renderStickerTray = () => (
-    <Animated.View
-      style={[
-        styles.bottomSheet,
-        {
-          transform: [{
-            translateY: stickerTrayAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [400, 0],
-            }),
-          }],
-          opacity: stickerTrayAnim,
-        },
-      ]}
-    >
-      <View style={styles.sheetHandle} />
+  const currentHealthRating = HEALTH_RATINGS.find(r => r.id === healthRating);
+
+  const renderPreview = () => (
+    <View style={styles.previewContainer}>
+      {storyData.photoUri ? (
+        <Image
+          source={{ uri: storyData.photoUri }}
+          style={styles.previewImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <LinearGradient
+          colors={['#1a1a2e', '#16213e', '#0f0f23']}
+          style={styles.previewImage}
+        />
+      )}
       
-      <View style={styles.sheetHeader}>
-        <Text style={styles.sheetTitle}>Stickers</Text>
-        <TouchableOpacity onPress={() => toggleStickerTray(false)}>
-          <X size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+      <LinearGradient
+        colors={template.gradientColors as [string, string, ...string[]]}
+        locations={[0, 0.4, 1]}
+        style={styles.previewGradient}
+      />
+
+      <View style={styles.previewContent}>
+        {includeOptions.name && (
+          <Animated.Text 
+            style={[
+              styles.previewMealName,
+              { opacity: includeOptions.name ? 1 : 0 }
+            ]}
+          >
+            {storyData.mealName}
+          </Animated.Text>
+        )}
+
+        <Text style={styles.previewCalories}>
+          {storyData.calories}
+          <Text style={styles.previewCaloriesUnit}> kcal</Text>
+        </Text>
+
+        {includeOptions.macros && (
+          <View style={styles.macroChips}>
+            <View style={[styles.macroChip, { backgroundColor: 'rgba(239, 68, 68, 0.2)' }]}>
+              <Text style={styles.macroChipText}>💪 {storyData.protein}g</Text>
+            </View>
+            <View style={[styles.macroChip, { backgroundColor: 'rgba(245, 158, 11, 0.2)' }]}>
+              <Text style={styles.macroChipText}>🍞 {storyData.carbs}g</Text>
+            </View>
+            <View style={[styles.macroChip, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
+              <Text style={styles.macroChipText}>🥑 {storyData.fat}g</Text>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.previewPills}>
+          {includeOptions.healthRating && currentHealthRating && (
+            <View style={[styles.previewPill, { backgroundColor: `${currentHealthRating.color}20` }]}>
+              <Text style={styles.previewPillText}>
+                {currentHealthRating.icon} {currentHealthRating.label}
+              </Text>
+            </View>
+          )}
+
+          {includeOptions.location && locationName && (
+            <View style={[styles.previewPill, { backgroundColor: 'rgba(236, 72, 153, 0.2)' }]}>
+              <Text style={styles.previewPillText}>📍 {locationName}</Text>
+            </View>
+          )}
+
+          {includeOptions.time && (
+            <View style={[styles.previewPill, { backgroundColor: 'rgba(99, 102, 241, 0.2)' }]}>
+              <Text style={styles.previewPillText}>🕐 {formatTime(storyData.timestamp)}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
+      {showWatermark && (
+        <View style={styles.previewWatermark}>
+          <Text style={styles.previewWatermarkText}>DietKu</Text>
+        </View>
+      )}
+    </View>
+  );
+
+  const renderTemplateSelector = () => (
+    <View style={styles.templateSection}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.categoryTabs}
-        contentContainerStyle={styles.categoryTabsContent}
+        contentContainerStyle={styles.templateScroll}
       >
-        {STICKER_CATEGORIES.map(cat => (
+        {STORY_TEMPLATES.map((tmpl) => (
           <TouchableOpacity
-            key={cat.id}
+            key={tmpl.id}
             style={[
-              styles.categoryTab,
-              selectedCategory === cat.id && styles.categoryTabActive,
+              styles.templateCard,
+              selectedTemplate === tmpl.id && styles.templateCardActive,
+              { borderColor: selectedTemplate === tmpl.id ? tmpl.accentColor : 'transparent' }
             ]}
-            onPress={() => setSelectedCategory(cat.id)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setSelectedTemplate(tmpl.id);
+            }}
+            activeOpacity={0.7}
           >
+            <LinearGradient
+              colors={tmpl.gradientColors as [string, string, ...string[]]}
+              style={styles.templatePreview}
+            >
+              <View style={[styles.templateAccent, { backgroundColor: tmpl.accentColor }]} />
+            </LinearGradient>
             <Text style={[
-              styles.categoryTabText,
-              selectedCategory === cat.id && styles.categoryTabTextActive,
+              styles.templateName,
+              selectedTemplate === tmpl.id && { color: tmpl.accentColor }
             ]}>
-              {cat.name}
+              {tmpl.name}
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.stickerGrid}
-      >
-        {STICKER_CATEGORIES.find(c => c.id === selectedCategory)?.stickers.map(type => {
-          const config = STICKER_CONFIG[type];
-          return (
-            <TouchableOpacity
-              key={type}
-              style={[styles.stickerItem, { backgroundColor: config.bgColor }]}
-              onPress={() => handleAddSticker(type)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.stickerItemIcon}>{config.icon}</Text>
-              <Text style={[styles.stickerItemLabel, { color: config.color }]}>
-                {config.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-    </Animated.View>
+    </View>
   );
 
-  const renderTextEditor = () => {
-    if (!showTextEditor) return null;
-
+  const renderToggleRow = (
+    key: keyof IncludeOptions,
+    icon: React.ReactNode,
+    label: string,
+    subtitle?: string,
+    onTap?: () => void
+  ) => {
+    const isActive = includeOptions[key];
     return (
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.textEditorOverlay}
+      <TouchableOpacity
+        style={styles.toggleRow}
+        onPress={onTap || (() => toggleOption(key))}
+        activeOpacity={0.7}
       >
-        <TouchableOpacity
-          style={styles.textEditorBackdrop}
-          onPress={() => toggleTextEditor(false)}
-          activeOpacity={1}
-        />
-        <View style={styles.textEditorSheet}>
-          <View style={styles.sheetHandle} />
-          
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Add Text</Text>
-            <TouchableOpacity onPress={handleAddText}>
-              <Text style={styles.doneButton}>Done</Text>
-            </TouchableOpacity>
+        <View style={styles.toggleLeft}>
+          <View style={[styles.toggleIcon, isActive && styles.toggleIconActive]}>
+            {icon}
           </View>
-
-          <TextInput
-            style={styles.textInput}
-            placeholder="Type something..."
-            placeholderTextColor="rgba(255,255,255,0.4)"
-            value={newTextContent}
-            onChangeText={setNewTextContent}
-            multiline
-            autoFocus
-          />
-
-          <View style={styles.textOptions}>
-            <View style={styles.fontStyles}>
-              {TEXT_STYLES.map(style => (
-                <TouchableOpacity
-                  key={style.id}
-                  style={[
-                    styles.fontStyleBtn,
-                    selectedTextStyle === style.id && styles.fontStyleBtnActive,
-                  ]}
-                  onPress={() => setSelectedTextStyle(style.id)}
-                >
-                  <Text style={[
-                    styles.fontStyleText,
-                    { fontWeight: style.fontWeight },
-                    selectedTextStyle === style.id && styles.fontStyleTextActive,
-                  ]}>
-                    Aa
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={styles.colorOptions}>
-              {COLOR_OPTIONS.map(opt => (
-                <TouchableOpacity
-                  key={opt.id}
-                  style={[
-                    styles.colorBtn,
-                    { backgroundColor: opt.color },
-                    selectedColor === opt.color && styles.colorBtnActive,
-                  ]}
-                  onPress={() => setSelectedColor(opt.color)}
-                />
-              ))}
-            </View>
-
-            <View style={styles.alignOptions}>
-              <TouchableOpacity
-                style={[styles.alignBtn, textAlignment === 'left' && styles.alignBtnActive]}
-                onPress={() => setTextAlignment('left')}
-              >
-                <AlignLeft size={18} color={textAlignment === 'left' ? '#10B981' : '#666'} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.alignBtn, textAlignment === 'center' && styles.alignBtnActive]}
-                onPress={() => setTextAlignment('center')}
-              >
-                <AlignCenter size={18} color={textAlignment === 'center' ? '#10B981' : '#666'} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.alignBtn, textAlignment === 'right' && styles.alignBtnActive]}
-                onPress={() => setTextAlignment('right')}
-              >
-                <AlignRight size={18} color={textAlignment === 'right' ? '#10B981' : '#666'} />
-              </TouchableOpacity>
-            </View>
+          <View>
+            <Text style={styles.toggleLabel}>{label}</Text>
+            {subtitle && <Text style={styles.toggleSubtitle}>{subtitle}</Text>}
           </View>
         </View>
-      </KeyboardAvoidingView>
+        <View style={[styles.toggleCheck, isActive && styles.toggleCheckActive]}>
+          {isActive && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+        </View>
+      </TouchableOpacity>
     );
   };
 
-  const renderLocationInput = () => {
-    if (!showLocationInput) return null;
+  const renderIncludePanel = () => (
+    <View style={styles.includePanel}>
+      <Text style={styles.includePanelTitle}>Include On Story</Text>
+      
+      {renderToggleRow(
+        'name',
+        <User size={18} color={includeOptions.name ? '#FFFFFF' : '#666'} />,
+        'Meal Name',
+        storyData.mealName
+      )}
+      
+      {renderToggleRow(
+        'macros',
+        <Utensils size={18} color={includeOptions.macros ? '#FFFFFF' : '#666'} />,
+        'Macros',
+        `${storyData.protein}g P • ${storyData.carbs}g C • ${storyData.fat}g F`
+      )}
+      
+      {renderToggleRow(
+        'healthRating',
+        <Heart size={18} color={includeOptions.healthRating ? '#FFFFFF' : '#666'} />,
+        'Health Rating',
+        currentHealthRating?.label,
+        () => {
+          if (includeOptions.healthRating) {
+            cycleHealthRating();
+          } else {
+            toggleOption('healthRating');
+          }
+        }
+      )}
+      
+      {renderToggleRow(
+        'location',
+        <MapPin size={18} color={includeOptions.location ? '#FFFFFF' : '#666'} />,
+        'Location',
+        locationName || 'Tap to add',
+        () => {
+          if (includeOptions.location) {
+            openLocationSheet();
+          } else {
+            toggleOption('location');
+          }
+        }
+      )}
+      
+      {renderToggleRow(
+        'time',
+        <Clock size={18} color={includeOptions.time ? '#FFFFFF' : '#666'} />,
+        'Time',
+        formatTime(storyData.timestamp)
+      )}
 
-    const presets = ['Homemade', 'Restaurant', 'Cafe', 'Office', 'Gym'];
+      <TouchableOpacity
+        style={styles.watermarkRow}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setShowWatermark(!showWatermark);
+        }}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.watermarkLabel}>Show DietKu watermark</Text>
+        <View style={[styles.toggleCheck, showWatermark && styles.toggleCheckActive]}>
+          {showWatermark && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderLocationSheet = () => {
+    if (!showLocationSheet) return null;
 
     return (
-      <View style={styles.locationOverlay}>
+      <View style={styles.sheetOverlay}>
         <TouchableOpacity
-          style={styles.locationBackdrop}
-          onPress={() => setShowLocationInput(false)}
+          style={styles.sheetBackdrop}
+          onPress={closeLocationSheet}
           activeOpacity={1}
         />
-        <View style={styles.locationSheet}>
+        <Animated.View
+          style={[
+            styles.locationSheet,
+            {
+              transform: [{
+                translateY: locationSheetAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [400, 0],
+                }),
+              }],
+            },
+          ]}
+        >
           <View style={styles.sheetHandle} />
-          
-          <View style={styles.sheetHeader}>
-            <Text style={styles.sheetTitle}>Add Location</Text>
-            <TouchableOpacity onPress={handleAddLocation}>
-              <Text style={styles.doneButton}>Add</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sheetTitle}>Add Location</Text>
 
-          <View style={styles.locationInputRow}>
-            <MapPin size={20} color="#EC4899" />
+          <TouchableOpacity
+            style={styles.locationOption}
+            onPress={() => {
+              if (Platform.OS !== 'web') {
+                Alert.alert('Location', 'Using current location feature coming soon');
+              }
+              selectLocation('Current Location');
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={styles.locationOptionIcon}>
+              <Navigation size={20} color="#10B981" />
+            </View>
+            <Text style={styles.locationOptionText}>Use current location</Text>
+            <ChevronRight size={20} color="#666" />
+          </TouchableOpacity>
+
+          <View style={styles.customLocationRow}>
+            <View style={styles.customLocationIcon}>
+              <Edit3 size={18} color="#EC4899" />
+            </View>
             <TextInput
-              style={styles.locationInput}
-              placeholder="Enter location..."
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={locationText}
-              onChangeText={setLocationText}
-              autoFocus
+              style={styles.customLocationInput}
+              placeholder="Enter custom location..."
+              placeholderTextColor="#666"
+              value={customLocationInput}
+              onChangeText={setCustomLocationInput}
+              onSubmitEditing={handleCustomLocation}
+              returnKeyType="done"
             />
+            {customLocationInput.trim() && (
+              <TouchableOpacity onPress={handleCustomLocation}>
+                <Text style={styles.addLocationBtn}>Add</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-          <View style={styles.locationPresets}>
-            {presets.map(preset => (
+          <Text style={styles.presetsTitle}>Quick Select</Text>
+          <View style={styles.presetsGrid}>
+            {LOCATION_PRESETS.map((preset) => (
               <TouchableOpacity
-                key={preset}
-                style={styles.locationPreset}
-                onPress={() => setLocationText(preset)}
+                key={preset.id}
+                style={styles.presetChip}
+                onPress={() => selectLocation(preset.name)}
+                activeOpacity={0.7}
               >
-                <Text style={styles.locationPresetText}>{preset}</Text>
+                <Text style={styles.presetIcon}>{preset.icon}</Text>
+                <Text style={styles.presetText}>{preset.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
-        </View>
+
+          {locationName && (
+            <TouchableOpacity
+              style={styles.removeLocationBtn}
+              onPress={() => {
+                setLocationName('');
+                setIncludeOptions(prev => ({ ...prev, location: false }));
+                closeLocationSheet();
+              }}
+            >
+              <Text style={styles.removeLocationText}>Remove Location</Text>
+            </TouchableOpacity>
+          )}
+        </Animated.View>
       </View>
     );
   };
@@ -731,122 +527,59 @@ export default function StoryShareScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       
       <View style={styles.container}>
-        {storyData.photoUri ? (
-          <Image
-            source={{ uri: storyData.photoUri }}
-            style={styles.backgroundImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <LinearGradient
-            colors={['#1a1a2e', '#16213e', '#0f0f23']}
-            style={StyleSheet.absoluteFill}
-          />
-        )}
-        
         <LinearGradient
-          colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.7)']}
-          locations={[0, 0.3, 1]}
-          style={styles.gradientOverlay}
+          colors={['#0a0a0f', '#12121a', '#0a0a0f']}
+          style={StyleSheet.absoluteFill}
         />
 
-        {showCenterGuide && (
-          <View style={styles.centerGuide} pointerEvents="none" />
-        )}
-
-        <Animated.View style={[styles.topBar, { paddingTop: insets.top + 8, opacity: fadeAnim }]}>
-          <TouchableOpacity 
-            style={styles.iconButton} 
+        <Animated.View style={[styles.header, { paddingTop: insets.top + 8, opacity: fadeAnim }]}>
+          <TouchableOpacity
+            style={styles.closeButton}
             onPress={handleClose}
             activeOpacity={0.7}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <X size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          
-          <View style={styles.historyButtons}>
-            <TouchableOpacity
-              style={[styles.iconButton, historyIndex <= 0 && styles.iconButtonDisabled]}
-              onPress={handleUndo}
-              disabled={historyIndex <= 0}
-            >
-              <Undo2 size={22} color={historyIndex > 0 ? '#FFFFFF' : 'rgba(255,255,255,0.3)'} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.iconButton, historyIndex >= history.length - 1 && styles.iconButtonDisabled]}
-              onPress={handleRedo}
-              disabled={historyIndex >= history.length - 1}
-            >
-              <Redo2 size={22} color={historyIndex < history.length - 1 ? '#FFFFFF' : 'rgba(255,255,255,0.3)'} />
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.headerTitle}>Share Story</Text>
+          <View style={{ width: 44 }} />
         </Animated.View>
 
-        <View style={styles.canvas}>
-          {elements.map(renderCanvasElement)}
-        </View>
+        <ScrollView
+          style={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContentContainer, { paddingBottom: insets.bottom + 200 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {renderPreview()}
+          {renderTemplateSelector()}
+          {renderIncludePanel()}
+        </ScrollView>
 
-        {showWatermark && (
-          <View style={[styles.watermark, { bottom: insets.bottom + 140 }]}>
-            <Text style={styles.watermarkText}>DietKu</Text>
-          </View>
-        )}
-
-        <Animated.View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16, opacity: fadeAnim }]}>
-          <View style={styles.toolButtons}>
-            <TouchableOpacity
-              style={styles.toolButton}
-              onPress={() => toggleStickerTray(true)}
+        <Animated.View style={[styles.bottomActions, { paddingBottom: insets.bottom + 16, opacity: fadeAnim }]}>
+          <TouchableOpacity style={styles.shareButton} onPress={handleShareInstagram}>
+            <LinearGradient
+              colors={['#833AB4', '#E1306C', '#F77737']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.shareGradient}
             >
-              <Sticker size={22} color="#FFFFFF" />
-              <Text style={styles.toolButtonText}>Sticker</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.toolButton}
-              onPress={() => toggleTextEditor(true)}
-            >
-              <Type size={22} color="#FFFFFF" />
-              <Text style={styles.toolButtonText}>Text</Text>
-            </TouchableOpacity>
-          </View>
+              <Instagram size={22} color="#FFFFFF" />
+              <Text style={styles.shareButtonText}>Share to Instagram</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
-          <View style={styles.shareRow}>
-            <TouchableOpacity style={styles.shareButton} onPress={handleShareInstagram}>
-              <LinearGradient
-                colors={['#833AB4', '#E1306C', '#F77737']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.shareGradient}
-              >
-                <Instagram size={20} color="#FFFFFF" />
-                <Text style={styles.shareButtonText}>Share to Instagram</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.secondaryRow}>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={handleSaveImage}>
+          <View style={styles.secondaryActions}>
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleSaveImage}>
               <Download size={20} color="#FFFFFF" />
+              <Text style={styles.secondaryButtonText}>Save</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={handleShare}>
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleMoreOptions}>
               <MoreHorizontal size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.watermarkToggle}
-              onPress={() => setShowWatermark(!showWatermark)}
-            >
-              <View style={[styles.checkbox, showWatermark && styles.checkboxActive]}>
-                {showWatermark && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-              <Text style={styles.watermarkToggleText}>Watermark</Text>
+              <Text style={styles.secondaryButtonText}>More</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
 
-        {showStickerTray && renderStickerTray()}
-        {renderTextEditor()}
-        {renderLocationInput()}
+        {renderLocationSheet()}
       </View>
     </>
   );
@@ -855,417 +588,390 @@ export default function StoryShareScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#0a0a0f',
   },
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  gradientOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  centerGuide: {
-    position: 'absolute',
-    left: SCREEN_WIDTH / 2 - 1,
-    top: 0,
-    bottom: 0,
-    width: 2,
-    backgroundColor: 'rgba(16, 185, 129, 0.6)',
-  },
-  topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+  header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    zIndex: 1000,
+    paddingBottom: 12,
   },
-  iconButton: {
+  closeButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconButtonDisabled: {
-    opacity: 0.5,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
   },
-  historyButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  canvas: {
+  scrollContent: {
     flex: 1,
-    alignItems: 'center',
   },
-  canvasElement: {
-    position: 'absolute',
-    paddingVertical: 10,
+  scrollContentContainer: {
     paddingHorizontal: 16,
-    borderRadius: 12,
-    zIndex: 10,
   },
-  elementFilled: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
+  previewContainer: {
+    aspectRatio: 9 / 16,
+    width: SCREEN_WIDTH - 32,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#1a1a2e',
+    marginBottom: 20,
   },
-  elementOutline: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.9)',
+  previewImage: {
+    ...StyleSheet.absoluteFillObject,
   },
-  elementBlur: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
+  previewGradient: {
+    ...StyleSheet.absoluteFillObject,
   },
-  elementSelected: {
-    borderWidth: 2,
-    borderColor: '#10B981',
-    borderStyle: 'dashed',
+  previewContent: {
+    position: 'absolute',
+    bottom: 60,
+    left: 20,
+    right: 20,
   },
-  mealNameText: {
+  previewMealName: {
     fontSize: 28,
     fontWeight: '700' as const,
-    color: '#1a1a2e',
-    textAlign: 'center',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
-  caloriesText: {
-    fontSize: 36,
+  previewCalories: {
+    fontSize: 56,
     fontWeight: '800' as const,
-    color: '#1a1a2e',
-    textAlign: 'center',
+    color: '#FFFFFF',
+    marginBottom: 16,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
-  textLight: {
+  previewCaloriesUnit: {
+    fontSize: 24,
+    fontWeight: '500' as const,
+  },
+  macroChips: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  macroChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  macroChipText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
     color: '#FFFFFF',
   },
-  stickerInner: {
+  previewPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  previewPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  previewPillText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
+  previewWatermark: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    opacity: 0.4,
+  },
+  previewWatermarkText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
+  templateSection: {
+    marginBottom: 20,
+  },
+  templateScroll: {
+    gap: 12,
+  },
+  templateCard: {
+    alignItems: 'center',
+    padding: 4,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  templateCardActive: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  templatePreview: {
+    width: 64,
+    height: 96,
+    borderRadius: 12,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: 8,
+  },
+  templateAccent: {
+    width: 20,
+    height: 4,
+    borderRadius: 2,
+  },
+  templateName: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    color: '#999',
+    marginTop: 8,
+  },
+  includePanel: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 20,
+    padding: 16,
+  },
+  includePanelTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+    marginBottom: 16,
+  },
+  toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
-  stickerIcon: {
-    fontSize: 18,
+  toggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
   },
-  stickerText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#1a1a2e',
+  toggleIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  customText: {
-    fontSize: 20,
-    textAlign: 'center',
+  toggleIconActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.3)',
   },
-  watermark: {
-    position: 'absolute',
-    right: 20,
-    opacity: 0.25,
-  },
-  watermarkText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: '500' as const,
     color: '#FFFFFF',
   },
-  bottomBar: {
+  toggleSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  toggleCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleCheckActive: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  watermarkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 14,
+  },
+  watermarkLabel: {
+    fontSize: 14,
+    color: '#999',
+  },
+  bottomActions: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     paddingHorizontal: 16,
-    gap: 12,
-    zIndex: 1000,
-  },
-  toolButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 32,
-  },
-  toolButton: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  toolButtonText: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: '500' as const,
-  },
-  shareRow: {
-    marginTop: 8,
+    paddingTop: 16,
+    backgroundColor: 'rgba(10,10,15,0.95)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
   },
   shareButton: {
-    borderRadius: 14,
+    borderRadius: 16,
     overflow: 'hidden',
+    marginBottom: 12,
   },
   shareGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
   shareButtonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600' as const,
     color: '#FFFFFF',
   },
-  secondaryRow: {
+  secondaryActions: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
+    gap: 24,
   },
-  secondaryBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  watermarkToggle: {
+  secondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginLeft: 8,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxActive: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
-  },
-  checkmark: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: '700' as const,
-  },
-  watermarkToggleText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
-  },
-  bottomSheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(20,20,30,0.95)',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 12,
-    paddingBottom: 40,
-    zIndex: 200,
-  },
-  sheetHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 16,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  sheetTitle: {
-    fontSize: 18,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
-  },
-  doneButton: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#10B981',
-  },
-  categoryTabs: {
-    marginBottom: 16,
-  },
-  categoryTabsContent: {
-    paddingHorizontal: 20,
-    gap: 8,
-  },
-  categoryTab: {
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  categoryTabActive: {
-    backgroundColor: '#10B981',
-  },
-  categoryTabText: {
+  secondaryButtonText: {
     fontSize: 14,
     fontWeight: '500' as const,
-    color: 'rgba(255,255,255,0.6)',
+    color: '#999',
   },
-  categoryTabTextActive: {
-    color: '#FFFFFF',
-  },
-  stickerGrid: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  stickerItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    minWidth: 100,
-  },
-  stickerItemIcon: {
-    fontSize: 28,
-    marginBottom: 6,
-  },
-  stickerItemLabel: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-  },
-  textEditorOverlay: {
+  sheetOverlay: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 300,
+    zIndex: 100,
   },
-  textEditorBackdrop: {
+  sheetBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  textEditorSheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(20,20,30,0.98)',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 12,
-    paddingBottom: 40,
-  },
-  textInput: {
-    fontSize: 18,
-    color: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  textOptions: {
-    paddingHorizontal: 20,
-    gap: 16,
-  },
-  fontStyles: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  fontStyleBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fontStyleBtnActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.3)',
-    borderWidth: 2,
-    borderColor: '#10B981',
-  },
-  fontStyleText: {
-    fontSize: 18,
-    color: '#FFFFFF',
-  },
-  fontStyleTextActive: {
-    color: '#10B981',
-  },
-  colorOptions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  colorBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  colorBtnActive: {
-    borderColor: '#10B981',
-    borderWidth: 3,
-  },
-  alignOptions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  alignBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  alignBtnActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-  },
-  locationOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 300,
-  },
-  locationBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   locationSheet: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(20,20,30,0.98)',
+    backgroundColor: '#1a1a24',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
     paddingBottom: 40,
+    paddingHorizontal: 20,
   },
-  locationInputRow: {
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+    marginBottom: 24,
+  },
+  locationOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    marginHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
-  locationInput: {
+  locationOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  locationOptionText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500' as const,
+    color: '#FFFFFF',
+  },
+  customLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+    marginBottom: 20,
+  },
+  customLocationIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(236, 72, 153, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  customLocationInput: {
     flex: 1,
     fontSize: 16,
     color: '#FFFFFF',
+    paddingVertical: 8,
   },
-  locationPresets: {
+  addLocationBtn: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#10B981',
+    paddingHorizontal: 12,
+  },
+  presetsTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#666',
+    marginBottom: 12,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  presetsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    paddingHorizontal: 20,
+    gap: 10,
+    marginBottom: 20,
   },
-  locationPreset: {
-    paddingVertical: 10,
+  presetChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 24,
   },
-  locationPresetText: {
+  presetIcon: {
+    fontSize: 16,
+  },
+  presetText: {
     fontSize: 14,
-    color: '#FFFFFF',
     fontWeight: '500' as const,
+    color: '#FFFFFF',
+  },
+  removeLocationBtn: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  removeLocationText: {
+    fontSize: 15,
+    fontWeight: '500' as const,
+    color: '#EF4444',
   },
 });

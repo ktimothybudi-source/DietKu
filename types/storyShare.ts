@@ -1,36 +1,21 @@
 export type HealthRating = 'sangat_sehat' | 'sehat' | 'cukup_sehat' | 'kurang_sehat';
 
-export type MealTime = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+export type TemplateId = 'minimal' | 'health_focus' | 'restaurant' | 'weekly';
 
-export type StickerCategory = 'macros' | 'health' | 'labels' | 'location';
+export interface StoryTemplate {
+  id: TemplateId;
+  name: string;
+  description: string;
+  gradientColors: string[];
+  accentColor: string;
+}
 
-export type StickerType = 
-  | 'protein'
-  | 'carbs'
-  | 'fat'
-  | 'sangat_sehat'
-  | 'sehat'
-  | 'cukup_sehat'
-  | 'kurang_sehat'
-  | 'high_protein'
-  | 'homemade'
-  | 'cheat_meal'
-  | 'clean_day'
-  | 'post_workout'
-  | 'add_location';
-
-export interface CanvasElement {
-  id: string;
-  type: 'text' | 'sticker' | 'meal_name' | 'calories' | 'watermark';
-  x: number;
-  y: number;
-  scale: number;
-  rotation: number;
-  style: 'filled' | 'outline' | 'blur';
-  content?: string;
-  stickerType?: StickerType;
-  fontStyle?: 'default' | 'bold' | 'light';
-  color?: string;
+export interface IncludeOptions {
+  macros: boolean;
+  healthRating: boolean;
+  location: boolean;
+  time: boolean;
+  name: boolean;
 }
 
 export interface StoryShareData {
@@ -44,14 +29,14 @@ export interface StoryShareData {
   timestamp: number;
 }
 
-export interface TextStyle {
-  id: string;
+export interface LocationData {
+  type: 'current' | 'search' | 'custom';
   name: string;
-  fontWeight: 'normal' | 'bold' | '300';
 }
 
-export interface ColorOption {
-  id: string;
-  color: string;
-  name: string;
-}
+export const HEALTH_RATINGS: { id: HealthRating; label: string; icon: string; color: string }[] = [
+  { id: 'sangat_sehat', label: 'Sangat Sehat', icon: '💚', color: '#059669' },
+  { id: 'sehat', label: 'Sehat', icon: '✅', color: '#10B981' },
+  { id: 'cukup_sehat', label: 'Cukup Sehat', icon: '⚠️', color: '#F59E0B' },
+  { id: 'kurang_sehat', label: 'Kurang Sehat', icon: '❌', color: '#EF4444' },
+];

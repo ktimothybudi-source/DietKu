@@ -1,55 +1,44 @@
-import { StickerCategory, StickerType, TextStyle, ColorOption } from '@/types/storyShare';
+import { StoryTemplate, TemplateId } from '@/types/storyShare';
 
-export const STICKER_CATEGORIES: { id: StickerCategory; name: string; stickers: StickerType[] }[] = [
+export const STORY_TEMPLATES: StoryTemplate[] = [
   {
-    id: 'macros',
-    name: 'Macros',
-    stickers: ['protein', 'carbs', 'fat'],
+    id: 'minimal',
+    name: 'Minimal',
+    description: 'Clean and simple',
+    gradientColors: ['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.7)'],
+    accentColor: '#FFFFFF',
   },
   {
-    id: 'health',
-    name: 'Health',
-    stickers: ['sangat_sehat', 'sehat', 'cukup_sehat', 'kurang_sehat'],
+    id: 'health_focus',
+    name: 'Health Focus',
+    description: 'Emphasize nutrition',
+    gradientColors: ['rgba(16,185,129,0.3)', 'transparent', 'rgba(0,0,0,0.8)'],
+    accentColor: '#10B981',
   },
   {
-    id: 'labels',
-    name: 'Labels',
-    stickers: ['high_protein', 'homemade', 'cheat_meal', 'clean_day', 'post_workout'],
+    id: 'restaurant',
+    name: 'Restaurant',
+    description: 'Foodie vibes',
+    gradientColors: ['rgba(245,158,11,0.2)', 'transparent', 'rgba(0,0,0,0.85)'],
+    accentColor: '#F59E0B',
   },
   {
-    id: 'location',
-    name: 'Location',
-    stickers: ['add_location'],
+    id: 'weekly',
+    name: 'Weekly',
+    description: 'Progress tracking',
+    gradientColors: ['rgba(99,102,241,0.3)', 'transparent', 'rgba(0,0,0,0.8)'],
+    accentColor: '#6366F1',
   },
 ];
 
-export const STICKER_CONFIG: Record<StickerType, { label: string; icon: string; color: string; bgColor: string }> = {
-  protein: { label: 'Protein', icon: '💪', color: '#EF4444', bgColor: 'rgba(239, 68, 68, 0.2)' },
-  carbs: { label: 'Carbs', icon: '🍞', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.2)' },
-  fat: { label: 'Fat', icon: '🥑', color: '#8B5CF6', bgColor: 'rgba(139, 92, 246, 0.2)' },
-  sangat_sehat: { label: 'Sangat Sehat', icon: '💚', color: '#059669', bgColor: 'rgba(5, 150, 105, 0.2)' },
-  sehat: { label: 'Sehat', icon: '✅', color: '#10B981', bgColor: 'rgba(16, 185, 129, 0.2)' },
-  cukup_sehat: { label: 'Cukup Sehat', icon: '⚠️', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.2)' },
-  kurang_sehat: { label: 'Kurang Sehat', icon: '❌', color: '#EF4444', bgColor: 'rgba(239, 68, 68, 0.2)' },
-  high_protein: { label: 'High Protein', icon: '💪', color: '#10B981', bgColor: 'rgba(16, 185, 129, 0.2)' },
-  homemade: { label: 'Homemade', icon: '🏠', color: '#F59E0B', bgColor: 'rgba(245, 158, 11, 0.2)' },
-  cheat_meal: { label: 'Cheat Meal', icon: '🍕', color: '#EF4444', bgColor: 'rgba(239, 68, 68, 0.2)' },
-  clean_day: { label: 'Clean Day', icon: '✨', color: '#10B981', bgColor: 'rgba(16, 185, 129, 0.2)' },
-  post_workout: { label: 'Post Workout', icon: '🏋️', color: '#3B82F6', bgColor: 'rgba(59, 130, 246, 0.2)' },
-  add_location: { label: 'Add Location', icon: '📍', color: '#EC4899', bgColor: 'rgba(236, 72, 153, 0.2)' },
+export const LOCATION_PRESETS = [
+  { id: 'homemade', name: 'Homemade', icon: '🏠' },
+  { id: 'restaurant', name: 'Restaurant', icon: '🍽️' },
+  { id: 'cafe', name: 'Cafe', icon: '☕' },
+  { id: 'office', name: 'Office', icon: '🏢' },
+  { id: 'gym', name: 'Gym', icon: '💪' },
+];
+
+export const getTemplateById = (id: TemplateId): StoryTemplate => {
+  return STORY_TEMPLATES.find(t => t.id === id) || STORY_TEMPLATES[0];
 };
-
-export const TEXT_STYLES: TextStyle[] = [
-  { id: 'default', name: 'Regular', fontWeight: 'normal' },
-  { id: 'bold', name: 'Bold', fontWeight: 'bold' },
-  { id: 'light', name: 'Light', fontWeight: '300' },
-];
-
-export const COLOR_OPTIONS: ColorOption[] = [
-  { id: 'white', color: '#FFFFFF', name: 'White' },
-  { id: 'green', color: '#10B981', name: 'Green' },
-  { id: 'gray', color: '#9CA3AF', name: 'Gray' },
-];
-
-export const CANVAS_WIDTH = 1080;
-export const CANVAS_HEIGHT = 1920;
