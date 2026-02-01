@@ -15,7 +15,7 @@ import {
   Animated,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Minus, Bookmark, Clock, Star } from 'lucide-react-native';
+import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Minus, Bookmark, Clock, Star, Share2 } from 'lucide-react-native';
 import { useNutrition, useTodayProgress, PendingFoodEntry } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FoodEntry, MealAnalysis } from '@/types/nutrition';
@@ -1021,6 +1021,53 @@ export default function HomeScreen() {
                         <Text style={styles.pendingConfirmText}>Tambah ke Log</Text>
                       </TouchableOpacity>
                     </View>
+
+                    <TouchableOpacity
+                      style={[styles.shareStoryButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                      onPress={() => {
+                        if (!selectedPending?.analysis) return;
+                        const analysis = selectedPending.analysis;
+                        const mealName = analysis.items[0]?.name
+                          .replace(/\s*\/\s*/g, ' ')
+                          .replace(/\s+or\s+/gi, ' ')
+                          .replace(/about\s+/gi, '')
+                          .trim() || 'Makanan';
+                        const mealSubtitle = analysis.items.map(item => {
+                          const cleanName = item.name
+                            .replace(/\s*\/\s*/g, ', ')
+                            .replace(/\s+or\s+/gi, ', ')
+                            .replace(/about\s+/gi, '')
+                            .split(',')
+                            .map(s => s.trim())
+                            .filter(Boolean)[0] || item.name;
+                          return cleanName;
+                        }).join(' • ');
+                        const avgCalories = Math.round((analysis.totalCaloriesMin + analysis.totalCaloriesMax) / 2 * pendingServings);
+                        const avgProtein = Math.round((analysis.totalProteinMin + analysis.totalProteinMax) / 2 * pendingServings);
+                        const avgCarbs = Math.round(analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0) * pendingServings);
+                        const avgFat = Math.round(analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0) * pendingServings);
+                        
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        setSelectedPending(null);
+                        router.push({
+                          pathname: '/story-share',
+                          params: {
+                            mealName,
+                            mealSubtitle,
+                            calories: avgCalories.toString(),
+                            protein: avgProtein.toString(),
+                            carbs: avgCarbs.toString(),
+                            fat: avgFat.toString(),
+                            photoUri: selectedPending.photoUri,
+                            timestamp: selectedPending.timestamp.toString(),
+                          },
+                        });
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Share2 size={18} color={theme.primary} />
+                      <Text style={[styles.shareStoryText, { color: theme.primary }]}>Bagikan</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </ScrollView>
@@ -1908,6 +1955,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#FFFFFF',
+  },
+  shareStoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 12,
+  },
+  shareStoryText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
   },
   pendingHeaderActions: {
     flexDirection: 'row',
