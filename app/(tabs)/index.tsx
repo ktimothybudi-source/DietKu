@@ -1479,62 +1479,119 @@ export default function HomeScreen() {
               onPress={() => setViewingEntry(null)}
             />
             <View style={[styles.foodDetailModalContent, { backgroundColor: theme.card }]}>
-              <View style={[styles.foodDetailModalHeader, { borderBottomColor: theme.border }]}>
-                <Text style={[styles.foodDetailModalTitle, { color: theme.text }]}>Detail Makanan</Text>
-                <TouchableOpacity onPress={() => setViewingEntry(null)}>
-                  <X size={24} color={theme.textSecondary} />
-                </TouchableOpacity>
-              </View>
               {viewingEntry && (
                 <ScrollView style={styles.foodDetailModalBody} showsVerticalScrollIndicator={false}>
-                  <Text style={[styles.foodDetailName, { color: theme.text }]}>
-                    {viewingEntry.name.split(',')[0].replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim()}
-                  </Text>
-                  <Text style={[styles.foodDetailTime, { color: theme.textSecondary }]}>
-                    {new Date(viewingEntry.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                  
-                  <View style={[styles.foodDetailStatsContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                    <View style={styles.foodDetailStatItem}>
-                      <Text style={[styles.foodDetailStatValue, { color: theme.text }]}>{viewingEntry.calories}</Text>
-                      <Text style={[styles.foodDetailStatLabel, { color: theme.textSecondary }]}>kcal</Text>
+                  <View style={styles.viewEntryHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.viewEntryTitle, { color: theme.text }]}>
+                        {viewingEntry.name.split(',')[0].replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim()}
+                      </Text>
+                      <Text style={[styles.viewEntrySubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                        {viewingEntry.name.split(',').map(n => n.trim().split(' ')[0]).join(' • ')}
+                      </Text>
                     </View>
-                    <View style={[styles.foodDetailStatDivider, { backgroundColor: theme.border }]} />
-                    <View style={styles.foodDetailStatItem}>
-                      <Text style={[styles.foodDetailStatValue, { color: theme.text }]}>{viewingEntry.protein}g</Text>
-                      <Text style={[styles.foodDetailStatLabel, { color: theme.textSecondary }]}>Protein</Text>
+                    <View style={styles.pendingHeaderActions}>
+                      <TouchableOpacity
+                        style={styles.shareHeaderButton}
+                        onPress={() => handleShareEntry(viewingEntry)}
+                      >
+                        <Share2 size={18} color="#FFFFFF" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.favoriteButton, { backgroundColor: theme.background }]}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          const mealName = viewingEntry.name;
+                          if (isFavorite(mealName)) {
+                            removeFromFavorites(mealName);
+                            setFavoriteToastMessage('Dihapus dari favorit');
+                          } else {
+                            addToFavorites({
+                              name: mealName,
+                              calories: viewingEntry.calories,
+                              protein: viewingEntry.protein,
+                              carbs: viewingEntry.carbs,
+                              fat: viewingEntry.fat,
+                            });
+                            setFavoriteToastMessage('Ditambahkan ke favorit!');
+                          }
+                          setShowFavoriteToast(true);
+                          setTimeout(() => setShowFavoriteToast(false), 2000);
+                        }}
+                      >
+                        <Bookmark
+                          size={20}
+                          color={isFavorite(viewingEntry.name) ? '#FFC107' : theme.textSecondary}
+                          fill={isFavorite(viewingEntry.name) ? '#FFC107' : 'transparent'}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => setViewingEntry(null)}>
+                        <X size={24} color={theme.textSecondary} />
+                      </TouchableOpacity>
                     </View>
-                    <View style={[styles.foodDetailStatDivider, { backgroundColor: theme.border }]} />
-                    <View style={styles.foodDetailStatItem}>
-                      <Text style={[styles.foodDetailStatValue, { color: theme.text }]}>{viewingEntry.carbs}g</Text>
-                      <Text style={[styles.foodDetailStatLabel, { color: theme.textSecondary }]}>Karbo</Text>
+                  </View>
+
+                  <View style={[styles.viewEntryImageContainer, { backgroundColor: theme.background }]}>
+                    <Camera size={48} color={theme.textTertiary} />
+                  </View>
+
+                  <View style={[styles.pendingTotalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <View style={styles.pendingCaloriesRow}>
+                      <Text style={styles.pendingCaloriesEmoji}>🔥</Text>
+                      <Text style={[styles.pendingCaloriesValue, { color: theme.text }]}>
+                        {viewingEntry.calories}
+                      </Text>
+                      <Text style={[styles.pendingCaloriesUnit, { color: theme.textSecondary }]}>kcal</Text>
                     </View>
-                    <View style={[styles.foodDetailStatDivider, { backgroundColor: theme.border }]} />
-                    <View style={styles.foodDetailStatItem}>
-                      <Text style={[styles.foodDetailStatValue, { color: theme.text }]}>{viewingEntry.fat}g</Text>
-                      <Text style={[styles.foodDetailStatLabel, { color: theme.textSecondary }]}>Lemak</Text>
+                    <View style={styles.pendingMacros}>
+                      <View style={styles.pendingMacro}>
+                        <Text style={styles.pendingMacroEmoji}>🥩</Text>
+                        <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
+                          {viewingEntry.protein}g
+                        </Text>
+                        <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Protein</Text>
+                      </View>
+                      <View style={styles.pendingMacro}>
+                        <Text style={styles.pendingMacroEmoji}>🍚</Text>
+                        <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
+                          {viewingEntry.carbs}g
+                        </Text>
+                        <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Karbo</Text>
+                      </View>
+                      <View style={styles.pendingMacro}>
+                        <Text style={styles.pendingMacroEmoji}>🥑</Text>
+                        <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
+                          {viewingEntry.fat}g
+                        </Text>
+                        <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Lemak</Text>
+                      </View>
                     </View>
                   </View>
 
                   {viewingEntry.name.includes(',') && (
-                    <View style={styles.foodDetailItemsSection}>
-                      <Text style={[styles.foodDetailItemsTitle, { color: theme.text }]}>Komponen</Text>
+                    <View style={{ marginTop: 16 }}>
+                      <Text style={[styles.pendingItemsTitle, { color: theme.text, marginBottom: 12 }]}>Komponen Makanan</Text>
                       {viewingEntry.name.split(',').map((item, index) => (
-                        <Text key={index} style={[styles.foodDetailItemText, { color: theme.textSecondary }]}>
-                          • {item.trim()}
-                        </Text>
+                        <View
+                          key={index}
+                          style={[styles.pendingItemCard, { backgroundColor: theme.background, borderColor: theme.border, marginBottom: 8 }]}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.pendingItemName, { color: theme.text }]}>
+                              {item.trim().replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim()}
+                            </Text>
+                          </View>
+                        </View>
                       ))}
                     </View>
                   )}
 
-                  <TouchableOpacity
-                    style={styles.foodDetailShareButton}
-                    onPress={() => handleShareEntry(viewingEntry)}
-                    activeOpacity={0.8}
-                  >
-                    <Share2 size={20} color="#FFFFFF" />
-                    <Text style={styles.foodDetailShareButtonText}>Bagikan ke Story</Text>
-                  </TouchableOpacity>
+                  <View style={[styles.viewEntryTimeCard, { backgroundColor: theme.background, borderColor: theme.border, marginTop: 16 }]}>
+                    <Clock size={16} color={theme.textSecondary} />
+                    <Text style={[styles.viewEntryTimeText, { color: theme.textSecondary }]}>
+                      {new Date(viewingEntry.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} • {new Date(viewingEntry.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </Text>
+                  </View>
                 </ScrollView>
               )}
             </View>
@@ -2643,6 +2700,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#FFFFFF',
+  },
+  viewEntryHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  viewEntryTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    marginBottom: 4,
+  },
+  viewEntrySubtitle: {
+    fontSize: 13,
+  },
+  viewEntryImageContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    overflow: 'hidden',
   },
   viewEntryTimeCard: {
     flexDirection: 'row',
