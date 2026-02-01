@@ -920,9 +920,6 @@ export default function HomeScreen() {
                   <View style={styles.pendingResultState}>
                     <View style={[styles.pendingTotalCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
                       <View style={styles.pendingTotalHeader}>
-                        <Text style={[styles.pendingFoodName, { color: theme.text }]}>
-                          {selectedPending.analysis.items.map(i => i.name).join(', ')}
-                        </Text>
                         <View style={[styles.pendingServingControls, { backgroundColor: theme.card, borderColor: theme.border }]}>
                           <TouchableOpacity
                             style={styles.pendingServingBtn}
