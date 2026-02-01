@@ -746,7 +746,8 @@ export default function HomeScreen() {
                         <Text style={[styles.mealTime, { color: theme.textSecondary }]}>{time}</Text>
                         <TouchableOpacity
                           style={styles.deleteEntryButton}
-                          onPress={() => {
+                          onPress={(e) => {
+                            e.stopPropagation();
                             Alert.alert(
                               'Hapus Makanan',
                               'Yakin ingin menghapus makanan ini?',
