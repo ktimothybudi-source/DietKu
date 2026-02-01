@@ -26,7 +26,7 @@ import { getTodayKey } from '@/utils/nutritionCalculations';
 import ProgressRing from '@/components/ProgressRing';
 
 export default function HomeScreen() {
-  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, shouldSuggestFavorite } = useNutrition();
+  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, removeFromRecent, shouldSuggestFavorite } = useNutrition();
   const { theme } = useTheme();
   const progress = useTodayProgress();
   const [modalVisible, setModalVisible] = useState(false);
@@ -912,6 +912,39 @@ export default function HomeScreen() {
 
                 {showManualEntry && (
                   <View>
+                    <TouchableOpacity
+                      style={[styles.optionalImagePicker, { backgroundColor: theme.background, borderColor: theme.border }]}
+                      onPress={async () => {
+                        const result = await ImagePicker.launchImageLibraryAsync({
+                          mediaTypes: ['images'],
+                          allowsEditing: true,
+                          aspect: [4, 3],
+                          quality: 0.8,
+                        });
+                        if (!result.canceled && result.assets[0]) {
+                          setPhotoUri(result.assets[0].uri);
+                        }
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      {photoUri ? (
+                        <View style={styles.optionalImagePreviewContainer}>
+                          <Image source={{ uri: photoUri }} style={styles.optionalImagePreview} />
+                          <TouchableOpacity
+                            style={styles.removeImageButton}
+                            onPress={() => setPhotoUri(null)}
+                          >
+                            <X size={16} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View style={styles.optionalImagePlaceholder}>
+                          <ImageIcon size={24} color={theme.textTertiary} />
+                          <Text style={[styles.optionalImageText, { color: theme.textSecondary }]}>Tambah Foto (Opsional)</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+
                     <View style={styles.inputGroup}>
                       <Text style={[styles.inputLabel, { color: theme.text }]}>Apa yang Anda makan?</Text>
                       <TextInput
@@ -1507,22 +1540,33 @@ export default function HomeScreen() {
                       </View>
                     ) : (
                       recentMeals.slice(0, 20).map((meal) => (
-                        <TouchableOpacity
+                        <View
                           key={meal.id}
                           style={[styles.mealItem, { backgroundColor: theme.background, borderColor: theme.border }]}
-                          onPress={() => handleQuickLogRecent(meal.id)}
-                          activeOpacity={0.7}
                         >
-                          <View style={styles.mealItemInfo}>
-                            <Text style={[styles.mealItemName, { color: theme.text }]} numberOfLines={1}>
-                              {meal.name.split(',')[0]}
-                            </Text>
-                            <Text style={[styles.mealItemCalories, { color: theme.textSecondary }]}>
-                              {meal.calories} kcal
-                            </Text>
-                          </View>
-                          <Plus size={20} color={theme.primary} />
-                        </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.mealItemContent}
+                            onPress={() => handleQuickLogRecent(meal.id)}
+                            activeOpacity={0.7}
+                          >
+                            <View style={styles.mealItemInfo}>
+                              <Text style={[styles.mealItemName, { color: theme.text }]} numberOfLines={1}>
+                                {meal.name.split(',')[0]}
+                              </Text>
+                              <Text style={[styles.mealItemCalories, { color: theme.textSecondary }]}>
+                                {meal.calories} kcal
+                              </Text>
+                            </View>
+                            <Plus size={20} color={theme.primary} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.removeRecentButton}
+                            onPress={() => removeFromRecent(meal.id)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <X size={16} color={theme.textTertiary} />
+                          </TouchableOpacity>
+                        </View>
                       ))
                     )}
                   </View>
@@ -2605,6 +2649,20 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  mealItemContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  removeRecentButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
   mealItemNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2645,5 +2703,42 @@ const styles = StyleSheet.create({
   manualEntryText: {
     fontSize: 15,
     fontWeight: '600' as const,
+  },
+  optionalImagePicker: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  optionalImagePlaceholder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 20,
+  },
+  optionalImageText: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+  },
+  optionalImagePreviewContainer: {
+    position: 'relative',
+  },
+  optionalImagePreview: {
+    width: '100%',
+    height: 120,
+    borderRadius: 12,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

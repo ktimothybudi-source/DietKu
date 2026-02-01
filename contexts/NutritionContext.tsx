@@ -415,6 +415,14 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     mutateFoodLog(updatedLog);
   }, [recentMeals, foodLog, mutateFoodLog]);
 
+  const { mutate: mutateRecentMeals } = saveRecentMealsMutation;
+
+  const removeFromRecent = useCallback((recentId: string) => {
+    const updatedRecent = recentMeals.filter(r => r.id !== recentId);
+    mutateRecentMeals(updatedRecent);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, [recentMeals, mutateRecentMeals]);
+
   const shouldSuggestFavorite = useCallback((mealName: string): boolean => {
     const normalizedName = mealName.toLowerCase().trim();
     if (favorites.some(f => f.name.toLowerCase().trim() === normalizedName)) {
@@ -601,6 +609,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     isFavorite,
     logFromFavorite,
     logFromRecent,
+    removeFromRecent,
     shouldSuggestFavorite,
     isLoading: profileQuery.isLoading || foodLogQuery.isLoading || streakQuery.isLoading || weightHistoryQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading,
     isSaving: saveProfileMutation.isPending || saveFoodLogMutation.isPending || saveStreakMutation.isPending || saveWeightHistoryMutation.isPending || saveFavoritesMutation.isPending || saveRecentMealsMutation.isPending,
