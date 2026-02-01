@@ -741,32 +741,30 @@ export default function HomeScreen() {
                           <Text style={[styles.mealTimeLabel, { color: theme.text }]} numberOfLines={1}>
                             {entry.name.split(',')[0].replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim()}
                           </Text>
-                          <View style={styles.foodTimeRow}>
-                            <Text style={[styles.mealTime, { color: theme.textSecondary }]}>{time}</Text>
-                            <TouchableOpacity
-                              style={styles.deleteEntryButton}
-                              onPress={() => {
-                                Alert.alert(
-                                  'Hapus Makanan',
-                                  'Yakin ingin menghapus makanan ini?',
-                                  [
-                                    { text: 'Batal', style: 'cancel' },
-                                    { 
-                                      text: 'Hapus', 
-                                      style: 'destructive',
-                                      onPress: () => {
-                                        deleteFoodEntry(entry.id);
-                                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                                      }
-                                    },
-                                  ]
-                                );
-                              }}
-                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            >
-                              <Trash2 size={14} color={theme.textTertiary} />
-                            </TouchableOpacity>
-                          </View>
+                          <Text style={[styles.mealTime, { color: theme.textSecondary }]}>{time}</Text>
+                          <TouchableOpacity
+                            style={styles.deleteEntryButton}
+                            onPress={() => {
+                              Alert.alert(
+                                'Hapus Makanan',
+                                'Yakin ingin menghapus makanan ini?',
+                                [
+                                  { text: 'Batal', style: 'cancel' },
+                                  { 
+                                    text: 'Hapus', 
+                                    style: 'destructive',
+                                    onPress: () => {
+                                      deleteFoodEntry(entry.id);
+                                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                    }
+                                  },
+                                ]
+                              );
+                            }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Trash2 size={14} color={theme.textTertiary} />
+                          </TouchableOpacity>
                         </View>
                         <Text style={[styles.foodCalories, { color: theme.textTertiary }]}>{entry.calories} kcal</Text>
                       </View>
@@ -1742,13 +1740,9 @@ const styles = StyleSheet.create({
   mealTime: {
     fontSize: 14,
   },
-  foodTimeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
   deleteEntryButton: {
     padding: 4,
+    marginTop: 4,
   },
   foodCalories: {
     fontSize: 14,
