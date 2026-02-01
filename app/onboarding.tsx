@@ -75,7 +75,7 @@ export default function OnboardingScreen() {
   const [signInPassword, setSignInPassword] = useState('');
   const [userName, setUserName] = useState('');
 
-  const totalSteps = 18;
+  const totalSteps = 17;
 
   // Y positions for inputs
   const heightY = useRef(0);
@@ -92,11 +92,11 @@ export default function OnboardingScreen() {
   }, []);
 
   useEffect(() => {
-    const progress = step / totalSteps;
+    const progress = step > 0 ? step / totalSteps : 0;
     Animated.timing(progressAnim, {
       toValue: progress,
       duration: 250,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   }, [step, progressAnim]);
 
@@ -307,9 +307,9 @@ export default function OnboardingScreen() {
     router.replace('/(tabs)');
   }, []);
 
-  const progressScaleX = progressAnim.interpolate({
+  const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 1],
+    outputRange: ['0%', '100%'],
     extrapolate: 'clamp',
   });
 
@@ -719,24 +719,24 @@ export default function OnboardingScreen() {
         <View style={styles.comparisonRow}>
           <View style={styles.comparisonItem}>
             <Text style={styles.comparisonLabel}>Saat Ini</Text>
-            <Text style={styles.comparisonValue}>
-              {weight} <Text style={styles.comparisonUnit}>kg</Text>
-            </Text>
+            <View style={styles.weightValueRow}>
+              <Text style={styles.comparisonValueNum}>{weight}</Text>
+              <Text style={styles.comparisonUnitInline}>kg</Text>
+            </View>
           </View>
 
           <ArrowRight size={22} color="#666" />
 
           <View style={styles.comparisonItem}>
             <Text style={styles.comparisonLabel}>Target</Text>
-
             <View
               onLayout={(e) => {
                 dreamWeightY.current = e.nativeEvent.layout.y;
               }}
-              style={styles.inlineInputRow}
+              style={styles.weightValueRow}
             >
               <TextInput
-                style={styles.inlineNumberInput}
+                style={styles.targetWeightInput}
                 value={dreamWeightText}
                 onFocus={() => scrollToY(dreamWeightY.current)}
                 onChangeText={(text) => {
@@ -752,7 +752,7 @@ export default function OnboardingScreen() {
                 blurOnSubmit
                 onSubmitEditing={() => Keyboard.dismiss()}
               />
-              <Text style={styles.comparisonUnit}>kg</Text>
+              <Text style={styles.comparisonUnitInline}>kg</Text>
             </View>
             <View style={styles.inlineHintLine} />
           </View>
@@ -1634,10 +1634,10 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
         )}
 
-        {step > 0 && step < totalSteps && !showLoading && (
+        {step > 0 && step <= totalSteps && !showLoading && (
           <View style={styles.progressBarContainer}>
             <View style={styles.progressBar}>
-              <Animated.View style={[styles.progressFill, { transform: [{ scaleX: progressScaleX }] }]} />
+              <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
             </View>
           </View>
         )}
@@ -1654,9 +1654,9 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
-  scrollContent: { flexGrow: 1, padding: 20, paddingTop: 50 },
-  backButtonTop: { marginBottom: 24, alignSelf: 'flex-start' },
-  progressBarContainer: { marginBottom: 48 },
+  scrollContent: { flexGrow: 1, padding: 20, paddingTop: 20 },
+  backButtonTop: { marginBottom: 12, alignSelf: 'flex-start' },
+  progressBarContainer: { marginBottom: 24 },
   progressBar: {
     height: 3,
     backgroundColor: '#E5E5E5',
@@ -1666,10 +1666,8 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    width: '100%',
     backgroundColor: '#10B981',
     borderRadius: 2,
-    transform: [{ scaleX: 0 }],
   },
   contentWrapper: { flex: 1 },
   stepContainer: { flex: 1, justifyContent: 'space-between' },
@@ -1868,11 +1866,22 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 28,
   },
-  comparisonItem: { flex: 1, alignItems: 'center', gap: 10 },
+  comparisonItem: { flex: 1, alignItems: 'center', gap: 8 },
   comparisonLabel: { fontSize: 14, color: '#666666', fontWeight: '600' as const, textAlign: 'center' },
   comparisonValue: { fontSize: 28, fontWeight: '700' as const, color: '#000000', textAlign: 'center' },
   comparisonUnit: { fontSize: 18, fontWeight: '600' as const, color: '#666666' },
-
+  weightValueRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center' },
+  comparisonValueNum: { fontSize: 28, fontWeight: '700' as const, color: '#000000' },
+  comparisonUnitInline: { fontSize: 16, fontWeight: '600' as const, color: '#666666', marginLeft: 4 },
+  targetWeightInput: {
+    fontSize: 28,
+    fontWeight: '700' as const,
+    color: '#000000',
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    minWidth: 50,
+    textAlign: 'center',
+  },
   inlineInputRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: 8 },
   inlineNumberInput: {
     fontSize: 28,
@@ -1884,11 +1893,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   inlineHintLine: {
-    width: 80,
+    width: 70,
     height: 2,
     backgroundColor: '#E5E5E5',
     borderRadius: 2,
-    marginTop: 6,
+    marginTop: 4,
   },
 
   introImage: { width: 90, height: 90 },
