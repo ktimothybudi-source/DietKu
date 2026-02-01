@@ -26,7 +26,7 @@ import { getTodayKey } from '@/utils/nutritionCalculations';
 import ProgressRing from '@/components/ProgressRing';
 
 export default function HomeScreen() {
-  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, updateFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, isFavorite, logFromFavorite, logFromRecent, shouldSuggestFavorite } = useNutrition();
+  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, isFavorite, logFromFavorite, logFromRecent, shouldSuggestFavorite } = useNutrition();
   const { theme } = useTheme();
   const progress = useTodayProgress();
   const [modalVisible, setModalVisible] = useState(false);
@@ -36,7 +36,7 @@ export default function HomeScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<MealAnalysis | null>(null);
-  const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
+  
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [selectedPending, setSelectedPending] = useState<PendingFoodEntry | null>(null);
   const [pendingServings, setPendingServings] = useState(1);
@@ -46,6 +46,7 @@ export default function HomeScreen() {
   const [showFavoriteToast, setShowFavoriteToast] = useState(false);
   const [showSuggestFavorite, setShowSuggestFavorite] = useState(false);
   const [suggestedMealName, setSuggestedMealName] = useState('');
+  const [viewingEntry, setViewingEntry] = useState<FoodEntry | null>(null);
   
   const caloriesAnimValue = useRef(new Animated.Value(0)).current;
   const proteinAnimValue = useRef(new Animated.Value(0)).current;
@@ -77,9 +78,17 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const donePending = pendingEntries.find(p => p.status === 'done');
-    if (donePending && pendingEntries.length > lastPendingCount) {
-      setSelectedPending(donePending);
-      setPendingServings(1);
+    if (donePending && donePending.analysis && pendingEntries.length > lastPendingCount) {
+      // Auto-log the food when analysis is done
+      const mealName = donePending.analysis.items.map(i => i.name).join(', ');
+      confirmPendingEntry(donePending.id, 1);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      if (shouldSuggestFavorite(mealName)) {
+        setSuggestedMealName(mealName);
+        setShowSuggestFavorite(true);
+        setTimeout(() => setShowSuggestFavorite(false), 5000);
+      }
     }
     setLastPendingCount(pendingEntries.length);
   }, [pendingEntries]);
@@ -168,17 +177,13 @@ export default function HomeScreen() {
     setProtein('');
     setPhotoUri(null);
     setAnalysis(null);
-    setEditingEntry(null);
     setShowManualEntry(false);
     setModalVisible(false);
   };
 
-  const handleEditEntry = (entry: FoodEntry) => {
-    setEditingEntry(entry);
-    setFoodName(entry.name);
-    setCalories(entry.calories.toString());
-    setProtein(entry.protein.toString());
-    setModalVisible(true);
+  const handleViewEntry = (entry: FoodEntry) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setViewingEntry(entry);
   };
 
   const handlePendingPress = (pending: PendingFoodEntry) => {
@@ -264,23 +269,7 @@ export default function HomeScreen() {
     setSelectedPending(null);
   };
 
-  const handleUpdateFood = () => {
-    if (!editingEntry || !foodName || !calories) return;
 
-    const estimatedCarbs = Math.round((parseInt(calories) - (parseInt(protein || '0') * 4)) / 4 * 0.6);
-    const estimatedFat = Math.round((parseInt(calories) - (parseInt(protein || '0') * 4)) / 9 * 0.4);
-
-    updateFoodEntry(editingEntry.id, {
-      name: foodName,
-      calories: parseInt(calories),
-      protein: parseInt(protein || '0'),
-      carbs: estimatedCarbs,
-      fat: estimatedFat,
-    });
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    resetModal();
-  };
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -543,16 +532,13 @@ export default function HomeScreen() {
                   );
                 })}
                 {todayEntries.map((entry) => {
-                  const { label, time } = getMealTimeLabel(entry.timestamp);
+                  const { time } = getMealTimeLabel(entry.timestamp);
                   
                   return (
                     <TouchableOpacity
                       key={entry.id}
                       style={[styles.foodItem, { backgroundColor: theme.card, borderColor: theme.border }]}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        handleEditEntry(entry);
-                      }}
+                      onPress={() => handleViewEntry(entry)}
                       activeOpacity={0.7}
                     >
                       <View style={[styles.foodThumbnail, { backgroundColor: theme.background }]}>
@@ -560,7 +546,9 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.foodInfo}>
                         <View style={styles.foodHeader}>
-                          <Text style={[styles.mealTimeLabel, { color: theme.text }]}>{label}</Text>
+                          <Text style={[styles.mealTimeLabel, { color: theme.text }]} numberOfLines={1}>
+                            {entry.name.split(',')[0].replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim()}
+                          </Text>
                           <Text style={[styles.mealTime, { color: theme.textSecondary }]}>{time}</Text>
                         </View>
                         <Text style={[styles.foodCalories, { color: theme.textTertiary }]}>{entry.calories} kcal</Text>
@@ -604,7 +592,7 @@ export default function HomeScreen() {
             
             <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
               <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
-                <Text style={[styles.modalTitle, { color: theme.text }]}>{editingEntry ? 'Edit Makanan' : 'Tambah Makanan'}</Text>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>Tambah Makanan</Text>
                 <TouchableOpacity onPress={resetModal}>
                   <X size={24} color={theme.textSecondary} />
                 </TouchableOpacity>
@@ -684,7 +672,7 @@ export default function HomeScreen() {
                   </View>
                 )}
 
-                {!editingEntry && !photoUri && !showManualEntry && (
+                {!photoUri && !showManualEntry && (
                   <View style={[styles.bottomOptions, { backgroundColor: theme.background }]}>
                     <TouchableOpacity
                       style={styles.bottomOption}
@@ -707,7 +695,7 @@ export default function HomeScreen() {
                   </View>
                 )}
 
-                {!editingEntry && showManualEntry && (
+                {showManualEntry && (
                   <View>
                     <View style={styles.inputGroup}>
                       <Text style={[styles.inputLabel, { color: theme.text }]}>Apa yang Anda makan?</Text>
@@ -757,55 +745,6 @@ export default function HomeScreen() {
                   </View>
                 )}
 
-                {editingEntry && (
-                  <View>
-                    <View style={styles.inputGroup}>
-                      <Text style={[styles.inputLabel, { color: theme.text }]}>Apa yang Anda makan?</Text>
-                      <TextInput
-                        style={[styles.textInput, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                        placeholder="mis., Dada ayam, Nasi goreng..."
-                        placeholderTextColor={theme.textSecondary}
-                        value={foodName}
-                        onChangeText={setFoodName}
-                      />
-                    </View>
-
-                    <View style={styles.inputRow}>
-                      <View style={[styles.inputGroup, styles.inputGroupHalf]}>
-                        <Text style={[styles.inputLabel, { color: theme.text }]}>Kalori</Text>
-                        <TextInput
-                          style={[styles.textInput, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                          placeholder="250"
-                          placeholderTextColor={theme.textSecondary}
-                          keyboardType="numeric"
-                          value={calories}
-                          onChangeText={setCalories}
-                        />
-                      </View>
-
-                      <View style={[styles.inputGroup, styles.inputGroupHalf]}>
-                        <Text style={[styles.inputLabel, { color: theme.text }]}>Protein (g)</Text>
-                        <TextInput
-                          style={[styles.textInput, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                          placeholder="30"
-                          placeholderTextColor={theme.textSecondary}
-                          keyboardType="numeric"
-                          value={protein}
-                          onChangeText={setProtein}
-                        />
-                      </View>
-                    </View>
-
-                    <TouchableOpacity
-                      style={[styles.addButton, (!foodName || !calories) && styles.addButtonDisabled]}
-                      onPress={handleUpdateFood}
-                      disabled={!foodName || !calories}
-                    >
-                      <Check size={20} color="#FFFFFF" />
-                      <Text style={styles.addButtonText}>Perbarui Makanan</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
               </ScrollView>
             </View>
           </KeyboardAvoidingView>
@@ -1205,6 +1144,84 @@ export default function HomeScreen() {
                   <Text style={[styles.manualEntryText, { color: theme.text }]}>Masukkan Manual</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* View Entry Detail Modal */}
+        <Modal
+          visible={!!viewingEntry}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setViewingEntry(null)}
+        >
+          <View style={styles.pendingModalContainer}>
+            <TouchableOpacity
+              style={styles.pendingModalOverlay}
+              activeOpacity={1}
+              onPress={() => setViewingEntry(null)}
+            />
+            
+            <View style={[styles.pendingModalContent, { backgroundColor: theme.card }]}>
+              <View style={[styles.pendingModalHeader, { borderBottomColor: theme.border }]}>
+                <View style={styles.pendingModalTitleContainer}>
+                  <Text style={[styles.pendingModalTitle, { color: theme.text }]} numberOfLines={1}>
+                    {viewingEntry?.name.split(',')[0].replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim()}
+                  </Text>
+                  <Text style={[styles.pendingModalSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {viewingEntry?.name.split(',').map(n => n.trim().split(' ')[0]).join(' • ')}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setViewingEntry(null)}>
+                  <X size={24} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.pendingModalBody} showsVerticalScrollIndicator={false}>
+                {viewingEntry && (
+                  <View style={styles.pendingResultState}>
+                    <View style={[styles.pendingTotalCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                      <View style={styles.pendingCaloriesRow}>
+                        <Text style={styles.pendingCaloriesEmoji}>🔥</Text>
+                        <Text style={[styles.pendingCaloriesValue, { color: theme.text }]}>
+                          {viewingEntry.calories}
+                        </Text>
+                        <Text style={[styles.pendingCaloriesUnit, { color: theme.textSecondary }]}>kcal</Text>
+                      </View>
+                      <View style={styles.pendingMacros}>
+                        <View style={styles.pendingMacro}>
+                          <Text style={styles.pendingMacroEmoji}>🥩</Text>
+                          <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
+                            {viewingEntry.protein}g
+                          </Text>
+                          <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Protein</Text>
+                        </View>
+                        <View style={styles.pendingMacro}>
+                          <Text style={styles.pendingMacroEmoji}>🌾</Text>
+                          <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
+                            {viewingEntry.carbs}g
+                          </Text>
+                          <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Karbo</Text>
+                        </View>
+                        <View style={styles.pendingMacro}>
+                          <Text style={styles.pendingMacroEmoji}>🥑</Text>
+                          <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
+                            {viewingEntry.fat}g
+                          </Text>
+                          <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Lemak</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={[styles.viewEntryTimeCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                      <Clock size={16} color={theme.textSecondary} />
+                      <Text style={[styles.viewEntryTimeText, { color: theme.textSecondary }]}>
+                        {new Date(viewingEntry.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} • {getMealTimeLabel(viewingEntry.timestamp).label}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -1929,6 +1946,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#FFFFFF',
+  },
+  viewEntryTimeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  viewEntryTimeText: {
+    fontSize: 14,
+    fontWeight: '500' as const,
   },
   shareStoryButton: {
     flexDirection: 'row',
