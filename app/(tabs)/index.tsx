@@ -46,6 +46,11 @@ export default function HomeScreen() {
   const [favoriteToastMessage, setFavoriteToastMessage] = useState('');
   const [showSuggestFavorite, setShowSuggestFavorite] = useState(false);
   const [suggestedMealName, setSuggestedMealName] = useState('');
+  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return { year: today.getFullYear(), month: today.getMonth() };
+  });
   const [shownPendingIds, setShownPendingIds] = useState<Set<string>>(new Set());
   const [editedItems, setEditedItems] = useState<{
     name: string;
@@ -169,6 +174,72 @@ export default function HomeScreen() {
   const goToToday = () => {
     setSelectedDate(getTodayKey());
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const openCalendarPicker = () => {
+    const [year, month] = selectedDate.split('-').map(Number);
+    setCalendarMonth({ year, month: month - 1 });
+    setShowCalendarPicker(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const selectDateFromCalendar = (day: number) => {
+    const newDateKey = `${calendarMonth.year}-${String(calendarMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const todayKey = getTodayKey();
+    if (newDateKey <= todayKey) {
+      setSelectedDate(newDateKey);
+      setShowCalendarPicker(false);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+  };
+
+  const goToPreviousMonth = () => {
+    setCalendarMonth(prev => {
+      if (prev.month === 0) {
+        return { year: prev.year - 1, month: 11 };
+      }
+      return { year: prev.year, month: prev.month - 1 };
+    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const goToNextMonth = () => {
+    const today = new Date();
+    const nextMonth = calendarMonth.month === 11 ? 0 : calendarMonth.month + 1;
+    const nextYear = calendarMonth.month === 11 ? calendarMonth.year + 1 : calendarMonth.year;
+    
+    if (nextYear < today.getFullYear() || (nextYear === today.getFullYear() && nextMonth <= today.getMonth())) {
+      setCalendarMonth({ year: nextYear, month: nextMonth });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const getCalendarDays = () => {
+    const { year, month } = calendarMonth;
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const todayKey = getTodayKey();
+    
+    const days: { day: number; isCurrentMonth: boolean; isSelectable: boolean; isSelected: boolean; isToday: boolean }[] = [];
+    
+    for (let i = 0; i < firstDay; i++) {
+      days.push({ day: 0, isCurrentMonth: false, isSelectable: false, isSelected: false, isToday: false });
+    }
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const isSelectable = dateKey <= todayKey;
+      const isSelected = dateKey === selectedDate;
+      const isToday = dateKey === todayKey;
+      days.push({ day, isCurrentMonth: true, isSelectable, isSelected, isToday });
+    }
+    
+    return days;
+  };
+
+  const getMonthName = (month: number) => {
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    return months[month];
   };
 
   React.useEffect(() => {
@@ -644,19 +715,29 @@ export default function HomeScreen() {
               <ChevronLeft size={20} color={theme.text} />
             </TouchableOpacity>
             
-            <View style={styles.dateCenter}>
-              <Text style={[styles.dateText, { color: theme.text }]}>{getFormattedDate(selectedDate)}</Text>
+            <TouchableOpacity 
+              style={styles.dateCenter}
+              onPress={openCalendarPicker}
+              activeOpacity={0.7}
+            >
+              <View style={styles.dateTouchable}>
+                <Text style={[styles.dateText, { color: theme.text }]}>{getFormattedDate(selectedDate)}</Text>
+                <Calendar size={16} color={theme.textSecondary} style={{ marginLeft: 6 }} />
+              </View>
               {!isToday && (
                 <TouchableOpacity
                   style={[styles.todayButton, { backgroundColor: theme.primary }]}
-                  onPress={goToToday}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    goToToday();
+                  }}
                   activeOpacity={0.7}
                 >
                   <Calendar size={12} color="#FFFFFF" />
                   <Text style={styles.todayButtonText}>Hari Ini</Text>
                 </TouchableOpacity>
               )}
-            </View>
+            </TouchableOpacity>
             
             <TouchableOpacity 
               style={[styles.dateNavButton, { backgroundColor: theme.card, borderColor: theme.border, opacity: isToday ? 0.5 : 1 }]}
@@ -862,6 +943,70 @@ export default function HomeScreen() {
         >
           <Plus size={28} color="#FFFFFF" />
         </TouchableOpacity>
+
+        <Modal
+          visible={showCalendarPicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowCalendarPicker(false)}
+        >
+          <TouchableOpacity
+            style={styles.calendarModalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowCalendarPicker(false)}
+          >
+            <View style={[styles.calendarModalContent, { backgroundColor: theme.card }]}>
+              <TouchableOpacity activeOpacity={1}>
+                <View style={styles.calendarHeader}>
+                  <TouchableOpacity onPress={goToPreviousMonth} style={styles.calendarNavBtn}>
+                    <ChevronLeft size={22} color={theme.text} />
+                  </TouchableOpacity>
+                  <Text style={[styles.calendarMonthText, { color: theme.text }]}>
+                    {getMonthName(calendarMonth.month)} {calendarMonth.year}
+                  </Text>
+                  <TouchableOpacity 
+                    onPress={goToNextMonth} 
+                    style={[styles.calendarNavBtn, {
+                      opacity: (calendarMonth.year === new Date().getFullYear() && calendarMonth.month >= new Date().getMonth()) ? 0.3 : 1
+                    }]}
+                  >
+                    <ChevronRight size={22} color={theme.text} />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.calendarWeekdays}>
+                  {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((day, i) => (
+                    <Text key={i} style={[styles.calendarWeekday, { color: theme.textSecondary }]}>{day}</Text>
+                  ))}
+                </View>
+                
+                <View style={styles.calendarGrid}>
+                  {getCalendarDays().map((item, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.calendarDay,
+                        item.isSelected && styles.calendarDaySelected,
+                        item.isToday && !item.isSelected && [styles.calendarDayToday, { borderColor: theme.primary }],
+                      ]}
+                      onPress={() => item.isCurrentMonth && item.isSelectable && selectDateFromCalendar(item.day)}
+                      disabled={!item.isCurrentMonth || !item.isSelectable}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.calendarDayText,
+                        { color: item.isCurrentMonth ? (item.isSelectable ? theme.text : theme.textTertiary) : 'transparent' },
+                        item.isSelected && styles.calendarDayTextSelected,
+                      ]}>
+                        {item.day || ''}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
 
         <Modal
           visible={modalVisible}
@@ -1742,6 +1887,80 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     gap: 8,
+  },
+  dateTouchable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  calendarModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  calendarModalContent: {
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 360,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  calendarNavBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calendarMonthText: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+  },
+  calendarWeekdays: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  calendarWeekday: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarDay: {
+    width: '14.28%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+  },
+  calendarDaySelected: {
+    backgroundColor: '#10B981',
+  },
+  calendarDayToday: {
+    borderWidth: 2,
+  },
+  calendarDayText: {
+    fontSize: 15,
+    fontWeight: '500' as const,
+  },
+  calendarDayTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700' as const,
   },
   todayButton: {
     flexDirection: 'row',
