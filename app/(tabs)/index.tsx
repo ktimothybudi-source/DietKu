@@ -46,6 +46,7 @@ export default function HomeScreen() {
   const [favoriteToastMessage, setFavoriteToastMessage] = useState('');
   const [showSuggestFavorite, setShowSuggestFavorite] = useState(false);
   const [suggestedMealName, setSuggestedMealName] = useState('');
+  const [shownPendingIds, setShownPendingIds] = useState<Set<string>>(new Set());
   
   const pendingModalScrollRef = useRef<ScrollView>(null);
   
@@ -79,13 +80,13 @@ export default function HomeScreen() {
   }, [progress?.caloriesRemaining, remainingAnimValue]);
 
   useEffect(() => {
-    const donePending = pendingEntries.find(p => p.status === 'done');
+    const donePending = pendingEntries.find(p => p.status === 'done' && !shownPendingIds.has(p.id));
     if (donePending && donePending.analysis && !selectedPending) {
-      // Auto-open food details when analysis is complete
       setSelectedPending(donePending);
+      setShownPendingIds(prev => new Set(prev).add(donePending.id));
     }
     setLastPendingCount(pendingEntries.length);
-  }, [pendingEntries, selectedPending]);
+  }, [pendingEntries, selectedPending, shownPendingIds]);
 
   const getFormattedDate = (dateKey: string) => {
     const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -832,20 +833,22 @@ export default function HomeScreen() {
                           const timestamp = selectedPending.timestamp.toString();
                           
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                          router.push({
-                            pathname: '/story-share',
-                            params: {
-                              mealName,
-                              mealSubtitle,
-                              calories: avgCalories.toString(),
-                              protein: avgProtein.toString(),
-                              carbs: avgCarbs.toString(),
-                              fat: avgFat.toString(),
-                              photoUri,
-                              timestamp,
-                            },
-                          });
-                          setTimeout(() => setSelectedPending(null), 150);
+                          setSelectedPending(null);
+                          setTimeout(() => {
+                            router.push({
+                              pathname: '/story-share',
+                              params: {
+                                mealName,
+                                mealSubtitle,
+                                calories: avgCalories.toString(),
+                                protein: avgProtein.toString(),
+                                carbs: avgCarbs.toString(),
+                                fat: avgFat.toString(),
+                                photoUri,
+                                timestamp,
+                              },
+                            });
+                          }, 100);
                         }}
                         activeOpacity={0.7}
                       >
