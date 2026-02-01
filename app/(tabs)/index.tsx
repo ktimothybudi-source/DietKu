@@ -15,7 +15,7 @@ import {
   Animated,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Minus, Bookmark, Clock, Star, Share2 } from 'lucide-react-native';
+import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2 } from 'lucide-react-native';
 import { useNutrition, useTodayProgress, PendingFoodEntry } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FoodEntry, MealAnalysis } from '@/types/nutrition';
@@ -530,8 +530,8 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.foodInfo}>
                         <View style={styles.foodHeader}>
-                          <Text style={[styles.mealTimeLabel, { color: theme.text }]}>
-                            {isAnalyzing ? 'Menganalisis...' : hasError ? 'Gagal analisis' : isDone && pending.analysis ? pending.analysis.items.map(i => i.name).join(', ') : label}
+                          <Text style={[styles.mealTimeLabel, { color: theme.text }]} numberOfLines={1}>
+                            {isAnalyzing ? 'Menganalisis...' : hasError ? 'Gagal analisis' : isDone && pending.analysis ? (pending.analysis.items[0]?.name.replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim() || label) : label}
                           </Text>
                           <Text style={[styles.mealTime, { color: theme.textSecondary }]}>{time}</Text>
                         </View>
@@ -860,17 +860,64 @@ export default function HomeScreen() {
                 )}
                 <View style={styles.pendingHeaderActions}>
                   {selectedPending?.status === 'done' && selectedPending.analysis && (
-                    <TouchableOpacity
-                      style={styles.favoriteButton}
-                      onPress={handleSaveToFavorite}
-                      activeOpacity={0.7}
-                    >
-                      <Bookmark
-                        size={22}
-                        color={isFavorite(selectedPending.analysis.items.map(i => i.name).join(', ')) ? '#10B981' : theme.textSecondary}
-                        fill={isFavorite(selectedPending.analysis.items.map(i => i.name).join(', ')) ? '#10B981' : 'transparent'}
-                      />
-                    </TouchableOpacity>
+                    <>
+                      <TouchableOpacity
+                        style={styles.shareHeaderButton}
+                        onPress={() => {
+                          if (!selectedPending?.analysis) return;
+                          const analysis = selectedPending.analysis;
+                          const mealName = analysis.items[0]?.name
+                            .replace(/\s*\/\s*/g, ' ')
+                            .replace(/\s+or\s+/gi, ' ')
+                            .replace(/about\s+/gi, '')
+                            .trim() || 'Makanan';
+                          const mealSubtitle = analysis.items.map(item => {
+                            const cleanName = item.name
+                              .replace(/\s*\/\s*/g, ', ')
+                              .replace(/\s+or\s+/gi, ', ')
+                              .replace(/about\s+/gi, '')
+                              .split(',')
+                              .map(s => s.trim())
+                              .filter(Boolean)[0] || item.name;
+                            return cleanName;
+                          }).join(' • ');
+                          const avgCalories = Math.round((analysis.totalCaloriesMin + analysis.totalCaloriesMax) / 2);
+                          const avgProtein = Math.round((analysis.totalProteinMin + analysis.totalProteinMax) / 2);
+                          const avgCarbs = Math.round(analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0));
+                          const avgFat = Math.round(analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0));
+                          
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          setSelectedPending(null);
+                          router.push({
+                            pathname: '/story-share',
+                            params: {
+                              mealName,
+                              mealSubtitle,
+                              calories: avgCalories.toString(),
+                              protein: avgProtein.toString(),
+                              carbs: avgCarbs.toString(),
+                              fat: avgFat.toString(),
+                              photoUri: selectedPending.photoUri,
+                              timestamp: selectedPending.timestamp.toString(),
+                            },
+                          });
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Share2 size={18} color="#FFFFFF" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.favoriteButton}
+                        onPress={handleSaveToFavorite}
+                        activeOpacity={0.7}
+                      >
+                        <Bookmark
+                          size={22}
+                          color={isFavorite(selectedPending.analysis.items.map(i => i.name).join(', ')) ? '#10B981' : theme.textSecondary}
+                          fill={isFavorite(selectedPending.analysis.items.map(i => i.name).join(', ')) ? '#10B981' : 'transparent'}
+                        />
+                      </TouchableOpacity>
+                    </>
                   )}
                   <TouchableOpacity onPress={() => setSelectedPending(null)}>
                     <X size={24} color={theme.textSecondary} />
@@ -919,35 +966,10 @@ export default function HomeScreen() {
                 {selectedPending?.status === 'done' && selectedPending.analysis && (
                   <View style={styles.pendingResultState}>
                     <View style={[styles.pendingTotalCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                      <View style={styles.pendingTotalHeader}>
-                        <View style={[styles.pendingServingControls, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                          <TouchableOpacity
-                            style={styles.pendingServingBtn}
-                            onPress={() => {
-                              if (pendingServings > 1) {
-                                setPendingServings(pendingServings - 1);
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              }
-                            }}
-                          >
-                            <Minus size={16} color={theme.textSecondary} />
-                          </TouchableOpacity>
-                          <Text style={[styles.pendingServingText, { color: theme.text }]}>{pendingServings}</Text>
-                          <TouchableOpacity
-                            style={styles.pendingServingBtn}
-                            onPress={() => {
-                              setPendingServings(pendingServings + 1);
-                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            }}
-                          >
-                            <Plus size={16} color={theme.textSecondary} />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
                       <View style={styles.pendingCaloriesRow}>
                         <Text style={styles.pendingCaloriesEmoji}>🔥</Text>
                         <Text style={[styles.pendingCaloriesValue, { color: theme.text }]}>
-                          {Math.round((selectedPending.analysis.totalCaloriesMin + selectedPending.analysis.totalCaloriesMax) / 2 * pendingServings)}
+                          {Math.round((selectedPending.analysis.totalCaloriesMin + selectedPending.analysis.totalCaloriesMax) / 2)}
                         </Text>
                         <Text style={[styles.pendingCaloriesUnit, { color: theme.textSecondary }]}>kcal</Text>
                       </View>
@@ -955,21 +977,21 @@ export default function HomeScreen() {
                         <View style={styles.pendingMacro}>
                           <Text style={styles.pendingMacroEmoji}>🥩</Text>
                           <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
-                            {Math.round((selectedPending.analysis.totalProteinMin + selectedPending.analysis.totalProteinMax) / 2 * pendingServings)}g
+                            {Math.round((selectedPending.analysis.totalProteinMin + selectedPending.analysis.totalProteinMax) / 2)}g
                           </Text>
                           <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Protein</Text>
                         </View>
                         <View style={styles.pendingMacro}>
                           <Text style={styles.pendingMacroEmoji}>🌾</Text>
                           <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
-                            {Math.round(selectedPending.analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0) * pendingServings)}g
+                            {Math.round(selectedPending.analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0))}g
                           </Text>
                           <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Karbo</Text>
                         </View>
                         <View style={styles.pendingMacro}>
                           <Text style={styles.pendingMacroEmoji}>🥑</Text>
                           <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
-                            {Math.round(selectedPending.analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0) * pendingServings)}g
+                            {Math.round(selectedPending.analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0))}g
                           </Text>
                           <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Lemak</Text>
                         </View>
@@ -995,7 +1017,7 @@ export default function HomeScreen() {
                           </Text>
                         </View>
                         <Text style={[styles.pendingItemCalories, { color: theme.textTertiary }]}>
-                          {Math.round((item.caloriesMin + item.caloriesMax) / 2 * pendingServings)} kcal
+                          {Math.round((item.caloriesMin + item.caloriesMax) / 2)} kcal
                         </Text>
                       </View>
                     ))}
@@ -1019,52 +1041,7 @@ export default function HomeScreen() {
                       </TouchableOpacity>
                     </View>
 
-                    <TouchableOpacity
-                      style={[styles.shareStoryButton, { backgroundColor: theme.background, borderColor: theme.border }]}
-                      onPress={() => {
-                        if (!selectedPending?.analysis) return;
-                        const analysis = selectedPending.analysis;
-                        const mealName = analysis.items[0]?.name
-                          .replace(/\s*\/\s*/g, ' ')
-                          .replace(/\s+or\s+/gi, ' ')
-                          .replace(/about\s+/gi, '')
-                          .trim() || 'Makanan';
-                        const mealSubtitle = analysis.items.map(item => {
-                          const cleanName = item.name
-                            .replace(/\s*\/\s*/g, ', ')
-                            .replace(/\s+or\s+/gi, ', ')
-                            .replace(/about\s+/gi, '')
-                            .split(',')
-                            .map(s => s.trim())
-                            .filter(Boolean)[0] || item.name;
-                          return cleanName;
-                        }).join(' • ');
-                        const avgCalories = Math.round((analysis.totalCaloriesMin + analysis.totalCaloriesMax) / 2 * pendingServings);
-                        const avgProtein = Math.round((analysis.totalProteinMin + analysis.totalProteinMax) / 2 * pendingServings);
-                        const avgCarbs = Math.round(analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0) * pendingServings);
-                        const avgFat = Math.round(analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0) * pendingServings);
-                        
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        setSelectedPending(null);
-                        router.push({
-                          pathname: '/story-share',
-                          params: {
-                            mealName,
-                            mealSubtitle,
-                            calories: avgCalories.toString(),
-                            protein: avgProtein.toString(),
-                            carbs: avgCarbs.toString(),
-                            fat: avgFat.toString(),
-                            photoUri: selectedPending.photoUri,
-                            timestamp: selectedPending.timestamp.toString(),
-                          },
-                        });
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Share2 size={18} color={theme.primary} />
-                      <Text style={[styles.shareStoryText, { color: theme.primary }]}>Bagikan</Text>
-                    </TouchableOpacity>
+
                   </View>
                 )}
               </ScrollView>
@@ -1978,6 +1955,19 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  shareHeaderButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
   },
   favoriteToast: {
     position: 'absolute',
