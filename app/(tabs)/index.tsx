@@ -79,20 +79,12 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const donePending = pendingEntries.find(p => p.status === 'done');
-    if (donePending && donePending.analysis && pendingEntries.length > lastPendingCount) {
-      // Auto-log the food when analysis is done
-      const mealName = donePending.analysis.items.map(i => i.name).join(', ');
-      confirmPendingEntry(donePending.id, 1);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      if (shouldSuggestFavorite(mealName)) {
-        setSuggestedMealName(mealName);
-        setShowSuggestFavorite(true);
-        setTimeout(() => setShowSuggestFavorite(false), 5000);
-      }
+    if (donePending && donePending.analysis && !selectedPending) {
+      // Auto-open food details when analysis is complete
+      setSelectedPending(donePending);
     }
     setLastPendingCount(pendingEntries.length);
-  }, [pendingEntries]);
+  }, [pendingEntries, selectedPending]);
 
   const getFormattedDate = (dateKey: string) => {
     const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
