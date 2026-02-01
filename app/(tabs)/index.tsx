@@ -100,21 +100,28 @@ export default function HomeScreen() {
   useEffect(() => {
     const donePending = pendingEntries.find(p => p.status === 'done' && !shownPendingIds.has(p.id));
     if (donePending && donePending.analysis && !selectedPending) {
-      setSelectedPending(donePending);
       setShownPendingIds(prev => new Set(prev).add(donePending.id));
-      const items = donePending.analysis.items.map(item => ({
-        name: item.name,
-        portion: item.portion,
-        calories: Math.round((item.caloriesMin + item.caloriesMax) / 2),
-        protein: Math.round((item.proteinMin + item.proteinMax) / 2),
-        carbs: Math.round((item.carbsMin + item.carbsMax) / 2),
-        fat: Math.round((item.fatMin + item.fatMax) / 2),
-      }));
-      setEditedItems(items);
-      setHasEdited(false);
+      
+      const analysis = donePending.analysis;
+      const avgCalories = Math.round((analysis.totalCaloriesMin + analysis.totalCaloriesMax) / 2);
+      const avgProtein = Math.round((analysis.totalProteinMin + analysis.totalProteinMax) / 2);
+      const avgCarbs = Math.round(analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0));
+      const avgFat = Math.round(analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0));
+      const foodNames = analysis.items.map(item => item.name).join(', ');
+      
+      addFoodEntry({
+        name: foodNames,
+        calories: avgCalories,
+        protein: avgProtein,
+        carbs: avgCarbs,
+        fat: avgFat,
+      });
+      
+      removePendingEntry(donePending.id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     setLastPendingCount(pendingEntries.length);
-  }, [pendingEntries, selectedPending, shownPendingIds]);
+  }, [pendingEntries, selectedPending, shownPendingIds, addFoodEntry, removePendingEntry]);
 
   const getFormattedDate = (dateKey: string) => {
     const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -236,6 +243,35 @@ export default function HomeScreen() {
       }));
       setEditedItems(items);
       setHasEdited(false);
+    }
+  };
+
+  const handleClosePendingModal = () => {
+    if (hasEdited) {
+      Alert.alert(
+        'Perubahan Belum Disimpan',
+        'Anda memiliki perubahan yang belum disimpan. Yakin ingin keluar?',
+        [
+          { text: 'Batal', style: 'cancel' },
+          { 
+            text: 'Keluar', 
+            style: 'destructive',
+            onPress: () => {
+              setSelectedPending(null);
+              setEditedItems([]);
+              setHasEdited(false);
+              setEditingItemIndex(null);
+              setShowAddItem(false);
+            }
+          },
+        ]
+      );
+    } else {
+      setSelectedPending(null);
+      setEditedItems([]);
+      setHasEdited(false);
+      setEditingItemIndex(null);
+      setShowAddItem(false);
     }
   };
 
@@ -891,13 +927,13 @@ export default function HomeScreen() {
           visible={!!selectedPending}
           transparent
           animationType="slide"
-          onRequestClose={() => setSelectedPending(null)}
+          onRequestClose={handleClosePendingModal}
         >
           <View style={styles.pendingModalContainer}>
             <TouchableOpacity
               style={styles.pendingModalOverlay}
               activeOpacity={1}
-              onPress={() => setSelectedPending(null)}
+              onPress={handleClosePendingModal}
             />
             
             <View style={[styles.pendingModalContent, { backgroundColor: theme.card }]}>
@@ -999,7 +1035,7 @@ export default function HomeScreen() {
                       </TouchableOpacity>
                     </>
                   )}
-                  <TouchableOpacity onPress={() => setSelectedPending(null)}>
+                  <TouchableOpacity onPress={handleClosePendingModal}>
                     <X size={24} color={theme.textSecondary} />
                   </TouchableOpacity>
                 </View>
