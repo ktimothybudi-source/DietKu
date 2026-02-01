@@ -117,11 +117,10 @@ export default function HomeScreen() {
         fat: avgFat,
       });
       
-      removePendingEntry(donePending.id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     setLastPendingCount(pendingEntries.length);
-  }, [pendingEntries, selectedPending, shownPendingIds, addFoodEntry, removePendingEntry]);
+  }, [pendingEntries, selectedPending, shownPendingIds, addFoodEntry]);
 
   const getFormattedDate = (dateKey: string) => {
     const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -257,6 +256,9 @@ export default function HomeScreen() {
             text: 'Keluar', 
             style: 'destructive',
             onPress: () => {
+              if (selectedPending && shownPendingIds.has(selectedPending.id)) {
+                removePendingEntry(selectedPending.id);
+              }
               setSelectedPending(null);
               setEditedItems([]);
               setHasEdited(false);
@@ -267,6 +269,9 @@ export default function HomeScreen() {
         ]
       );
     } else {
+      if (selectedPending && shownPendingIds.has(selectedPending.id)) {
+        removePendingEntry(selectedPending.id);
+      }
       setSelectedPending(null);
       setEditedItems([]);
       setHasEdited(false);
@@ -352,13 +357,15 @@ export default function HomeScreen() {
     const totals = getEditedTotals();
     const foodNames = editedItems.map(item => item.name).join(', ');
     
-    addFoodEntry({
-      name: foodNames,
-      calories: totals.calories,
-      protein: totals.protein,
-      carbs: totals.carbs,
-      fat: totals.fat,
-    });
+    if (hasEdited) {
+      addFoodEntry({
+        name: foodNames,
+        calories: totals.calories,
+        protein: totals.protein,
+        carbs: totals.carbs,
+        fat: totals.fat,
+      });
+    }
     
     removePendingEntry(selectedPending.id);
     setSelectedPending(null);
