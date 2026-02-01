@@ -65,18 +65,7 @@ export default function HomeScreen() {
   const [editItemFat, setEditItemFat] = useState('');
   const [showAddItem, setShowAddItem] = useState(false);
   const [hasEdited, setHasEdited] = useState(false);
-  const [viewingEntry, setViewingEntry] = useState<FoodEntry | null>(null);
-  const [viewingEditedItems, setViewingEditedItems] = useState<{
-    name: string;
-    portion: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  }[]>([]);
-  const [viewingHasEdited, setViewingHasEdited] = useState(false);
-  const [viewingEditingIndex, setViewingEditingIndex] = useState<number | null>(null);
-  const [viewingShowAddItem, setViewingShowAddItem] = useState(false);
+  const [viewingLoggedEntryId, setViewingLoggedEntryId] = useState<string | null>(null);
   
   const pendingModalScrollRef = useRef<ScrollView>(null);
   
@@ -237,7 +226,7 @@ export default function HomeScreen() {
 
   const handleViewEntry = (entry: FoodEntry) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setViewingEntry(entry);
+    
     const items = entry.name.split(',').map((name, index) => {
       const itemCount = entry.name.split(',').length;
       return {
@@ -249,16 +238,47 @@ export default function HomeScreen() {
         fat: Math.round(entry.fat / itemCount),
       };
     });
-    setViewingEditedItems(items);
-    setViewingHasEdited(false);
-    setViewingEditingIndex(null);
-    setViewingShowAddItem(false);
+    
+    const fakePending: PendingFoodEntry = {
+      id: `view-${entry.id}`,
+      photoUri: entry.photoUri || '',
+      base64: '',
+      timestamp: entry.timestamp,
+      status: 'done',
+      analysis: {
+        items: items.map(item => ({
+          name: item.name,
+          portion: item.portion,
+          caloriesMin: item.calories,
+          caloriesMax: item.calories,
+          proteinMin: item.protein,
+          proteinMax: item.protein,
+          carbsMin: item.carbs,
+          carbsMax: item.carbs,
+          fatMin: item.fat,
+          fatMax: item.fat,
+        })),
+        totalCaloriesMin: entry.calories,
+        totalCaloriesMax: entry.calories,
+        totalProteinMin: entry.protein,
+        totalProteinMax: entry.protein,
+        confidence: 'high',
+      },
+    };
+    
+    setViewingLoggedEntryId(entry.id);
+    setEditedItems(items);
+    setHasEdited(false);
+    setEditingItemIndex(null);
+    setShowAddItem(false);
+    setSelectedPending(fakePending);
   };
 
   const handleShareEntry = (entry: FoodEntry) => {
     const mealName = entry.name.split(',')[0].replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim();
     const mealSubtitle = entry.name.split(',').map(n => n.trim().split(' ')[0]).join(' • ');
-    setViewingEntry(null);
+    setSelectedPending(null);
+    setViewingLoggedEntryId(null);
     router.push({
       pathname: '/story-share',
       params: {
@@ -273,127 +293,9 @@ export default function HomeScreen() {
     });
   };
 
-  const handleCloseViewingModal = () => {
-    if (viewingHasEdited) {
-      Alert.alert(
-        'Perubahan Belum Disimpan',
-        'Anda memiliki perubahan yang belum disimpan. Yakin ingin keluar?',
-        [
-          { text: 'Batal', style: 'cancel' },
-          { 
-            text: 'Keluar', 
-            style: 'destructive',
-            onPress: () => {
-              setViewingEntry(null);
-              setViewingEditedItems([]);
-              setViewingHasEdited(false);
-              setViewingEditingIndex(null);
-              setViewingShowAddItem(false);
-            }
-          },
-        ]
-      );
-    } else {
-      setViewingEntry(null);
-      setViewingEditedItems([]);
-      setViewingHasEdited(false);
-      setViewingEditingIndex(null);
-      setViewingShowAddItem(false);
-    }
-  };
+  
 
-  const handleStartEditViewingItem = (index: number) => {
-    const item = viewingEditedItems[index];
-    setViewingEditingIndex(index);
-    setEditItemName(item.name);
-    setEditItemPortion(item.portion);
-    setEditItemCalories(item.calories.toString());
-    setEditItemProtein(item.protein.toString());
-    setEditItemCarbs(item.carbs.toString());
-    setEditItemFat(item.fat.toString());
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const handleSaveEditViewingItem = () => {
-    if (viewingEditingIndex === null) return;
-    const updated = [...viewingEditedItems];
-    updated[viewingEditingIndex] = {
-      name: editItemName || 'Makanan',
-      portion: editItemPortion || '1 porsi',
-      calories: parseInt(editItemCalories) || 0,
-      protein: parseInt(editItemProtein) || 0,
-      carbs: parseInt(editItemCarbs) || 0,
-      fat: parseInt(editItemFat) || 0,
-    };
-    setViewingEditedItems(updated);
-    setViewingEditingIndex(null);
-    setViewingHasEdited(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  };
-
-  const handleDeleteViewingItem = (index: number) => {
-    const updated = viewingEditedItems.filter((_, i) => i !== index);
-    setViewingEditedItems(updated);
-    setViewingEditingIndex(null);
-    setViewingHasEdited(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  };
-
-  const handleAddNewViewingItem = () => {
-    setViewingShowAddItem(true);
-    setEditItemName('');
-    setEditItemPortion('');
-    setEditItemCalories('');
-    setEditItemProtein('');
-    setEditItemCarbs('');
-    setEditItemFat('');
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const handleSaveNewViewingItem = () => {
-    const newItem = {
-      name: editItemName || 'Makanan Baru',
-      portion: editItemPortion || '1 porsi',
-      calories: parseInt(editItemCalories) || 0,
-      protein: parseInt(editItemProtein) || 0,
-      carbs: parseInt(editItemCarbs) || 0,
-      fat: parseInt(editItemFat) || 0,
-    };
-    setViewingEditedItems([...viewingEditedItems, newItem]);
-    setViewingShowAddItem(false);
-    setViewingHasEdited(true);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  };
-
-  const getViewingEditedTotals = () => {
-    return viewingEditedItems.reduce((acc, item) => ({
-      calories: acc.calories + item.calories,
-      protein: acc.protein + item.protein,
-      carbs: acc.carbs + item.carbs,
-      fat: acc.fat + item.fat,
-    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
-  };
-
-  const handleConfirmViewingEdited = () => {
-    if (!viewingEntry || viewingEditedItems.length === 0) return;
-    const totals = getViewingEditedTotals();
-    const foodNames = viewingEditedItems.map(item => item.name).join(', ');
-    
-    deleteFoodEntry(viewingEntry.id);
-    addFoodEntry({
-      name: foodNames,
-      calories: totals.calories,
-      protein: totals.protein,
-      carbs: totals.carbs,
-      fat: totals.fat,
-      photoUri: viewingEntry.photoUri,
-    });
-    
-    setViewingEntry(null);
-    setViewingEditedItems([]);
-    setViewingHasEdited(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  };
+  
 
   const handlePendingPress = (pending: PendingFoodEntry) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -423,7 +325,7 @@ export default function HomeScreen() {
             text: 'Keluar', 
             style: 'destructive',
             onPress: () => {
-              if (selectedPending && shownPendingIds.has(selectedPending.id)) {
+              if (selectedPending && shownPendingIds.has(selectedPending.id) && !viewingLoggedEntryId) {
                 removePendingEntry(selectedPending.id);
               }
               setSelectedPending(null);
@@ -431,12 +333,13 @@ export default function HomeScreen() {
               setHasEdited(false);
               setEditingItemIndex(null);
               setShowAddItem(false);
+              setViewingLoggedEntryId(null);
             }
           },
         ]
       );
     } else {
-      if (selectedPending && shownPendingIds.has(selectedPending.id)) {
+      if (selectedPending && shownPendingIds.has(selectedPending.id) && !viewingLoggedEntryId) {
         removePendingEntry(selectedPending.id);
       }
       setSelectedPending(null);
@@ -444,6 +347,7 @@ export default function HomeScreen() {
       setHasEdited(false);
       setEditingItemIndex(null);
       setShowAddItem(false);
+      setViewingLoggedEntryId(null);
     }
   };
 
@@ -524,7 +428,17 @@ export default function HomeScreen() {
     const totals = getEditedTotals();
     const foodNames = editedItems.map(item => item.name).join(', ');
     
-    if (hasEdited) {
+    if (viewingLoggedEntryId) {
+      deleteFoodEntry(viewingLoggedEntryId);
+      addFoodEntry({
+        name: foodNames,
+        calories: totals.calories,
+        protein: totals.protein,
+        carbs: totals.carbs,
+        fat: totals.fat,
+        photoUri: selectedPending.photoUri || undefined,
+      });
+    } else if (hasEdited) {
       addFoodEntry({
         name: foodNames,
         calories: totals.calories,
@@ -533,12 +447,15 @@ export default function HomeScreen() {
         fat: totals.fat,
         photoUri: selectedPending.photoUri,
       });
+      removePendingEntry(selectedPending.id);
+    } else {
+      removePendingEntry(selectedPending.id);
     }
     
-    removePendingEntry(selectedPending.id);
     setSelectedPending(null);
     setEditedItems([]);
     setHasEdited(false);
+    setViewingLoggedEntryId(null);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -1283,8 +1200,12 @@ export default function HomeScreen() {
                   }
                 }}
               >
-                {selectedPending?.photoUri && (
+                {selectedPending?.photoUri ? (
                   <Image source={{ uri: selectedPending.photoUri }} style={styles.pendingModalImage} />
+                ) : (
+                  <View style={[styles.viewEntryImageContainer, { backgroundColor: theme.background }]}>
+                    <Camera size={48} color={theme.textTertiary} />
+                  </View>
                 )}
 
                 {selectedPending?.status === 'analyzing' && (
@@ -1593,14 +1514,16 @@ export default function HomeScreen() {
                       )
                     ))}
 
-                    {hasEdited && (
+                    {(hasEdited || viewingLoggedEntryId) && (
                       <TouchableOpacity
                         style={styles.confirmEditedButton}
                         onPress={handleConfirmEdited}
                         activeOpacity={0.8}
                       >
                         <Check size={20} color="#FFFFFF" />
-                        <Text style={styles.confirmEditedText}>Konfirmasi & Tambah ke Log</Text>
+                        <Text style={styles.confirmEditedText}>
+                          {viewingLoggedEntryId ? 'Simpan Perubahan' : 'Konfirmasi & Tambah ke Log'}
+                        </Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -1615,379 +1538,6 @@ export default function HomeScreen() {
             <Text style={styles.favoriteToastText}>{favoriteToastMessage}</Text>
           </View>
         )}
-
-        <Modal
-          visible={viewingEntry !== null}
-          transparent
-          animationType="slide"
-          onRequestClose={handleCloseViewingModal}
-        >
-          <View style={styles.pendingModalContainer}>
-            <TouchableOpacity
-              style={styles.pendingModalOverlay}
-              activeOpacity={1}
-              onPress={handleCloseViewingModal}
-            />
-            <View style={[styles.pendingModalContent, { backgroundColor: theme.card }]}>
-              {viewingEntry && (
-                <>
-                  <View style={[styles.pendingModalHeader, { borderBottomColor: theme.border }]}>
-                    <View style={styles.pendingModalTitleContainer}>
-                      <Text style={[styles.pendingModalTitle, { color: theme.text }]} numberOfLines={1}>
-                        {viewingEntry.name.split(',')[0].replace(/\s*\/\s*/g, ' ').replace(/\s+or\s+/gi, ' ').replace(/about\s+/gi, '').trim()}
-                      </Text>
-                      <Text style={[styles.pendingModalSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
-                        {viewingEntry.name.split(',').map(n => n.trim().split(' ')[0]).join(' • ')}
-                      </Text>
-                    </View>
-                    <View style={styles.pendingHeaderActions}>
-                      <TouchableOpacity
-                        style={styles.shareHeaderButton}
-                        onPress={() => handleShareEntry(viewingEntry)}
-                        activeOpacity={0.7}
-                      >
-                        <Share2 size={18} color="#FFFFFF" />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.favoriteButton}
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          const mealName = viewingEntry.name;
-                          if (isFavorite(mealName)) {
-                            removeFromFavorites(mealName);
-                            setFavoriteToastMessage('Dihapus dari favorit');
-                          } else {
-                            addToFavorites({
-                              name: mealName,
-                              calories: viewingEntry.calories,
-                              protein: viewingEntry.protein,
-                              carbs: viewingEntry.carbs,
-                              fat: viewingEntry.fat,
-                            });
-                            setFavoriteToastMessage('Ditambahkan ke favorit!');
-                          }
-                          setShowFavoriteToast(true);
-                          setTimeout(() => setShowFavoriteToast(false), 2000);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Bookmark
-                          size={22}
-                          color={isFavorite(viewingEntry.name) ? '#10B981' : theme.textSecondary}
-                          fill={isFavorite(viewingEntry.name) ? '#10B981' : 'transparent'}
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={handleCloseViewingModal}>
-                        <X size={24} color={theme.textSecondary} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  <ScrollView style={styles.pendingModalBody} showsVerticalScrollIndicator={false}>
-                    {viewingEntry.photoUri ? (
-                      <Image source={{ uri: viewingEntry.photoUri }} style={styles.pendingModalImage} />
-                    ) : (
-                      <View style={[styles.viewEntryImageContainer, { backgroundColor: theme.background }]}>
-                        <Camera size={48} color={theme.textTertiary} />
-                      </View>
-                    )}
-
-                    <View style={styles.pendingResultState}>
-                      {(() => {
-                        const totals = getViewingEditedTotals();
-                        return (
-                          <View style={[styles.pendingTotalCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                            <View style={styles.pendingCaloriesRow}>
-                              <Text style={styles.pendingCaloriesEmoji}>🔥</Text>
-                              <Text style={[styles.pendingCaloriesValue, { color: theme.text }]}>
-                                {totals.calories}
-                              </Text>
-                              <Text style={[styles.pendingCaloriesUnit, { color: theme.textSecondary }]}>kcal</Text>
-                            </View>
-                            <View style={styles.pendingMacros}>
-                              <View style={styles.pendingMacro}>
-                                <Text style={styles.pendingMacroEmoji}>🥩</Text>
-                                <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
-                                  {totals.protein}g
-                                </Text>
-                                <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Protein</Text>
-                              </View>
-                              <View style={styles.pendingMacro}>
-                                <Text style={styles.pendingMacroEmoji}>🌾</Text>
-                                <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
-                                  {totals.carbs}g
-                                </Text>
-                                <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Karbo</Text>
-                              </View>
-                              <View style={styles.pendingMacro}>
-                                <Text style={styles.pendingMacroEmoji}>🥑</Text>
-                                <Text style={[styles.pendingMacroValue, { color: theme.text }]}>
-                                  {totals.fat}g
-                                </Text>
-                                <Text style={[styles.pendingMacroLabel, { color: theme.textSecondary }]}>Lemak</Text>
-                              </View>
-                            </View>
-                          </View>
-                        );
-                      })()}
-
-                      <View style={styles.itemsTitleRow}>
-                        <Text style={[styles.pendingItemsTitle, { color: theme.text }]}>Komponen Makanan</Text>
-                        <TouchableOpacity
-                          style={[styles.addItemButton, { backgroundColor: theme.background, borderColor: theme.border }]}
-                          onPress={handleAddNewViewingItem}
-                          activeOpacity={0.7}
-                        >
-                          <PlusCircle size={16} color="#10B981" />
-                          <Text style={styles.addItemButtonText}>Tambah</Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      {viewingShowAddItem && (
-                        <View style={[styles.editItemCard, { backgroundColor: theme.background, borderColor: '#10B981' }]}>
-                          <Text style={[styles.editItemTitle, { color: theme.text }]}>Tambah Item Baru</Text>
-                          <View style={styles.editItemRow}>
-                            <View style={styles.editItemField}>
-                              <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Nama</Text>
-                              <TextInput
-                                style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                                placeholder="Nama makanan"
-                                placeholderTextColor={theme.textTertiary}
-                                value={editItemName}
-                                onChangeText={setEditItemName}
-                              />
-                            </View>
-                          </View>
-                          <View style={styles.editItemRow}>
-                            <View style={styles.editItemField}>
-                              <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Porsi</Text>
-                              <TextInput
-                                style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                                placeholder="1 porsi"
-                                placeholderTextColor={theme.textTertiary}
-                                value={editItemPortion}
-                                onChangeText={setEditItemPortion}
-                              />
-                            </View>
-                          </View>
-                          <View style={styles.editItemRowMulti}>
-                            <View style={styles.editItemFieldSmall}>
-                              <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Kalori</Text>
-                              <TextInput
-                                style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                                placeholder="0"
-                                placeholderTextColor={theme.textTertiary}
-                                keyboardType="numeric"
-                                value={editItemCalories}
-                                onChangeText={setEditItemCalories}
-                              />
-                            </View>
-                            <View style={styles.editItemFieldSmall}>
-                              <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Protein</Text>
-                              <TextInput
-                                style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                                placeholder="0"
-                                placeholderTextColor={theme.textTertiary}
-                                keyboardType="numeric"
-                                value={editItemProtein}
-                                onChangeText={setEditItemProtein}
-                              />
-                            </View>
-                          </View>
-                          <View style={styles.editItemRowMulti}>
-                            <View style={styles.editItemFieldSmall}>
-                              <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Karbo</Text>
-                              <TextInput
-                                style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                                placeholder="0"
-                                placeholderTextColor={theme.textTertiary}
-                                keyboardType="numeric"
-                                value={editItemCarbs}
-                                onChangeText={setEditItemCarbs}
-                              />
-                            </View>
-                            <View style={styles.editItemFieldSmall}>
-                              <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Lemak</Text>
-                              <TextInput
-                                style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                                placeholder="0"
-                                placeholderTextColor={theme.textTertiary}
-                                keyboardType="numeric"
-                                value={editItemFat}
-                                onChangeText={setEditItemFat}
-                              />
-                            </View>
-                          </View>
-                          <View style={styles.editItemActions}>
-                            <TouchableOpacity
-                              style={[styles.editItemCancelBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
-                              onPress={() => setViewingShowAddItem(false)}
-                            >
-                              <Text style={[styles.editItemCancelText, { color: theme.textSecondary }]}>Batal</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={styles.editItemSaveBtn}
-                              onPress={handleSaveNewViewingItem}
-                            >
-                              <Text style={styles.editItemSaveText}>Simpan</Text>
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      )}
-
-                      {viewingEditedItems.map((item, index) => (
-                        viewingEditingIndex === index ? (
-                          <View key={index} style={[styles.editItemCard, { backgroundColor: theme.background, borderColor: '#10B981' }]}>
-                            <Text style={[styles.editItemTitle, { color: theme.text }]}>Edit Item</Text>
-                            <View style={styles.editItemRow}>
-                              <View style={styles.editItemField}>
-                                <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Nama</Text>
-                                <TextInput
-                                  style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                                  placeholder="Nama makanan"
-                                  placeholderTextColor={theme.textTertiary}
-                                  value={editItemName}
-                                  onChangeText={setEditItemName}
-                                />
-                              </View>
-                            </View>
-                            <View style={styles.editItemRow}>
-                              <View style={styles.editItemField}>
-                                <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Porsi</Text>
-                                <TextInput
-                                  style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                                  placeholder="1 porsi"
-                                  placeholderTextColor={theme.textTertiary}
-                                  value={editItemPortion}
-                                  onChangeText={setEditItemPortion}
-                                />
-                              </View>
-                            </View>
-                            <View style={styles.editItemRowMulti}>
-                              <View style={styles.editItemFieldSmall}>
-                                <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Kalori</Text>
-                                <TextInput
-                                  style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                                  placeholder="0"
-                                  placeholderTextColor={theme.textTertiary}
-                                  keyboardType="numeric"
-                                  value={editItemCalories}
-                                  onChangeText={setEditItemCalories}
-                                />
-                              </View>
-                              <View style={styles.editItemFieldSmall}>
-                                <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Protein</Text>
-                                <TextInput
-                                  style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                                  placeholder="0"
-                                  placeholderTextColor={theme.textTertiary}
-                                  keyboardType="numeric"
-                                  value={editItemProtein}
-                                  onChangeText={setEditItemProtein}
-                                />
-                              </View>
-                            </View>
-                            <View style={styles.editItemRowMulti}>
-                              <View style={styles.editItemFieldSmall}>
-                                <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Karbo</Text>
-                                <TextInput
-                                  style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                                  placeholder="0"
-                                  placeholderTextColor={theme.textTertiary}
-                                  keyboardType="numeric"
-                                  value={editItemCarbs}
-                                  onChangeText={setEditItemCarbs}
-                                />
-                              </View>
-                              <View style={styles.editItemFieldSmall}>
-                                <Text style={[styles.editItemLabel, { color: theme.textSecondary }]}>Lemak</Text>
-                                <TextInput
-                                  style={[styles.editItemInput, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}
-                                  placeholder="0"
-                                  placeholderTextColor={theme.textTertiary}
-                                  keyboardType="numeric"
-                                  value={editItemFat}
-                                  onChangeText={setEditItemFat}
-                                />
-                              </View>
-                            </View>
-                            <View style={styles.editItemActions}>
-                              <TouchableOpacity
-                                style={[styles.editItemDeleteBtn, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
-                                onPress={() => handleDeleteViewingItem(index)}
-                              >
-                                <Trash2 size={16} color="#EF4444" />
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={[styles.editItemCancelBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
-                                onPress={() => setViewingEditingIndex(null)}
-                              >
-                                <Text style={[styles.editItemCancelText, { color: theme.textSecondary }]}>Batal</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={styles.editItemSaveBtn}
-                                onPress={handleSaveEditViewingItem}
-                              >
-                                <Text style={styles.editItemSaveText}>Simpan</Text>
-                              </TouchableOpacity>
-                            </View>
-                          </View>
-                        ) : (
-                          <TouchableOpacity
-                            key={index}
-                            style={[styles.pendingItemCard, { backgroundColor: theme.background, borderColor: theme.border }]}
-                            onPress={() => handleStartEditViewingItem(index)}
-                            activeOpacity={0.7}
-                          >
-                            <View style={{ flex: 1 }}>
-                              <Text style={[styles.pendingItemName, { color: theme.text }]}>
-                                {item.name
-                                  .replace(/\s*\/\s*/g, ' ')
-                                  .replace(/\s+or\s+/gi, ' ')
-                                  .replace(/about\s+/gi, '')
-                                  .trim()}
-                              </Text>
-                              <Text style={[styles.pendingItemPortion, { color: theme.textSecondary }]}>
-                                {item.portion
-                                  .replace(/about\s+/gi, '')
-                                  .replace(/approximately\s+/gi, '')
-                                  .trim()}
-                              </Text>
-                            </View>
-                            <View style={styles.itemRightSection}>
-                              <Text style={[styles.pendingItemCalories, { color: theme.textTertiary }]}>
-                                {item.calories} kcal
-                              </Text>
-                              <Edit3 size={14} color={theme.textTertiary} />
-                            </View>
-                          </TouchableOpacity>
-                        )
-                      ))}
-
-                      <View style={[styles.viewEntryTimeCard, { backgroundColor: theme.background, borderColor: theme.border, marginTop: 16 }]}>
-                        <Clock size={16} color={theme.textSecondary} />
-                        <Text style={[styles.viewEntryTimeText, { color: theme.textSecondary }]}>
-                          {new Date(viewingEntry.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} • {new Date(viewingEntry.timestamp).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </Text>
-                      </View>
-
-                      {viewingHasEdited && (
-                        <TouchableOpacity
-                          style={styles.confirmEditedButton}
-                          onPress={handleConfirmViewingEdited}
-                          activeOpacity={0.8}
-                        >
-                          <Check size={20} color="#FFFFFF" />
-                          <Text style={styles.confirmEditedText}>Simpan Perubahan</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </ScrollView>
-                </>
-              )}
-            </View>
-          </View>
-        </Modal>
 
         {showSuggestFavorite && (
           <View style={[styles.suggestFavoriteToast, { backgroundColor: theme.card, borderColor: theme.border }]}>
