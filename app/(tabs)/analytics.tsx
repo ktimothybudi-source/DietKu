@@ -521,9 +521,9 @@ export default function AnalyticsScreen() {
           </View>
 
           {!!streakData?.currentStreak && streakData.currentStreak > 0 && (
-            <View style={[styles.headerStreak, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <Flame size={18} color="#FF6B35" fill="#FF6B35" />
-              <Text style={[styles.headerStreakText, { color: theme.text }]}>{streakData.currentStreak}</Text>
+            <View style={styles.headerStreak}>
+              <Flame size={18} color="#FF6B35" />
+              <Text style={styles.headerStreakText}>{streakData.currentStreak}</Text>
             </View>
           )}
         </View>
@@ -1111,12 +1111,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    backgroundColor: 'rgba(255, 107, 53, 0.12)',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
-    borderWidth: 1,
   },
-  headerStreakText: { fontSize: 14, fontWeight: '800' },
+  headerStreakText: { fontSize: 14, fontWeight: '800', color: '#FF6B35' },
 
   content: { flex: 1 },
 

@@ -346,8 +346,8 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   greeting: {
-    fontSize: 32,
-    fontWeight: '700' as const,
+    fontSize: 30,
+    fontWeight: '900' as const,
     marginBottom: 4,
   },
   scrollContent: {

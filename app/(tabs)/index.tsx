@@ -1211,8 +1211,8 @@ const styles = StyleSheet.create({
     height: 32,
   },
   appName: {
-    fontSize: 28,
-    fontWeight: '700' as const,
+    fontSize: 30,
+    fontWeight: '900' as const,
   },
   greetingText: {
     fontSize: 13,
@@ -1227,14 +1227,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 107, 53, 0.1)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: 'rgba(255, 107, 53, 0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
   },
   streakText: {
-    fontSize: 18,
-    fontWeight: '700' as const,
+    fontSize: 14,
+    fontWeight: '800' as const,
     color: '#FF6B35',
   },
   content: {
