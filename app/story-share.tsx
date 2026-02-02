@@ -18,9 +18,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   X,
-  Instagram,
-  Download,
-  MoreHorizontal,
   MapPin,
   Check,
   ChevronRight,
@@ -30,6 +27,10 @@ import {
   User,
   Navigation,
   Edit3,
+  MessageCircle,
+  Link,
+  Share2,
+  Image as ImageIcon,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -502,37 +503,79 @@ export default function StoryShareScreen() {
 
         <ScrollView
           style={styles.scrollContent}
-          contentContainerStyle={[styles.scrollContentContainer, { paddingBottom: insets.bottom + 200 }]}
+          contentContainerStyle={[styles.scrollContentContainer, { paddingBottom: insets.bottom + 40 }]}
           showsVerticalScrollIndicator={false}
         >
           {renderPreview()}
-          {renderIncludePanel()}
-        </ScrollView>
-
-        <Animated.View style={[styles.bottomActions, { paddingBottom: insets.bottom + 16, opacity: fadeAnim }]}>
-          <TouchableOpacity style={styles.shareButton} onPress={handleShareInstagram}>
-            <LinearGradient
-              colors={['#833AB4', '#E1306C', '#F77737']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.shareGradient}
-            >
-              <Instagram size={22} color="#FFFFFF" />
-              <Text style={styles.shareButtonText}>Share to Instagram</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <View style={styles.secondaryActions}>
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleSaveImage}>
-              <Download size={20} color="#FFFFFF" />
-              <Text style={styles.secondaryButtonText}>Save</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleMoreOptions}>
-              <MoreHorizontal size={20} color="#FFFFFF" />
-              <Text style={styles.secondaryButtonText}>More</Text>
-            </TouchableOpacity>
+          
+          <View style={styles.paginationDots}>
+            <View style={[styles.dot, styles.dotActive]} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
           </View>
-        </Animated.View>
+
+          {renderIncludePanel()}
+
+          <View style={styles.shareSection}>
+            <Text style={styles.shareSectionTitle}>Share to</Text>
+            <View style={styles.shareGrid}>
+              <TouchableOpacity style={styles.shareAppItem} onPress={handleShareInstagram}>
+                <LinearGradient
+                  colors={['#833AB4', '#E1306C', '#F77737']}
+                  style={styles.shareAppIcon}
+                >
+                  <Text style={styles.shareAppEmoji}>📸</Text>
+                </LinearGradient>
+                <Text style={styles.shareAppLabel}>Instagram{"\n"}Story</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.shareAppItem} onPress={handleShareInstagram}>
+                <LinearGradient
+                  colors={['#833AB4', '#E1306C', '#F77737']}
+                  style={styles.shareAppIcon}
+                >
+                  <MessageCircle size={24} color="#FFFFFF" />
+                </LinearGradient>
+                <Text style={styles.shareAppLabel}>Instagram{"\n"}Messages</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.shareAppItem} onPress={handleMoreOptions}>
+                <View style={[styles.shareAppIcon, { backgroundColor: '#25D366' }]}>
+                  <Text style={styles.shareAppEmoji}>💬</Text>
+                </View>
+                <Text style={styles.shareAppLabel}>WhatsApp</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.shareAppItem} onPress={handleMoreOptions}>
+                <View style={[styles.shareAppIcon, { backgroundColor: '#34C759' }]}>
+                  <MessageCircle size={24} color="#FFFFFF" />
+                </View>
+                <Text style={styles.shareAppLabel}>Message</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.shareAppItem} onPress={handleSaveImage}>
+                <View style={[styles.shareAppIcon, styles.shareAppIconOutline]}>
+                  <ImageIcon size={24} color="#FFFFFF" />
+                </View>
+                <Text style={styles.shareAppLabel}>Save{"\n"}Image</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.shareAppItem} onPress={handleMoreOptions}>
+                <View style={[styles.shareAppIcon, styles.shareAppIconOutline]}>
+                  <Link size={24} color="#FFFFFF" />
+                </View>
+                <Text style={styles.shareAppLabel}>Copy{"\n"}Link</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.shareAppItem} onPress={handleMoreOptions}>
+                <View style={[styles.shareAppIcon, styles.shareAppIconOutline]}>
+                  <Share2 size={24} color="#FFFFFF" />
+                </View>
+                <Text style={styles.shareAppLabel}>More</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
 
         {renderLocationSheet()}
       </View>
@@ -569,15 +612,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContentContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   previewContainer: {
     aspectRatio: 9 / 16,
-    width: SCREEN_WIDTH - 32,
-    borderRadius: 24,
+    width: SCREEN_WIDTH - 80,
+    alignSelf: 'center',
+    borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1a1a2e',
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  paginationDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 24,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  dotActive: {
+    backgroundColor: '#FFFFFF',
   },
   previewImage: {
     ...StyleSheet.absoluteFillObject,
@@ -657,8 +717,9 @@ const styles = StyleSheet.create({
   },
   includePanel: {
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 16,
+    marginBottom: 24,
   },
   includePanelTitle: {
     fontSize: 16,
@@ -724,50 +785,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
   },
-  bottomActions: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    backgroundColor: 'rgba(10,10,15,0.95)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
+  shareSection: {
+    marginBottom: 20,
   },
-  shareButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  shareGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
-  },
-  shareButtonText: {
-    fontSize: 17,
+  shareSectionTitle: {
+    fontSize: 15,
     fontWeight: '600' as const,
     color: '#FFFFFF',
+    marginBottom: 16,
   },
-  secondaryActions: {
+  shareGrid: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
+    flexWrap: 'wrap',
+    gap: 16,
   },
-  secondaryButton: {
-    flexDirection: 'row',
+  shareAppItem: {
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    width: (SCREEN_WIDTH - 40 - 48) / 4,
   },
-  secondaryButtonText: {
-    fontSize: 14,
+  shareAppIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  shareAppIconOutline: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  shareAppEmoji: {
+    fontSize: 24,
+  },
+  shareAppLabel: {
+    fontSize: 11,
     fontWeight: '500' as const,
     color: '#999',
+    textAlign: 'center' as const,
+    lineHeight: 14,
   },
   sheetOverlay: {
     ...StyleSheet.absoluteFillObject,
