@@ -39,13 +39,11 @@ export default function SignInScreen() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       console.log('Sign in attempt:', { email });
-      signIn(email.trim());
+      await signIn(email.trim());
       
-      // Navigate to root which will check profile and route accordingly
-      console.log('Sign in successful, navigating to root for profile check');
-      setTimeout(() => {
-        router.replace('/');
-      }, 500);
+      // Navigate to main app after successful sign in with data migration
+      console.log('Sign in successful, navigating to main app');
+      router.replace('/(tabs)');
     } catch (error) {
       console.error('Sign in error:', error);
       Alert.alert('Error', 'Gagal masuk. Silakan coba lagi.');
@@ -62,13 +60,11 @@ export default function SignInScreen() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       console.log('Google sign in');
-      signIn('google_user@gmail.com');
+      await signIn('google_user@gmail.com');
       
-      // Navigate to root which will check profile and route accordingly
-      console.log('Google sign in successful, navigating to root for profile check');
-      setTimeout(() => {
-        router.replace('/');
-      }, 500);
+      // Navigate to main app after successful sign in with data migration
+      console.log('Google sign in successful, navigating to main app');
+      router.replace('/(tabs)');
     } catch (error) {
       console.error('Google sign in error:', error);
       Alert.alert('Error', 'Gagal masuk dengan Google. Silakan coba lagi.');

@@ -504,8 +504,59 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   const { mutate: mutateRecentMeals } = saveRecentMealsMutation;
   const { mutate: mutateAuth } = saveAuthMutation;
 
-  const signIn = useCallback((email: string) => {
+  const signIn = useCallback(async (email: string) => {
     console.log('Signing in user:', email);
+    
+    // Check if there's existing profile data without email (from onboarding before sign in)
+    // and migrate it to the new email-keyed storage
+    try {
+      const existingProfile = await AsyncStorage.getItem(BASE_PROFILE_KEY);
+      const emailKey = getStorageKey(BASE_PROFILE_KEY, email);
+      const emailProfile = await AsyncStorage.getItem(emailKey);
+      
+      // If there's a profile without email but none with email, migrate all data
+      if (existingProfile && !emailProfile) {
+        console.log('Migrating existing profile data to email-keyed storage:', email);
+        
+        // Migrate profile
+        await AsyncStorage.setItem(emailKey, existingProfile);
+        
+        // Migrate food log
+        const existingFoodLog = await AsyncStorage.getItem(BASE_FOOD_LOG_KEY);
+        if (existingFoodLog) {
+          await AsyncStorage.setItem(getStorageKey(BASE_FOOD_LOG_KEY, email), existingFoodLog);
+        }
+        
+        // Migrate streak
+        const existingStreak = await AsyncStorage.getItem(BASE_STREAK_KEY);
+        if (existingStreak) {
+          await AsyncStorage.setItem(getStorageKey(BASE_STREAK_KEY, email), existingStreak);
+        }
+        
+        // Migrate weight history
+        const existingWeight = await AsyncStorage.getItem(BASE_WEIGHT_HISTORY_KEY);
+        if (existingWeight) {
+          await AsyncStorage.setItem(getStorageKey(BASE_WEIGHT_HISTORY_KEY, email), existingWeight);
+        }
+        
+        // Migrate favorites
+        const existingFavorites = await AsyncStorage.getItem(BASE_FAVORITES_KEY);
+        if (existingFavorites) {
+          await AsyncStorage.setItem(getStorageKey(BASE_FAVORITES_KEY, email), existingFavorites);
+        }
+        
+        // Migrate recent meals
+        const existingRecent = await AsyncStorage.getItem(BASE_RECENT_MEALS_KEY);
+        if (existingRecent) {
+          await AsyncStorage.setItem(getStorageKey(BASE_RECENT_MEALS_KEY, email), existingRecent);
+        }
+        
+        console.log('Data migration completed for:', email);
+      }
+    } catch (error) {
+      console.error('Error during data migration:', error);
+    }
+    
     mutateAuth({ isSignedIn: true, email });
   }, [mutateAuth]);
 
