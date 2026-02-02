@@ -19,9 +19,11 @@ import {
   Scale, 
   Award,
   Calendar,
-  Lightbulb,
   Plus,
   X,
+  ChevronLeft,
+  ChevronRight,
+  Target,
 } from 'lucide-react-native';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -31,7 +33,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type TimeRange = '7h' | '30h' | '90h' | 'All';
+type TimeRange = '7h' | '30h' | '90h';
 
 interface DayData {
   date: string;
@@ -52,7 +54,6 @@ function getTimeRangeDays(range: TimeRange): number {
     case '7h': return 7;
     case '30h': return 30;
     case '90h': return 90;
-    case 'All': return 365;
   }
 }
 
@@ -137,17 +138,12 @@ export default function AnalyticsScreen() {
       daysWithData.length > 0 ? Math.round((daysWithinTarget / daysWithData.length) * 100) : 0;
 
     const startWeight = weightChartData.length > 0 ? weightChartData[0].weight : profile?.weight ?? 0;
-    const currentWeight = profile?.weight ?? 0;
-    const weightChange = currentWeight - startWeight;
-
-    const totalProtein = daysWithData.reduce((sum, d) => sum + d.protein, 0);
-    const avgProtein = daysWithData.length > 0 ? Math.round(totalProtein / daysWithData.length) : 0;
-
-    const totalCarbs = daysWithData.reduce((sum, d) => sum + d.carbs, 0);
-    const avgCarbs = daysWithData.length > 0 ? Math.round(totalCarbs / daysWithData.length) : 0;
-
-    const totalFat = daysWithData.reduce((sum, d) => sum + d.fat, 0);
-    const avgFat = daysWithData.length > 0 ? Math.round(totalFat / daysWithData.length) : 0;
+    const currentWeight = weightChartData.length > 0 
+      ? weightChartData[weightChartData.length - 1].weight 
+      : profile?.weight ?? 0;
+    const weightChange = weightChartData.length >= 2 
+      ? currentWeight - startWeight 
+      : 0;
 
     return {
       avgCalories,
@@ -155,9 +151,6 @@ export default function AnalyticsScreen() {
       consistencyPercentage,
       daysWithinTarget,
       weightChange,
-      avgProtein,
-      avgCarbs,
-      avgFat,
       targetCalories,
       startWeight,
       currentWeight,
@@ -205,15 +198,20 @@ export default function AnalyticsScreen() {
     }
   };
 
-  const getDateOptions = () => {
-    const options: Date[] = [];
+  const navigateDate = (direction: 'prev' | 'next') => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + (direction === 'prev' ? -1 : 1));
+    
     const today = new Date();
-    for (let i = 0; i < 14; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      options.push(date);
+    today.setHours(0, 0, 0, 0);
+    
+    const minDate = new Date(today);
+    minDate.setDate(minDate.getDate() - 30);
+    
+    if (newDate <= today && newDate >= minDate) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setSelectedDate(newDate);
     }
-    return options;
   };
 
   const formatDisplayDate = (date: Date) => {
@@ -227,78 +225,86 @@ export default function AnalyticsScreen() {
     if (formatDateKey(date) === formatDateKey(yesterday)) {
       return 'Kemarin';
     }
-    return date.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+    return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
   };
 
-  const getInsightMessage = () => {
-    if (stats.daysLogged < 7) {
-      return `Kami butuh minimal ${7 - stats.daysLogged} hari lagi untuk wawasan yang lebih akurat.`;
-    }
-    if (stats.consistencyPercentage >= 80) {
-      return 'Konsistensi kamu luar biasa! Terus pertahankan pola makan sehatmu.';
-    }
-    if (stats.consistencyPercentage >= 50) {
-      return 'Progresmu bagus! Coba tingkatkan konsistensi untuk hasil optimal.';
-    }
-    return 'Yuk mulai catat makananmu lebih rutin untuk hasil yang lebih baik.';
+  const canGoNext = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selected = new Date(selectedDate);
+    selected.setHours(0, 0, 0, 0);
+    return selected < today;
   };
 
-  const getAxisLabel = (day: DayData, index: number, totalDays: number, range: TimeRange) => {
-    const date = new Date(day.dateKey);
-    if (range === '7h') {
-      return date.toLocaleDateString('id-ID', { weekday: 'short' }).slice(0, 2);
-    } else if (range === '30h') {
-      if (index === 0 || index === totalDays - 1 || index % 5 === 0) {
-        return date.toLocaleDateString('id-ID', { day: 'numeric' });
-      }
-      return '';
-    } else if (range === '90h') {
-      if (index === 0 || index === totalDays - 1 || index % 15 === 0) {
-        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }).replace(' ', '\n');
-      }
-      return '';
-    } else {
-      if (index === 0 || index === totalDays - 1 || index % 30 === 0) {
-        return date.toLocaleDateString('id-ID', { month: 'short' });
-      }
-      return '';
-    }
+  const canGoPrev = () => {
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() - 30);
+    minDate.setHours(0, 0, 0, 0);
+    const selected = new Date(selectedDate);
+    selected.setHours(0, 0, 0, 0);
+    return selected > minDate;
   };
 
   const renderCalorieChart = () => {
     const displayDays = timeRange === '7h' ? dayData.slice(-7) : 
-                        timeRange === '30h' ? dayData.slice(-30) :
-                        timeRange === '90h' ? dayData.slice(-90) : dayData;
+                        timeRange === '30h' ? dayData.slice(-30) : dayData.slice(-90);
     
     const maxCalories = Math.max(...displayDays.map(d => d.calories), stats.targetCalories);
-    const chartHeight = 120;
+    const chartHeight = 140;
     
-    const maxBars = timeRange === '7h' ? 7 : timeRange === '30h' ? 15 : timeRange === '90h' ? 12 : 12;
-    const step = displayDays.length > maxBars ? Math.ceil(displayDays.length / maxBars) : 1;
-    const visibleDays = displayDays.filter((_, i) => i % step === 0 || i === displayDays.length - 1);
+    const getVisibleDays = () => {
+      if (timeRange === '7h') return displayDays;
+      if (timeRange === '30h') {
+        const step = 2;
+        return displayDays.filter((_, i) => i % step === 0 || i === displayDays.length - 1);
+      }
+      const step = 7;
+      return displayDays.filter((_, i) => i % step === 0 || i === displayDays.length - 1);
+    };
+
+    const visibleDays = getVisibleDays();
 
     const avgCaloriesInRange = displayDays.filter(d => d.entries.length > 0).length > 0 
       ? Math.round(displayDays.filter(d => d.entries.length > 0).reduce((sum, d) => sum + d.calories, 0) / displayDays.filter(d => d.entries.length > 0).length)
       : 0;
 
+    const getAxisLabel = (day: DayData, index: number) => {
+      const date = new Date(day.dateKey);
+      const todayKey = formatDateKey(new Date());
+      
+      if (timeRange === '7h') {
+        if (day.dateKey === todayKey) return 'Hari ini';
+        return date.toLocaleDateString('id-ID', { day: 'numeric' });
+      } else if (timeRange === '30h') {
+        return date.toLocaleDateString('id-ID', { day: 'numeric' });
+      } else {
+        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      }
+    };
+
     return (
       <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={styles.chartHeader}>
-          <View>
-            <Text style={[styles.chartTitle, { color: theme.text }]}>Kalori Harian</Text>
-            <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
-              Rata-rata: {avgCaloriesInRange} kkal
-            </Text>
+          <View style={styles.chartTitleRow}>
+            <View style={[styles.chartIconWrap, { backgroundColor: '#FF6B35' + '15' }]}>
+              <Flame size={18} color="#FF6B35" />
+            </View>
+            <View>
+              <Text style={[styles.chartTitle, { color: theme.text }]}>Kalori Harian</Text>
+              <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
+                Rata-rata: {avgCaloriesInRange} kkal
+              </Text>
+            </View>
           </View>
-          <View style={[styles.avgBadge, { backgroundColor: theme.primary + '15' }]}>
-            <Text style={[styles.avgBadgeText, { color: theme.primary }]}>Target: {stats.targetCalories}</Text>
+          <View style={[styles.targetBadge, { backgroundColor: theme.primary + '12' }]}>
+            <Target size={12} color={theme.primary} />
+            <Text style={[styles.targetBadgeText, { color: theme.primary }]}>{stats.targetCalories}</Text>
           </View>
         </View>
         
-        <View style={[styles.chartContainer, { height: chartHeight + 40 }]}>
-          <View style={[styles.targetLine, { bottom: (stats.targetCalories / maxCalories) * chartHeight + 20 }]}>
+        <View style={[styles.chartContainer, { height: chartHeight + 50 }]}>
+          <View style={[styles.targetLine, { bottom: (stats.targetCalories / maxCalories) * chartHeight + 30 }]}>
             <View style={[styles.targetLineDash, { backgroundColor: theme.primary }]} />
-            <Text style={[styles.targetLineLabel, { color: theme.primary }]}>{stats.targetCalories}</Text>
           </View>
           
           <View style={styles.barsContainer}>
@@ -306,31 +312,45 @@ export default function AnalyticsScreen() {
               const barHeight = maxCalories > 0 ? (day.calories / maxCalories) * chartHeight : 0;
               const isOverTarget = day.calories > stats.targetCalories;
               const isToday = day.dateKey === formatDateKey(new Date());
-              const axisLabel = getAxisLabel(day, index, visibleDays.length, timeRange);
+              const hasData = day.calories > 0;
               
               return (
                 <View key={day.dateKey} style={styles.barColumn}>
-                  <Text style={[styles.barValue, { color: theme.textTertiary }]}>
-                    {day.calories > 0 && timeRange === '7h' ? day.calories : ''}
-                  </Text>
+                  {hasData && timeRange === '7h' && (
+                    <Text style={[styles.barValue, { color: isOverTarget ? '#EF4444' : '#10B981' }]}>
+                      {day.calories}
+                    </Text>
+                  )}
+                  {!hasData && timeRange === '7h' && (
+                    <Text style={[styles.barValue, { color: theme.textTertiary }]}>-</Text>
+                  )}
                   <View 
                     style={[
                       styles.bar, 
                       { 
-                        height: Math.max(barHeight, 4),
-                        backgroundColor: day.calories === 0 
+                        height: Math.max(barHeight, 6),
+                        backgroundColor: !hasData 
                           ? theme.border 
                           : isOverTarget 
                             ? '#EF4444' 
                             : '#10B981',
-                        opacity: isToday ? 1 : 0.7,
-                        borderWidth: isToday ? 2 : 0,
-                        borderColor: isToday ? theme.primary : 'transparent',
+                        borderRadius: 8,
+                      },
+                      isToday && { 
+                        borderWidth: 2,
+                        borderColor: theme.primary,
                       }
                     ]} 
                   />
-                  <Text style={[styles.barLabel, { color: isToday ? theme.primary : theme.textTertiary, fontWeight: isToday ? '700' as const : '500' as const }]}>
-                    {axisLabel}
+                  <Text 
+                    style={[
+                      styles.barLabel, 
+                      { color: isToday ? theme.primary : theme.textTertiary },
+                      isToday && { fontWeight: '700' as const }
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {getAxisLabel(day, index)}
                   </Text>
                 </View>
               );
@@ -338,52 +358,118 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
-        <View style={styles.chartLegend}>
+        <View style={[styles.chartLegend, { borderTopColor: theme.border }]}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
-            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Di bawah target</Text>
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Sesuai target</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
-            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Di atas target</Text>
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Melebihi target</Text>
           </View>
         </View>
       </View>
     );
   };
 
-  const renderWeightChart = () => {
-    if (weightChartData.length < 2) {
-      return (
-        <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.chartHeader}>
+  const renderWeightSection = () => {
+    const hasWeightData = weightChartData.length >= 2;
+    const targetWeight = profile?.targetWeight ?? 0;
+    const goal = profile?.goal;
+    
+    const getWeightChangeColor = () => {
+      if (stats.weightChange === 0) return theme.textSecondary;
+      if (goal === 'lose') {
+        return stats.weightChange < 0 ? '#10B981' : '#EF4444';
+      }
+      if (goal === 'gain') {
+        return stats.weightChange > 0 ? '#10B981' : '#EF4444';
+      }
+      return Math.abs(stats.weightChange) < 1 ? '#10B981' : '#F59E0B';
+    };
+
+    return (
+      <View style={[styles.weightSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.weightHeader}>
+          <View style={styles.chartTitleRow}>
+            <View style={[styles.chartIconWrap, { backgroundColor: '#3B82F6' + '15' }]}>
+              <Scale size={18} color="#3B82F6" />
+            </View>
             <View>
               <Text style={[styles.chartTitle, { color: theme.text }]}>Berat Badan</Text>
-              <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>Tren perubahan</Text>
+              <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
+                {hasWeightData ? 'Tren perubahan' : 'Catat untuk melihat tren'}
+              </Text>
             </View>
-            <TouchableOpacity
-              style={[styles.recordBtn, { backgroundColor: theme.primary + '20' }]}
-              onPress={openWeightModal}
-              activeOpacity={0.7}
-            >
-              <Plus size={14} color={theme.primary} />
-              <Text style={[styles.recordBtnText, { color: theme.primary }]}>Catat</Text>
-            </TouchableOpacity>
           </View>
-          
-          <View style={styles.emptyChartState}>
-            <Scale size={32} color={theme.textTertiary} />
-            <Text style={[styles.emptyChartText, { color: theme.textSecondary }]}>
-              Catat berat badan minimal 2× untuk melihat grafik tren
+          <TouchableOpacity
+            style={[styles.recordBtn, { backgroundColor: '#3B82F6' }]}
+            onPress={openWeightModal}
+            activeOpacity={0.8}
+          >
+            <Plus size={16} color="#FFF" />
+            <Text style={styles.recordBtnText}>Catat</Text>
+          </TouchableOpacity>
+        </View>
+
+        {hasWeightData ? (
+          <>
+            <View style={styles.weightStats}>
+              <View style={styles.weightStatItem}>
+                <Text style={[styles.weightStatValue, { color: theme.text }]}>
+                  {stats.currentWeight.toFixed(1)}
+                </Text>
+                <Text style={[styles.weightStatLabel, { color: theme.textSecondary }]}>kg saat ini</Text>
+              </View>
+              
+              <View style={[styles.weightStatDivider, { backgroundColor: theme.border }]} />
+              
+              <View style={styles.weightStatItem}>
+                <View style={styles.weightChangeDisplay}>
+                  {stats.weightChange !== 0 && (
+                    stats.weightChange > 0 ? 
+                      <TrendingUp size={18} color={getWeightChangeColor()} /> : 
+                      <TrendingDown size={18} color={getWeightChangeColor()} />
+                  )}
+                  <Text style={[styles.weightStatValue, { color: getWeightChangeColor() }]}>
+                    {stats.weightChange > 0 ? '+' : ''}{stats.weightChange.toFixed(1)}
+                  </Text>
+                </View>
+                <Text style={[styles.weightStatLabel, { color: theme.textSecondary }]}>kg perubahan</Text>
+              </View>
+
+              {targetWeight > 0 && (
+                <>
+                  <View style={[styles.weightStatDivider, { backgroundColor: theme.border }]} />
+                  <View style={styles.weightStatItem}>
+                    <Text style={[styles.weightStatValue, { color: theme.primary }]}>
+                      {targetWeight.toFixed(1)}
+                    </Text>
+                    <Text style={[styles.weightStatLabel, { color: theme.textSecondary }]}>kg target</Text>
+                  </View>
+                </>
+              )}
+            </View>
+
+            {renderWeightGraph()}
+          </>
+        ) : (
+          <View style={styles.emptyWeightState}>
+            <Text style={[styles.emptyWeightText, { color: theme.textSecondary }]}>
+              Catat berat badan minimal 2× untuk melihat grafik perubahan
             </Text>
           </View>
-        </View>
-      );
-    }
+        )}
+      </View>
+    );
+  };
+
+  const renderWeightGraph = () => {
+    if (weightChartData.length < 2) return null;
 
     const weights = weightChartData.map((w: any) => w.weight);
-    const minWeight = Math.min(...weights) - 2;
-    const maxWeight = Math.max(...weights) + 2;
+    const minWeight = Math.min(...weights) - 1;
+    const maxWeight = Math.max(...weights) + 1;
     const chartHeight = 100;
     const chartWidth = SCREEN_WIDTH - 80;
 
@@ -394,261 +480,59 @@ export default function AnalyticsScreen() {
     });
 
     return (
-      <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <View style={styles.chartHeader}>
-          <View>
-            <Text style={[styles.chartTitle, { color: theme.text }]}>Berat Badan</Text>
-            <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>Tren perubahan</Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.recordBtn, { backgroundColor: theme.primary + '20' }]}
-            onPress={openWeightModal}
-            activeOpacity={0.7}
-          >
-            <Plus size={14} color={theme.primary} />
-            <Text style={[styles.recordBtnText, { color: theme.primary }]}>Catat</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.lineChartContainer, { height: chartHeight + 40 }]}>
-          <View style={styles.lineChart}>
-            {points.map((point: { x: number; y: number; weight: number; date: string }, index: number) => (
+      <View style={styles.weightGraphContainer}>
+        <View style={[styles.weightGraph, { height: chartHeight }]}>
+          {points.map((point: { x: number; y: number; weight: number; date: string }, index: number) => (
+            <View
+              key={index}
+              style={[
+                styles.graphDot,
+                {
+                  left: point.x - 5,
+                  top: point.y - 5,
+                  backgroundColor: '#3B82F6',
+                }
+              ]}
+            />
+          ))}
+          {points.length > 1 && points.map((point: { x: number; y: number; weight: number; date: string }, index: number) => {
+            if (index === 0) return null;
+            const prev = points[index - 1];
+            const dx = point.x - prev.x;
+            const dy = point.y - prev.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+            
+            return (
               <View
-                key={index}
+                key={`line-${index}`}
                 style={[
-                  styles.chartDot,
+                  styles.graphLine,
                   {
-                    left: point.x - 4,
-                    top: point.y - 4,
-                    backgroundColor: theme.primary,
+                    width: length,
+                    left: prev.x,
+                    top: prev.y,
+                    backgroundColor: '#3B82F6',
+                    transform: [{ rotate: `${angle}deg` }],
                   }
                 ]}
               />
-            ))}
-            {points.length > 1 && points.map((point: { x: number; y: number; weight: number; date: string }, index: number) => {
-              if (index === 0) return null;
-              const prev = points[index - 1];
-              const dx = point.x - prev.x;
-              const dy = point.y - prev.y;
-              const length = Math.sqrt(dx * dx + dy * dy);
-              const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-              
-              return (
-                <View
-                  key={`line-${index}`}
-                  style={[
-                    styles.chartLine,
-                    {
-                      width: length,
-                      left: prev.x,
-                      top: prev.y,
-                      backgroundColor: theme.primary,
-                      transform: [{ rotate: `${angle}deg` }],
-                    }
-                  ]}
-                />
-              );
-            })}
-          </View>
-          
-          <View style={styles.weightLabels}>
-            <Text style={[styles.weightLabel, { color: theme.textTertiary }]}>{maxWeight.toFixed(1)} kg</Text>
-            <Text style={[styles.weightLabel, { color: theme.textTertiary }]}>{minWeight.toFixed(1)} kg</Text>
-          </View>
+            );
+          })}
+        </View>
+        
+        <View style={styles.graphLabels}>
+          <Text style={[styles.graphLabel, { color: theme.textTertiary }]}>{maxWeight.toFixed(1)} kg</Text>
+          <Text style={[styles.graphLabel, { color: theme.textTertiary }]}>{minWeight.toFixed(1)} kg</Text>
         </View>
 
-        <View style={styles.weightSummary}>
-          <View style={styles.weightSummaryItem}>
-            <Text style={[styles.weightSummaryValue, { color: theme.text }]}>{stats.currentWeight.toFixed(1)}</Text>
-            <Text style={[styles.weightSummaryLabel, { color: theme.textSecondary }]}>Saat ini (kg)</Text>
-          </View>
-          <View style={[styles.weightSummaryDivider, { backgroundColor: theme.border }]} />
-          <View style={styles.weightSummaryItem}>
-            <View style={styles.weightChangeRow}>
-              {stats.weightChange !== 0 && (
-                stats.weightChange > 0 ? 
-                  <TrendingUp size={16} color="#F59E0B" /> : 
-                  <TrendingDown size={16} color="#10B981" />
-              )}
-              <Text style={[styles.weightSummaryValue, { color: stats.weightChange > 0 ? '#F59E0B' : '#10B981' }]}>
-                {stats.weightChange > 0 ? '+' : ''}{stats.weightChange.toFixed(1)}
-              </Text>
-            </View>
-            <Text style={[styles.weightSummaryLabel, { color: theme.textSecondary }]}>Perubahan (kg)</Text>
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  const renderMacroChart = () => {
-    const total = stats.avgProtein + stats.avgCarbs + stats.avgFat;
-    const hasData = total > 0;
-    
-    const proteinPercent = hasData ? (stats.avgProtein / total) * 100 : 33;
-    const carbsPercent = hasData ? (stats.avgCarbs / total) * 100 : 33;
-    const fatPercent = hasData ? (stats.avgFat / total) * 100 : 34;
-
-    const proteinCalories = stats.avgProtein * 4;
-    const carbsCalories = stats.avgCarbs * 4;
-    const fatCalories = stats.avgFat * 9;
-    const totalMacroCalories = proteinCalories + carbsCalories + fatCalories;
-
-    if (!hasData) {
-      return (
-        <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.chartHeader}>
-            <Text style={[styles.chartTitle, { color: theme.text }]}>Distribusi Makro</Text>
-            <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>Rata-rata harian</Text>
-          </View>
-          <View style={styles.emptyChartState}>
-            <Flame size={32} color={theme.textTertiary} />
-            <Text style={[styles.emptyChartText, { color: theme.textSecondary }]}>
-              Catat makanan untuk melihat distribusi makro
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
-    return (
-      <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <View style={styles.chartHeader}>
-          <View>
-            <Text style={[styles.chartTitle, { color: theme.text }]}>Distribusi Makro</Text>
-            <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>Total: {totalMacroCalories} kkal/hari</Text>
-          </View>
-        </View>
-
-        <View style={styles.macroBarContainer}>
-          <View style={styles.macroBar}>
-            <View style={[styles.macroBarSegment, { width: `${proteinPercent}%`, backgroundColor: '#10B981' }]} />
-            <View style={[styles.macroBarSegment, { width: `${carbsPercent}%`, backgroundColor: '#3B82F6' }]} />
-            <View style={[styles.macroBarSegment, { width: `${fatPercent}%`, backgroundColor: '#F59E0B' }]} />
-          </View>
-        </View>
-
-        <View style={styles.macroDetails}>
-          <View style={[styles.macroDetailCard, { backgroundColor: '#10B981' + '15' }]}>
-            <View style={styles.macroDetailHeader}>
-              <View style={[styles.macroLegendDot, { backgroundColor: '#10B981' }]} />
-              <Text style={[styles.macroDetailTitle, { color: '#10B981' }]}>Protein</Text>
-            </View>
-            <Text style={[styles.macroDetailValue, { color: theme.text }]}>{stats.avgProtein}g</Text>
-            <Text style={[styles.macroDetailPercent, { color: theme.textSecondary }]}>{Math.round(proteinPercent)}%</Text>
-            <Text style={[styles.macroDetailCalories, { color: theme.textTertiary }]}>{proteinCalories} kkal</Text>
-          </View>
-          
-          <View style={[styles.macroDetailCard, { backgroundColor: '#3B82F6' + '15' }]}>
-            <View style={styles.macroDetailHeader}>
-              <View style={[styles.macroLegendDot, { backgroundColor: '#3B82F6' }]} />
-              <Text style={[styles.macroDetailTitle, { color: '#3B82F6' }]}>Karbohidrat</Text>
-            </View>
-            <Text style={[styles.macroDetailValue, { color: theme.text }]}>{stats.avgCarbs}g</Text>
-            <Text style={[styles.macroDetailPercent, { color: theme.textSecondary }]}>{Math.round(carbsPercent)}%</Text>
-            <Text style={[styles.macroDetailCalories, { color: theme.textTertiary }]}>{carbsCalories} kkal</Text>
-          </View>
-          
-          <View style={[styles.macroDetailCard, { backgroundColor: '#F59E0B' + '15' }]}>
-            <View style={styles.macroDetailHeader}>
-              <View style={[styles.macroLegendDot, { backgroundColor: '#F59E0B' }]} />
-              <Text style={[styles.macroDetailTitle, { color: '#F59E0B' }]}>Lemak</Text>
-            </View>
-            <Text style={[styles.macroDetailValue, { color: theme.text }]}>{stats.avgFat}g</Text>
-            <Text style={[styles.macroDetailPercent, { color: theme.textSecondary }]}>{Math.round(fatPercent)}%</Text>
-            <Text style={[styles.macroDetailCalories, { color: theme.textTertiary }]}>{fatCalories} kkal</Text>
-          </View>
-        </View>
-      </View>
-    );
-  };
-
-  const renderProteinTrendChart = () => {
-    const displayDays = timeRange === '7h' ? dayData.slice(-7) : 
-                        timeRange === '30h' ? dayData.slice(-30) :
-                        timeRange === '90h' ? dayData.slice(-90) : dayData;
-    
-    const daysWithProtein = displayDays.filter(d => d.protein > 0);
-    if (daysWithProtein.length < 2) {
-      return (
-        <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.chartHeader}>
-            <Text style={[styles.chartTitle, { color: theme.text }]}>Tren Protein</Text>
-            <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>Asupan harian</Text>
-          </View>
-          <View style={styles.emptyChartState}>
-            <TrendingUp size={32} color={theme.textTertiary} />
-            <Text style={[styles.emptyChartText, { color: theme.textSecondary }]}>
-              Catat makanan minimal 2 hari untuk melihat tren protein
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
-    const targetProtein = dailyTargets?.protein ?? 50;
-    const maxProtein = Math.max(...displayDays.map(d => d.protein), targetProtein);
-    const chartHeight = 100;
-    
-    const maxBars = timeRange === '7h' ? 7 : timeRange === '30h' ? 15 : timeRange === '90h' ? 12 : 12;
-    const step = displayDays.length > maxBars ? Math.ceil(displayDays.length / maxBars) : 1;
-    const visibleDays = displayDays.filter((_, i) => i % step === 0 || i === displayDays.length - 1);
-
-    return (
-      <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <View style={styles.chartHeader}>
-          <View>
-            <Text style={[styles.chartTitle, { color: theme.text }]}>Tren Protein</Text>
-            <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
-              Rata-rata: {stats.avgProtein}g/hari
-            </Text>
-          </View>
-          <View style={[styles.avgBadge, { backgroundColor: '#10B981' + '15' }]}>
-            <Text style={[styles.avgBadgeText, { color: '#10B981' }]}>Target: {targetProtein}g</Text>
-          </View>
-        </View>
-
-        <View style={[styles.chartContainer, { height: chartHeight + 40 }]}>
-          <View style={[styles.targetLine, { bottom: (targetProtein / maxProtein) * chartHeight + 20 }]}>
-            <View style={[styles.targetLineDash, { backgroundColor: '#10B981' }]} />
-            <Text style={[styles.targetLineLabel, { color: '#10B981' }]}>{targetProtein}g</Text>
-          </View>
-          
-          <View style={styles.barsContainer}>
-            {visibleDays.map((day, index) => {
-              const barHeight = maxProtein > 0 ? (day.protein / maxProtein) * chartHeight : 0;
-              const isOverTarget = day.protein >= targetProtein;
-              const isToday = day.dateKey === formatDateKey(new Date());
-              const axisLabel = getAxisLabel(day, index, visibleDays.length, timeRange);
-              
-              return (
-                <View key={day.dateKey} style={styles.barColumn}>
-                  <Text style={[styles.barValue, { color: theme.textTertiary }]}>
-                    {day.protein > 0 && timeRange === '7h' ? day.protein : ''}
-                  </Text>
-                  <View 
-                    style={[
-                      styles.bar, 
-                      { 
-                        height: Math.max(barHeight, 4),
-                        backgroundColor: day.protein === 0 
-                          ? theme.border 
-                          : isOverTarget 
-                            ? '#10B981' 
-                            : '#10B981' + '60',
-                        opacity: isToday ? 1 : 0.8,
-                        borderWidth: isToday ? 2 : 0,
-                        borderColor: isToday ? '#10B981' : 'transparent',
-                      }
-                    ]} 
-                  />
-                  <Text style={[styles.barLabel, { color: isToday ? '#10B981' : theme.textTertiary, fontWeight: isToday ? '700' as const : '500' as const }]}>
-                    {axisLabel}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
+        <View style={styles.graphDateLabels}>
+          <Text style={[styles.graphDateLabel, { color: theme.textTertiary }]}>
+            {new Date(weightChartData[0].date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+          </Text>
+          <Text style={[styles.graphDateLabel, { color: theme.textTertiary }]}>
+            {new Date(weightChartData[weightChartData.length - 1].date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+          </Text>
         </View>
       </View>
     );
@@ -696,7 +580,7 @@ export default function AnalyticsScreen() {
           </View>
 
           <View style={styles.timeRangeContainer}>
-            {(['7h', '30h', '90h', 'All'] as const).map(range => (
+            {(['7h', '30h', '90h'] as const).map(range => (
               <TouchableOpacity
                 key={range}
                 style={[
@@ -715,53 +599,36 @@ export default function AnalyticsScreen() {
                   { color: theme.textSecondary },
                   timeRange === range && { color: '#ffffff' },
                 ]}>
-                  {range}
+                  {range === '7h' ? '7 Hari' : range === '30h' ? '30 Hari' : '90 Hari'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {renderWeightChart()}
+          {renderWeightSection()}
           {renderCalorieChart()}
-          {renderProteinTrendChart()}
-          {renderMacroChart()}
 
-          <View style={styles.streakSection}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Konsistensi & Streak</Text>
-            <View style={styles.streakGrid}>
-              <View style={[styles.streakCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <View style={[styles.streakIconWrap, { backgroundColor: '#FF6B35' + '20' }]}>
-                  <Flame size={20} color="#FF6B35" fill="#FF6B35" />
-                </View>
-                <Text style={[styles.streakValue, { color: theme.text }]}>{streakData?.currentStreak ?? 0}</Text>
-                <Text style={[styles.streakLabel, { color: theme.textSecondary }]}>Streak saat ini</Text>
+          <View style={styles.statsGrid}>
+            <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.statIconWrap, { backgroundColor: '#FF6B35' + '15' }]}>
+                <Flame size={18} color="#FF6B35" fill="#FF6B35" />
               </View>
-              <View style={[styles.streakCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <View style={[styles.streakIconWrap, { backgroundColor: '#F59E0B' + '20' }]}>
-                  <Award size={20} color="#F59E0B" />
-                </View>
-                <Text style={[styles.streakValue, { color: theme.text }]}>{streakData?.bestStreak ?? 0}</Text>
-                <Text style={[styles.streakLabel, { color: theme.textSecondary }]}>Rekor terbaik</Text>
-              </View>
-              <View style={[styles.streakCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <View style={[styles.streakIconWrap, { backgroundColor: theme.primary + '20' }]}>
-                  <Calendar size={20} color={theme.primary} />
-                </View>
-                <Text style={[styles.streakValue, { color: theme.text }]}>{stats.daysLogged}</Text>
-                <Text style={[styles.streakLabel, { color: theme.textSecondary }]}>Hari tercatat</Text>
-              </View>
+              <Text style={[styles.statValue, { color: theme.text }]}>{streakData?.currentStreak ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Streak</Text>
             </View>
-          </View>
-
-          <View style={styles.insightSection}>
-            <View style={styles.insightHeader}>
-              <Lightbulb size={18} color={theme.textSecondary} />
-              <Text style={[styles.insightTitle, { color: theme.text }]}>Wawasan</Text>
+            <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.statIconWrap, { backgroundColor: '#F59E0B' + '15' }]}>
+                <Award size={18} color="#F59E0B" />
+              </View>
+              <Text style={[styles.statValue, { color: theme.text }]}>{streakData?.bestStreak ?? 0}</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Rekor</Text>
             </View>
-            <View style={[styles.insightCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <Text style={[styles.insightText, { color: theme.textSecondary }]}>
-                {getInsightMessage()}
-              </Text>
+            <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.statIconWrap, { backgroundColor: '#10B981' + '15' }]}>
+                <Calendar size={18} color="#10B981" />
+              </View>
+              <Text style={[styles.statValue, { color: theme.text }]}>{stats.daysLogged}</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Hari</Text>
             </View>
           </View>
 
@@ -788,81 +655,74 @@ export default function AnalyticsScreen() {
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>Catat Berat Badan</Text>
-              <TouchableOpacity onPress={() => setShowWeightModal(false)}>
-                <X size={24} color={theme.textSecondary} />
+              <TouchableOpacity 
+                onPress={() => setShowWeightModal(false)}
+                style={[styles.modalCloseBtn, { backgroundColor: theme.background }]}
+              >
+                <X size={20} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={[styles.modalLabel, { color: theme.textSecondary }]}>Pilih tanggal</Text>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false} 
-                style={styles.datePickerScroll}
-                contentContainerStyle={styles.datePickerContent}
-              >
-                {getDateOptions().map((date) => {
-                  const isSelected = formatDateKey(date) === formatDateKey(selectedDate);
-                  return (
-                    <TouchableOpacity
-                      key={formatDateKey(date)}
-                      style={[
-                        styles.dateOption,
-                        { backgroundColor: theme.background, borderColor: theme.border },
-                        isSelected && { backgroundColor: theme.primary, borderColor: theme.primary },
-                      ]}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        setSelectedDate(date);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[
-                        styles.dateOptionText,
-                        { color: theme.textSecondary },
-                        isSelected && { color: '#FFFFFF' },
-                      ]}>
-                        {formatDisplayDate(date)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+              <Text style={[styles.modalLabel, { color: theme.textSecondary }]}>Tanggal</Text>
+              <View style={[styles.datePickerRow, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                <TouchableOpacity 
+                  onPress={() => navigateDate('prev')}
+                  style={[styles.dateNavBtn, !canGoPrev() && { opacity: 0.3 }]}
+                  disabled={!canGoPrev()}
+                >
+                  <ChevronLeft size={22} color={theme.text} />
+                </TouchableOpacity>
+                <View style={styles.dateDisplay}>
+                  <Text style={[styles.dateDisplayText, { color: theme.text }]}>
+                    {formatDisplayDate(selectedDate)}
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  onPress={() => navigateDate('next')}
+                  style={[styles.dateNavBtn, !canGoNext() && { opacity: 0.3 }]}
+                  disabled={!canGoNext()}
+                >
+                  <ChevronRight size={22} color={theme.text} />
+                </TouchableOpacity>
+              </View>
 
-              <Text style={[styles.modalLabel, { color: theme.textSecondary, marginTop: 16 }]}>Berat badan</Text>
-              <View style={styles.weightInputContainer}>
+              <Text style={[styles.modalLabel, { color: theme.textSecondary, marginTop: 20 }]}>Berat badan</Text>
+              <View style={styles.weightInputRow}>
                 <TextInput
                   value={weightInput}
                   onChangeText={setWeightInput}
-                  placeholder="72.5"
+                  placeholder="0.0"
                   placeholderTextColor={theme.textTertiary}
                   keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
-                  style={[styles.modalWeightInput, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                  style={[styles.weightInput, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
                   autoFocus
                 />
-                <Text style={[styles.weightUnitLarge, { color: theme.textSecondary }]}>kg</Text>
+                <View style={[styles.weightUnitBox, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                  <Text style={[styles.weightUnit, { color: theme.textSecondary }]}>kg</Text>
+                </View>
               </View>
               {weightError && <Text style={styles.weightError}>{weightError}</Text>}
               
               {stats.currentWeight > 0 && (
                 <Text style={[styles.currentWeightHint, { color: theme.textTertiary }]}>
-                  Berat terakhir: {stats.currentWeight.toFixed(1)} kg
+                  Terakhir dicatat: {stats.currentWeight.toFixed(1)} kg
                 </Text>
               )}
             </View>
 
             <View style={styles.modalFooter}>
               <TouchableOpacity
-                style={[styles.cancelButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                style={[styles.cancelButton, { borderColor: theme.border }]}
                 onPress={() => setShowWeightModal(false)}
                 activeOpacity={0.7}
               >
                 <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Batal</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                style={[styles.saveButton, { backgroundColor: '#3B82F6' }]}
                 onPress={logWeight}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
               >
                 <Text style={styles.saveButtonText}>Simpan</Text>
               </TouchableOpacity>
@@ -912,17 +772,145 @@ const styles = StyleSheet.create({
   timeRangeContainer: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   timeRangePill: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
     borderWidth: 1,
+    alignItems: 'center',
   },
   timeRangeText: {
     fontSize: 14,
     fontWeight: '600' as const,
+  },
+  weightSection: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+  },
+  weightHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  chartTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  chartIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chartTitle: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+  },
+  chartSubtitle: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    marginTop: 2,
+  },
+  recordBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  recordBtnText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
+  weightStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+  },
+  weightStatItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  weightStatDivider: {
+    width: 1,
+    height: 40,
+  },
+  weightStatValue: {
+    fontSize: 26,
+    fontWeight: '700' as const,
+  },
+  weightStatLabel: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    marginTop: 4,
+  },
+  weightChangeDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  emptyWeightState: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  emptyWeightText: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  weightGraphContainer: {
+    marginTop: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  weightGraph: {
+    position: 'relative',
+    marginHorizontal: 10,
+  },
+  graphDot: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  graphLine: {
+    position: 'absolute',
+    height: 2,
+    borderRadius: 1,
+    transformOrigin: 'left center',
+  },
+  graphLabels: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    height: 100,
+    justifyContent: 'space-between',
+  },
+  graphLabel: {
+    fontSize: 10,
+    fontWeight: '500' as const,
+  },
+  graphDateLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
+  graphDateLabel: {
+    fontSize: 11,
+    fontWeight: '500' as const,
   },
   chartCard: {
     borderRadius: 20,
@@ -933,29 +921,20 @@ const styles = StyleSheet.create({
   chartHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 20,
   },
-  chartTitle: {
-    fontSize: 17,
-    fontWeight: '700' as const,
-    marginBottom: 4,
-  },
-  chartSubtitle: {
-    fontSize: 13,
-    fontWeight: '500' as const,
-  },
-  recordBtn: {
+  targetBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
   },
-  recordBtnText: {
+  targetBadgeText: {
     fontSize: 13,
-    fontWeight: '600' as const,
+    fontWeight: '700' as const,
   },
   chartContainer: {
     position: 'relative',
@@ -966,184 +945,48 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   targetLineDash: {
     flex: 1,
     height: 1,
-    opacity: 0.5,
-  },
-  targetLineLabel: {
-    fontSize: 10,
-    fontWeight: '600' as const,
+    opacity: 0.4,
   },
   barsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     height: '100%',
-    paddingTop: 20,
+    paddingTop: 24,
   },
   barColumn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 8,
+    gap: 6,
+    maxWidth: 50,
   },
   bar: {
-    width: 20,
-    borderRadius: 6,
-    minHeight: 4,
+    width: '70%',
+    minHeight: 6,
+    maxWidth: 28,
   },
   barLabel: {
     fontSize: 10,
     fontWeight: '500' as const,
-  },
-  lineChartContainer: {
-    position: 'relative',
-    marginBottom: 16,
-  },
-  lineChart: {
-    flex: 1,
-    position: 'relative',
-  },
-  chartDot: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  chartLine: {
-    position: 'absolute',
-    height: 2,
-    borderRadius: 1,
-    transformOrigin: 'left center',
-  },
-  weightLabels: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 20,
-    justifyContent: 'space-between',
-  },
-  weightLabel: {
-    fontSize: 10,
-    fontWeight: '500' as const,
-  },
-  weightSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  weightSummaryItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  weightSummaryDivider: {
-    width: 1,
-    height: 40,
-    marginHorizontal: 16,
-  },
-  weightChangeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  weightSummaryValue: {
-    fontSize: 24,
-    fontWeight: '700' as const,
-  },
-  weightSummaryLabel: {
-    fontSize: 12,
-    fontWeight: '500' as const,
-    marginTop: 4,
-  },
-  emptyChartState: {
-    alignItems: 'center',
-    paddingVertical: 30,
-    gap: 12,
-  },
-  emptyChartText: {
-    fontSize: 14,
-    fontWeight: '500' as const,
     textAlign: 'center',
-    lineHeight: 20,
   },
-  macroBarContainer: {
-    marginBottom: 20,
-  },
-  macroBar: {
-    flexDirection: 'row',
-    height: 12,
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  macroBarSegment: {
-    height: '100%',
-  },
-  macroLegend: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  macroLegendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  macroLegendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  macroLegendLabel: {
-    fontSize: 12,
-    fontWeight: '500' as const,
-  },
-  macroLegendValue: {
-    fontSize: 12,
-    fontWeight: '700' as const,
-  },
-  macroDetails: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  macroDetailCard: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  macroDetailHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 8,
-  },
-  macroDetailTitle: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-  },
-  macroDetailValue: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-  },
-  macroDetailPercent: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    marginTop: 2,
-  },
-  macroDetailCalories: {
+  barValue: {
     fontSize: 10,
-    fontWeight: '500' as const,
-    marginTop: 2,
+    fontWeight: '600' as const,
+    height: 14,
   },
   chartLegend: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 20,
-    marginTop: 12,
-    paddingTop: 12,
+    gap: 24,
+    marginTop: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
   },
   legendItem: {
     flexDirection: 'row',
@@ -1159,80 +1002,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500' as const,
   },
-  avgBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  avgBadgeText: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-  },
-  barValue: {
-    fontSize: 9,
-    fontWeight: '500' as const,
-    marginBottom: 4,
-    height: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    marginBottom: 14,
-  },
-  streakSection: {
-    marginTop: 8,
-  },
-  streakGrid: {
+  statsGrid: {
     flexDirection: 'row',
     gap: 10,
+    marginTop: 4,
   },
-  streakCard: {
+  statCard: {
     flex: 1,
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
     borderWidth: 1,
   },
-  streakIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  statIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
   },
-  streakValue: {
-    fontSize: 24,
+  statValue: {
+    fontSize: 22,
     fontWeight: '700' as const,
-    marginBottom: 4,
   },
-  streakLabel: {
+  statLabel: {
     fontSize: 11,
     fontWeight: '600' as const,
-    textAlign: 'center',
-  },
-  insightSection: {
-    marginTop: 24,
-  },
-  insightHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  insightTitle: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-  },
-  insightCard: {
-    padding: 18,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  insightText: {
-    fontSize: 14,
-    fontWeight: '500' as const,
-    lineHeight: 22,
+    marginTop: 4,
   },
   emptyState: {
     flex: 1,
@@ -1270,7 +1067,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     width: SCREEN_WIDTH - 48,
@@ -1288,60 +1085,77 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700' as const,
   },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   modalBody: {
     padding: 20,
   },
   modalLabel: {
     fontSize: 14,
-    fontWeight: '500' as const,
-    marginBottom: 12,
+    fontWeight: '600' as const,
+    marginBottom: 10,
   },
-  weightInputContainer: {
+  datePickerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  modalWeightInput: {
-    flex: 1,
-    height: 56,
     borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 16,
-    fontSize: 24,
+    overflow: 'hidden',
+  },
+  dateNavBtn: {
+    padding: 14,
+  },
+  dateDisplay: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  dateDisplayText: {
+    fontSize: 16,
     fontWeight: '600' as const,
+  },
+  weightInputRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  weightInput: {
+    flex: 1,
+    height: 60,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    fontSize: 28,
+    fontWeight: '700' as const,
     textAlign: 'center',
   },
-  weightUnitLarge: {
-    fontSize: 20,
+  weightUnitBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weightUnit: {
+    fontSize: 18,
     fontWeight: '600' as const,
   },
   weightError: {
     color: '#EF4444',
     fontSize: 13,
     fontWeight: '600' as const,
-    marginTop: 8,
+    marginTop: 10,
   },
   currentWeightHint: {
     fontSize: 13,
     fontWeight: '500' as const,
-    marginTop: 12,
+    marginTop: 16,
     textAlign: 'center',
-  },
-  datePickerScroll: {
-    marginBottom: 4,
-  },
-  datePickerContent: {
-    gap: 8,
-  },
-  dateOption: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  dateOptionText: {
-    fontSize: 13,
-    fontWeight: '600' as const,
   },
   modalFooter: {
     flexDirection: 'row',
@@ -1351,7 +1165,7 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 14,
     borderWidth: 1,
     alignItems: 'center',
@@ -1362,7 +1176,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
   },
