@@ -315,7 +315,7 @@ export default function OnboardingScreen() {
   const AnimatedCircle = useMemo(() => Animated.createAnimatedComponent(Circle), []);
 
   const renderIntro = () => (
-    <View style={styles.stepContainer}>
+    <View style={styles.introContainer}>
       <TouchableOpacity
         style={styles.languageToggle}
         onPress={() => {
@@ -324,68 +324,102 @@ export default function OnboardingScreen() {
         }}
         activeOpacity={0.7}
       >
-        <Globe size={20} color="#666666" />
-        <Text style={styles.languageText}>{language === 'id' ? '🇮🇩 ID' : '🇬🇧 EN'}</Text>
+        <Globe size={16} color="#10B981" />
+        <Text style={styles.languageText}>{language === 'id' ? 'ID' : 'EN'}</Text>
       </TouchableOpacity>
 
-      <View style={styles.heroContainer}>
+      <View style={styles.introHeroSection}>
         <Animated.View
           style={[
-            styles.iconCircleLarge,
+            styles.introImageWrapper,
             {
               transform: [{ scale: introScaleAnim }],
               opacity: introScaleAnim,
             },
           ]}
         >
-          <Image source={require('../assets/images/intro.png')} style={styles.introImage} resizeMode="contain" />
+          <View style={styles.introImageGlow} />
+          <View style={styles.introImageFrame}>
+            <Image source={require('../assets/images/intro.png')} style={styles.introImageLarge} resizeMode="contain" />
+          </View>
+          <View style={styles.introFloatingBadge}>
+            <Sparkles size={12} color="#10B981" />
+            <Text style={styles.introFloatingBadgeText}>AI-Powered</Text>
+          </View>
         </Animated.View>
 
         <Animated.View
-          style={{
-            opacity: introTextAnim,
-            transform: [
-              {
-                translateY: introTextAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [20, 0],
-                }),
-              },
-            ],
-          }}
+          style={[
+            styles.introTextSection,
+            {
+              opacity: introTextAnim,
+              transform: [
+                {
+                  translateY: introTextAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [30, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
         >
-          <Text style={styles.heroTitle}>{t.intro.title}</Text>
-          <Text style={styles.heroSubtitle}>{t.intro.subtitle}</Text>
+          <Text style={styles.introWelcomeLabel}>Selamat Datang di</Text>
+          <Text style={styles.introBrandTitle}>DietKu</Text>
+          <Text style={styles.introTagline}>
+            Perjalanan menuju versi terbaik dirimu dimulai dari sini. Pantau nutrisi, capai tujuan, dan transformasi hidupmu.
+          </Text>
+
+          <View style={styles.introFeatures}>
+            <View style={styles.introFeatureItem}>
+              <View style={styles.introFeatureDot} />
+              <Text style={styles.introFeatureText}>Analisis makanan dengan AI</Text>
+            </View>
+            <View style={styles.introFeatureItem}>
+              <View style={styles.introFeatureDot} />
+              <Text style={styles.introFeatureText}>Rencana nutrisi personal</Text>
+            </View>
+            <View style={styles.introFeatureItem}>
+              <View style={styles.introFeatureDot} />
+              <Text style={styles.introFeatureText}>Pantau progres real-time</Text>
+            </View>
+          </View>
         </Animated.View>
       </View>
 
       <Animated.View
-        style={{
-          opacity: introCtaAnim,
-          transform: [
-            {
-              translateY: introCtaAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [30, 0],
-              }),
-            },
-          ],
-        }}
+        style={[
+          styles.introCtaSection,
+          {
+            opacity: introCtaAnim,
+            transform: [
+              {
+                translateY: introCtaAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [40, 0],
+                }),
+              },
+            ],
+          },
+        ]}
       >
-        <TouchableOpacity style={styles.primaryButton} onPress={handleNext} activeOpacity={0.8}>
-          <Text style={styles.primaryButtonText}>{t.intro.start}</Text>
-          <ArrowRight size={20} color="#FFFFFF" />
+        <TouchableOpacity style={styles.introPrimaryButton} onPress={handleNext} activeOpacity={0.85}>
+          <Text style={styles.introPrimaryButtonText}>Mulai Perjalananmu</Text>
+          <View style={styles.introButtonIconCircle}>
+            <ArrowRight size={16} color="#10B981" />
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.signInLink}
+          style={styles.introSignInLink}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             router.push('/sign-in');
           }}
           activeOpacity={0.7}
         >
-          <Text style={styles.signInLinkText}>{t.intro.haveAccount}</Text>
+          <Text style={styles.introSignInText}>Sudah punya akun? </Text>
+          <Text style={styles.introSignInTextBold}>Masuk</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -1697,6 +1731,168 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
 
+  introContainer: {
+    flex: 1,
+    backgroundColor: '#FAFAFA',
+  },
+  introHeroSection: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  introImageWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+    position: 'relative' as const,
+  },
+  introImageGlow: {
+    position: 'absolute' as const,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+  },
+  introImageFrame: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.08)',
+  },
+  introImageLarge: {
+    width: 85,
+    height: 85,
+  },
+  introFloatingBadge: {
+    position: 'absolute' as const,
+    bottom: -4,
+    right: -12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.12)',
+  },
+  introFloatingBadgeText: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: '#10B981',
+  },
+  introTextSection: {
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  introWelcomeLabel: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: '#10B981',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase' as const,
+    marginBottom: 4,
+  },
+  introBrandTitle: {
+    fontSize: 44,
+    fontWeight: '800' as const,
+    color: '#111827',
+    marginBottom: 14,
+    letterSpacing: -1,
+  },
+  introTagline: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 23,
+    marginBottom: 24,
+    maxWidth: 300,
+  },
+  introFeatures: {
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  introFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  introFeatureDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10B981',
+  },
+  introFeatureText: {
+    fontSize: 13,
+    color: '#4B5563',
+    fontWeight: '500' as const,
+  },
+  introCtaSection: {
+    paddingHorizontal: 24,
+    paddingBottom: 12,
+  },
+  introPrimaryButton: {
+    backgroundColor: '#10B981',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  introPrimaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
+  introButtonIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  introSignInLink: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  introSignInText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  introSignInTextBold: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#10B981',
+  },
+
   questionContainer: { marginBottom: 24 },
   questionTitle: {
     fontSize: 26,
@@ -1903,17 +2099,20 @@ const styles = StyleSheet.create({
 
   languageToggle: {
     position: 'absolute' as const,
-    top: 10,
-    right: 20,
+    top: 12,
+    right: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: '#F5F5F5',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.12)',
     zIndex: 10,
   },
-  languageText: { fontSize: 14, fontWeight: '600' as const, color: '#666666' },
+  languageText: { fontSize: 12, fontWeight: '600' as const, color: '#10B981' },
 
   signInLink: { marginTop: 20, padding: 12, alignItems: 'center' },
   signInLinkText: { fontSize: 15, fontWeight: '600' as const, color: '#666666' },
