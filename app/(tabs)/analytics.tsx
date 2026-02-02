@@ -24,6 +24,8 @@ import {
   ChevronRight,
   Target,
   Flame,
+  Clock,
+  Zap,
 } from 'lucide-react-native';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -153,25 +155,38 @@ export default function AnalyticsScreen() {
     const consistencyPercentage =
       daysWithData.length > 0 ? Math.round((daysWithinTarget / daysWithData.length) * 100) : 0;
 
-    const startWeight = weightChartData.length > 0 ? weightChartData[0].weight : profile?.weight ?? 0;
+    const initialWeight = profile?.weight ?? 0;
+    const startWeight = weightChartData.length > 0 ? weightChartData[0].weight : initialWeight;
     const currentWeight = weightChartData.length > 0 
       ? weightChartData[weightChartData.length - 1].weight 
-      : profile?.weight ?? 0;
-    const weightChange = weightChartData.length >= 2 
-      ? currentWeight - startWeight 
-      : 0;
+      : initialWeight;
+    const weightChange = currentWeight - initialWeight;
 
     const targetWeight = profile?.targetWeight ?? 0;
-    const initialWeight = profile?.weight ?? 0;
     let weightProgress = 0;
     if (targetWeight > 0 && initialWeight > 0 && targetWeight !== initialWeight) {
-      const totalToLose = initialWeight - targetWeight;
-      const currentLost = initialWeight - currentWeight;
-      weightProgress = Math.min(100, Math.max(0, Math.round((currentLost / totalToLose) * 100)));
+      const totalToChange = Math.abs(initialWeight - targetWeight);
+      const currentChanged = Math.abs(initialWeight - currentWeight);
+      const isCorrectDirection = (initialWeight > targetWeight && currentWeight <= initialWeight) ||
+                                  (initialWeight < targetWeight && currentWeight >= initialWeight);
+      if (isCorrectDirection) {
+        weightProgress = Math.min(100, Math.max(0, Math.round((currentChanged / totalToChange) * 100)));
+      }
     }
+
+    // Calculate average macros
+    const totalProtein = daysWithData.reduce((sum, d) => sum + d.protein, 0);
+    const totalCarbs = daysWithData.reduce((sum, d) => sum + d.carbs, 0);
+    const totalFat = daysWithData.reduce((sum, d) => sum + d.fat, 0);
+    const avgProtein = daysWithData.length > 0 ? Math.round(totalProtein / daysWithData.length) : 0;
+    const avgCarbs = daysWithData.length > 0 ? Math.round(totalCarbs / daysWithData.length) : 0;
+    const avgFat = daysWithData.length > 0 ? Math.round(totalFat / daysWithData.length) : 0;
 
     return {
       avgCalories,
+      avgProtein,
+      avgCarbs,
+      avgFat,
       daysLogged: daysWithData.length,
       consistencyPercentage,
       daysWithinTarget,
@@ -179,6 +194,8 @@ export default function AnalyticsScreen() {
       targetCalories,
       startWeight,
       currentWeight,
+      initialWeight,
+      targetWeight,
       weightProgress,
     };
   }, [dayData, dailyTargets, profile, weightChartData]);
@@ -438,9 +455,61 @@ export default function AnalyticsScreen() {
     );
   };
 
+  const goalProjection = useMemo(() => {
+    if (!profile?.targetWeight || !profile?.weight) return null;
+    
+    const targetWeight = profile.targetWeight;
+    const initialWeight = profile.weight;
+    const currentWeight = stats.currentWeight;
+    const goal = profile.goal;
+    
+    if (targetWeight === initialWeight) return null;
+    
+    // Calculate weight change rate from weight history
+    if (weightChartData.length < 2) return null;
+    
+    const firstEntry = weightChartData[0];
+    const lastEntry = weightChartData[weightChartData.length - 1];
+    const daysPassed = Math.max(1, Math.ceil(
+      (new Date(lastEntry.date).getTime() - new Date(firstEntry.date).getTime()) / (1000 * 60 * 60 * 24)
+    ));
+    
+    const weightChangeTotal = lastEntry.weight - firstEntry.weight;
+    const dailyRate = weightChangeTotal / daysPassed;
+    
+    if (dailyRate === 0) return null;
+    
+    const remainingWeight = targetWeight - currentWeight;
+    
+    // Check if moving in the right direction
+    const isMovingRight = (goal === 'lose' && dailyRate < 0) || 
+                          (goal === 'gain' && dailyRate > 0) ||
+                          (goal === 'maintain' && Math.abs(dailyRate) < 0.02);
+    
+    if (!isMovingRight && goal !== 'maintain') {
+      return { type: 'wrong_direction' as const, message: 'Perlu penyesuaian pola' };
+    }
+    
+    const daysToGoal = Math.abs(remainingWeight / dailyRate);
+    
+    if (daysToGoal > 365 * 3) {
+      return { type: 'too_long' as const, message: 'Lebih dari 3 tahun' };
+    }
+    
+    const projectedDate = new Date();
+    projectedDate.setDate(projectedDate.getDate() + Math.ceil(daysToGoal));
+    
+    return {
+      type: 'projected' as const,
+      date: projectedDate,
+      daysRemaining: Math.ceil(daysToGoal),
+      weeklyRate: Math.abs(dailyRate * 7),
+    };
+  }, [profile, stats.currentWeight, weightChartData]);
+
   const renderWeightSection = () => {
     const hasWeightData = weightChartData.length >= 1;
-    const targetWeight = profile?.targetWeight ?? 0;
+    const targetWeight = stats.targetWeight;
     const goal = profile?.goal;
     
     const getWeightChangeColor = () => {
@@ -515,6 +584,29 @@ export default function AnalyticsScreen() {
         </View>
 
         {renderWeightGraph()}
+        
+        {goalProjection && targetWeight > 0 && (
+          <View style={[styles.projectionCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+            <View style={styles.projectionHeader}>
+              <Clock size={16} color={goalProjection.type === 'projected' ? '#10B981' : '#F59E0B'} />
+              <Text style={[styles.projectionTitle, { color: theme.text }]}>Proyeksi Target</Text>
+            </View>
+            {goalProjection.type === 'projected' ? (
+              <View style={styles.projectionContent}>
+                <Text style={[styles.projectionDate, { color: '#10B981' }]}>
+                  {goalProjection.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </Text>
+                <Text style={[styles.projectionSubtext, { color: theme.textSecondary }]}>
+                  ~{goalProjection.daysRemaining} hari lagi • {goalProjection.weeklyRate.toFixed(1)} kg/minggu
+                </Text>
+              </View>
+            ) : (
+              <Text style={[styles.projectionMessage, { color: '#F59E0B' }]}>
+                {goalProjection.message}
+              </Text>
+            )}
+          </View>
+        )}
       </View>
     );
   };
@@ -631,6 +723,91 @@ export default function AnalyticsScreen() {
     );
   };
 
+  const renderMacroChart = () => {
+    const targetProtein = dailyTargets?.protein ?? 0;
+    const targetCarbs = dailyTargets?.carbs ?? 0;
+    const targetFat = dailyTargets?.fat ?? 0;
+    
+    const macros = [
+      { 
+        name: 'Protein', 
+        avg: stats.avgProtein, 
+        target: targetProtein, 
+        color: '#3B82F6',
+        unit: 'g'
+      },
+      { 
+        name: 'Karbohidrat', 
+        avg: stats.avgCarbs, 
+        target: targetCarbs, 
+        color: '#F59E0B',
+        unit: 'g'
+      },
+      { 
+        name: 'Lemak', 
+        avg: stats.avgFat, 
+        target: targetFat, 
+        color: '#EF4444',
+        unit: 'g'
+      },
+    ];
+
+    return (
+      <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.chartHeader}>
+          <View style={styles.chartTitleRow}>
+            <View style={[styles.chartIconWrap, { backgroundColor: '#8B5CF6' + '15' }]}>
+              <Zap size={18} color="#8B5CF6" />
+            </View>
+            <View>
+              <Text style={[styles.chartTitle, { color: theme.text }]}>Makro Harian</Text>
+              <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
+                Rata-rata {timeRange === '7h' ? '7 hari' : timeRange === '30h' ? '30 hari' : '90 hari'} terakhir
+              </Text>
+            </View>
+          </View>
+        </View>
+        
+        <View style={styles.macroContainer}>
+          {macros.map((macro) => {
+            const progress = macro.target > 0 ? Math.min((macro.avg / macro.target) * 100, 100) : 0;
+            const isOver = macro.avg > macro.target && macro.target > 0;
+            
+            return (
+              <View key={macro.name} style={styles.macroRow}>
+                <View style={styles.macroInfo}>
+                  <View style={[styles.macroDot, { backgroundColor: macro.color }]} />
+                  <Text style={[styles.macroName, { color: theme.text }]}>{macro.name}</Text>
+                </View>
+                <View style={styles.macroBarContainer}>
+                  <View style={[styles.macroBarBg, { backgroundColor: theme.border }]}>
+                    <View 
+                      style={[
+                        styles.macroBarFill, 
+                        { 
+                          width: `${progress}%`, 
+                          backgroundColor: isOver ? '#EF4444' : macro.color 
+                        }
+                      ]} 
+                    />
+                  </View>
+                </View>
+                <View style={styles.macroValues}>
+                  <Text style={[styles.macroAvg, { color: isOver ? '#EF4444' : theme.text }]}>
+                    {macro.avg}
+                  </Text>
+                  <Text style={[styles.macroTarget, { color: theme.textTertiary }]}>
+                    /{macro.target}{macro.unit}
+                  </Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
   if (!setupReady) {
     return (
       <>
@@ -664,7 +841,7 @@ export default function AnalyticsScreen() {
         >
           <View style={styles.header}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>Analitik</Text>
-            {profile?.targetWeight && profile.targetWeight > 0 && (
+            {stats.targetWeight > 0 && stats.initialWeight > 0 && stats.targetWeight !== stats.initialWeight && (
               <View style={[styles.progressBadge, { backgroundColor: stats.weightProgress >= 100 ? '#10B981' + '20' : '#3B82F6' + '15' }]}>
                 <Target size={16} color={stats.weightProgress >= 100 ? '#10B981' : '#3B82F6'} />
                 <Text style={[styles.progressBadgeText, { color: stats.weightProgress >= 100 ? '#10B981' : '#3B82F6' }]}>
@@ -702,6 +879,7 @@ export default function AnalyticsScreen() {
 
           {renderWeightSection()}
           {renderCalorieChart()}
+          {renderMacroChart()}
 
           <View style={styles.statsGrid}>
             <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -1074,6 +1252,37 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500' as const,
   },
+  projectionCard: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  projectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  projectionTitle: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  projectionContent: {
+    gap: 2,
+  },
+  projectionDate: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+  },
+  projectionSubtext: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+  },
+  projectionMessage: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
   chartCard: {
     borderRadius: 20,
     padding: 20,
@@ -1161,6 +1370,55 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   legendText: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+  },
+  macroContainer: {
+    gap: 16,
+  },
+  macroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  macroInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    width: 100,
+  },
+  macroDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  macroName: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  macroBarContainer: {
+    flex: 1,
+  },
+  macroBarBg: {
+    height: 10,
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  macroBarFill: {
+    height: '100%',
+    borderRadius: 5,
+  },
+  macroValues: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    width: 70,
+    justifyContent: 'flex-end',
+  },
+  macroAvg: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+  },
+  macroTarget: {
     fontSize: 12,
     fontWeight: '500' as const,
   },
