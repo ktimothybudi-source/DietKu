@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SignInScreen() {
   const { t } = useLanguage();
-  const { profile, isLoading } = useNutrition();
+  const { profile, isLoading, signIn } = useNutrition();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,6 +39,7 @@ export default function SignInScreen() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       console.log('Sign in attempt:', { email });
+      signIn(email.trim());
       
       if (profile) {
         console.log('Existing profile found, going to main app');
@@ -63,6 +64,7 @@ export default function SignInScreen() {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       console.log('Google sign in');
+      signIn('google_user@gmail.com');
       
       if (profile) {
         console.log('Existing profile found, going to main app');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -16,10 +16,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import * as Haptics from 'expo-haptics';
 
 export default function ProfileScreen() {
-  const { profile, dailyTargets, favorites, removeFromFavorites } = useNutrition();
+  const { profile, dailyTargets, favorites, removeFromFavorites, authState, signOut } = useNutrition();
   const { theme, themeMode, toggleTheme } = useTheme();
   const { language } = useLanguage();
-  const [isSignedIn, setIsSignedIn] = useState(false);
 
   if (!profile || !dailyTargets) {
     return null;
@@ -57,7 +56,7 @@ export default function ProfileScreen() {
         {
           text: 'Keluar',
           style: 'destructive',
-          onPress: () => setIsSignedIn(false),
+          onPress: () => signOut(),
         },
       ]
     );
@@ -95,10 +94,10 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {isSignedIn ? (
+            {authState.isSignedIn ? (
               <>
                 <View style={[styles.statusRow, { backgroundColor: theme.background }]}>
-                  <Text style={[styles.statusText, { color: theme.textSecondary }]}>Terhubung sebagai: user@email.com</Text>
+                  <Text style={[styles.statusText, { color: theme.textSecondary }]}>Terhubung sebagai: {authState.email}</Text>
                 </View>
                 <TouchableOpacity
                   style={[styles.row, { borderTopColor: theme.border }]}

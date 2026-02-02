@@ -26,6 +26,12 @@ interface WeightEntry {
 
 const FAVORITES_KEY = 'nutrition_favorites';
 const RECENT_MEALS_KEY = 'nutrition_recent_meals';
+const AUTH_KEY = 'nutrition_auth';
+
+interface AuthState {
+  isSignedIn: boolean;
+  email: string | null;
+}
 
 export interface PendingFoodEntry {
   id: string;
@@ -57,6 +63,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   });
   const [favorites, setFavorites] = useState<FavoriteMeal[]>([]);
   const [recentMeals, setRecentMeals] = useState<RecentMeal[]>([]);
+  const [authState, setAuthState] = useState<AuthState>({ isSignedIn: false, email: null });
 
   const profileQuery = useQuery({
     queryKey: ['nutrition_profile'],
@@ -109,6 +116,15 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(RECENT_MEALS_KEY);
       return stored ? JSON.parse(stored) : [];
+    },
+  });
+
+  const authQuery = useQuery({
+    queryKey: ['nutrition_auth'],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(AUTH_KEY);
+      console.log('Auth state loaded from storage:', stored);
+      return stored ? JSON.parse(stored) : { isSignedIn: false, email: null };
     },
   });
 
@@ -180,6 +196,18 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     },
   });
 
+  const saveAuthMutation = useMutation({
+    mutationFn: async (newAuth: AuthState) => {
+      await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(newAuth));
+      console.log('Auth state saved to storage:', newAuth);
+      return newAuth;
+    },
+    onSuccess: (data) => {
+      setAuthState(data);
+      queryClient.setQueryData(['nutrition_auth'], data);
+    },
+  });
+
   useEffect(() => {
     if (profileQuery.data !== undefined) {
       setProfile(profileQuery.data);
@@ -215,6 +243,12 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       setRecentMeals(recentMealsQuery.data);
     }
   }, [recentMealsQuery.data]);
+
+  useEffect(() => {
+    if (authQuery.data !== undefined) {
+      setAuthState(authQuery.data);
+    }
+  }, [authQuery.data]);
 
   const updateStreak = (dateKey: string) => {
     const today = new Date();
@@ -430,6 +464,17 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   }, [recentMeals, foodLog, mutateFoodLog]);
 
   const { mutate: mutateRecentMeals } = saveRecentMealsMutation;
+  const { mutate: mutateAuth } = saveAuthMutation;
+
+  const signIn = useCallback((email: string) => {
+    console.log('Signing in user:', email);
+    mutateAuth({ isSignedIn: true, email });
+  }, [mutateAuth]);
+
+  const signOut = useCallback(() => {
+    console.log('Signing out user');
+    mutateAuth({ isSignedIn: false, email: null });
+  }, [mutateAuth]);
 
   const removeFromRecent = useCallback((recentId: string) => {
     const updatedRecent = recentMeals.filter(r => r.id !== recentId);
@@ -688,6 +733,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
         WEIGHT_HISTORY_KEY,
         FAVORITES_KEY,
         RECENT_MEALS_KEY,
+        AUTH_KEY,
       ]);
       setProfile(null);
       setFoodLog({});
@@ -700,6 +746,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       });
       setFavorites([]);
       setRecentMeals([]);
+      setAuthState({ isSignedIn: false, email: null });
       queryClient.clear();
       console.log('All data cleared');
     } catch (error) {
@@ -738,11 +785,14 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     removeFromRecent,
     shouldSuggestFavorite,
     addWeightEntry,
+    authState,
+    signIn,
+    signOut,
     updateWeightEntry,
     deleteWeightEntry,
     clearAllData,
-    isLoading: profileQuery.isLoading || foodLogQuery.isLoading || streakQuery.isLoading || weightHistoryQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading,
-    isSaving: saveProfileMutation.isPending || saveFoodLogMutation.isPending || saveStreakMutation.isPending || saveWeightHistoryMutation.isPending || saveFavoritesMutation.isPending || saveRecentMealsMutation.isPending,
+    isLoading: profileQuery.isLoading || foodLogQuery.isLoading || streakQuery.isLoading || weightHistoryQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading || authQuery.isLoading,
+    isSaving: saveProfileMutation.isPending || saveFoodLogMutation.isPending || saveStreakMutation.isPending || saveWeightHistoryMutation.isPending || saveFavoritesMutation.isPending || saveRecentMealsMutation.isPending || saveAuthMutation.isPending,
   };
 });
 
