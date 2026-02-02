@@ -54,10 +54,13 @@ export default function HomeScreen() {
     return { year: today.getFullYear(), month: today.getMonth() };
   });
   const [shownPendingIds, setShownPendingIds] = useState<Set<string>>(new Set());
-  const [motivationalMessage, setMotivationalMessage] = useState<MotivationalMessage | null>(null);
+  const [motivationalMessage, setMotivationalMessage] = useState<MotivationalMessage & { isWarning?: boolean } | null>(null);
   const [showMotivationalToast, setShowMotivationalToast] = useState(false);
   const motivationalToastAnim = useRef(new Animated.Value(-100)).current;
   const motivationalToastOpacity = useRef(new Animated.Value(0)).current;
+  const [notificationQueue, setNotificationQueue] = useState<(MotivationalMessage & { isWarning?: boolean })[]>([]);
+  const [targetReachedToday, setTargetReachedToday] = useState(false);
+  const isShowingToast = useRef(false);
   const [editedItems, setEditedItems] = useState<{
     name: string;
     portion: string;
@@ -85,7 +88,8 @@ export default function HomeScreen() {
   const proteinAnimValue = useRef(new Animated.Value(0)).current;
   const remainingAnimValue = useRef(new Animated.Value(0)).current;
 
-  const showMotivationalFeedback = useCallback((message: MotivationalMessage) => {
+  const showSingleToast = useCallback((message: MotivationalMessage & { isWarning?: boolean }) => {
+    isShowingToast.current = true;
     setMotivationalMessage(message);
     setShowMotivationalToast(true);
     
@@ -117,9 +121,29 @@ export default function HomeScreen() {
         }),
       ]).start(() => {
         setShowMotivationalToast(false);
+        isShowingToast.current = false;
       });
-    }, 3000);
+    }, 2500);
   }, [motivationalToastAnim, motivationalToastOpacity]);
+
+  const queueNotification = useCallback((message: MotivationalMessage & { isWarning?: boolean }) => {
+    setNotificationQueue(prev => [...prev, message]);
+  }, []);
+
+  useEffect(() => {
+    if (notificationQueue.length > 0 && !isShowingToast.current) {
+      const [next, ...rest] = notificationQueue;
+      setNotificationQueue(rest);
+      showSingleToast(next);
+    }
+  }, [notificationQueue, showSingleToast]);
+
+  useEffect(() => {
+    const todayKey = getTodayKey();
+    if (selectedDate !== todayKey) {
+      setTargetReachedToday(false);
+    }
+  }, [selectedDate]);
 
   const prevEntriesCount = useRef(todayEntries.length);
   
@@ -128,19 +152,35 @@ export default function HomeScreen() {
       const caloriesOver = todayTotals.calories - dailyTargets.calories;
       const calorieFeedback = getCalorieFeedback(caloriesOver, profile.goal, dailyTargets.calories);
       
+      const justReachedTarget = progress.caloriesProgress >= 90 && progress.caloriesProgress <= 110;
+      
       if (calorieFeedback) {
-        showMotivationalFeedback({ text: calorieFeedback.text, emoji: calorieFeedback.emoji });
-      } else {
+        queueNotification({ text: calorieFeedback.text, emoji: calorieFeedback.emoji, isWarning: calorieFeedback.isWarning });
+      }
+      
+      if (justReachedTarget && !targetReachedToday) {
+        setTargetReachedToday(true);
+        const progressMsg = getProgressMessage(
+          progress.caloriesProgress,
+          progress.proteinProgress,
+          streakData.currentStreak
+        );
+        if (!calorieFeedback) {
+          queueNotification(progressMsg);
+        } else {
+          setTimeout(() => queueNotification(progressMsg), 100);
+        }
+      } else if (!calorieFeedback && !targetReachedToday) {
         const message = getProgressMessage(
           progress.caloriesProgress,
           progress.proteinProgress,
           streakData.currentStreak
         );
-        showMotivationalFeedback(message);
+        queueNotification(message);
       }
     }
     prevEntriesCount.current = todayEntries.length;
-  }, [todayEntries.length, progress, streakData, showMotivationalFeedback, profile, dailyTargets, todayTotals.calories]);
+  }, [todayEntries.length, progress, streakData, queueNotification, profile, dailyTargets, todayTotals.calories, targetReachedToday]);
 
   useEffect(() => {
     Animated.timing(caloriesAnimValue, {
@@ -1019,7 +1059,10 @@ export default function HomeScreen() {
               }
             ]}
           >
-            <View style={styles.motivationalToastContent}>
+            <View style={[
+              styles.motivationalToastContent,
+              motivationalMessage.isWarning && styles.motivationalToastWarning
+            ]}>
               <Text style={styles.motivationalToastEmoji}>{motivationalMessage.emoji}</Text>
               <Text style={styles.motivationalToastText}>{motivationalMessage.text}</Text>
             </View>
@@ -2113,6 +2156,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
+  },
+  motivationalToastWarning: {
+    backgroundColor: 'rgba(239, 147, 107, 0.95)',
+    shadowColor: '#EF936B',
   },
   motivationalToastEmoji: {
     fontSize: 20,

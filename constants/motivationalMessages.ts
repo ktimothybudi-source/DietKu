@@ -73,6 +73,7 @@ export interface CalorieFeedback {
   text: string;
   emoji: string;
   type: 'over' | 'under' | 'ontrack';
+  isWarning?: boolean;
 }
 
 export const getCalorieFeedback = (
@@ -85,25 +86,25 @@ export const getCalorieFeedback = (
   if (caloriesOver > 0 && percentOver >= 5) {
     if (goal === 'fat_loss') {
       const messages = [
-        { text: `${caloriesOver} kcal lebih - tidak apa-apa, yang penting tetap semangat! 🌟`, emoji: "🌱" },
-        { text: `Lebih ${caloriesOver} kcal hari ini. Besok kesempatan baru untuk kembali fokus! 💚`, emoji: "🌈" },
-        { text: `+${caloriesOver} kcal - satu hari tidak mendefinisikan perjalananmu! 🙌`, emoji: "💪" },
-        { text: `Kamu sudah tracking dengan baik! (+${caloriesOver} kcal) Itu yang penting 📊`, emoji: "⭐" },
+        { text: `+${caloriesOver} kcal - tidak apa-apa, tetap semangat!`, emoji: "🌱" },
+        { text: `+${caloriesOver} kcal - besok kesempatan baru!`, emoji: "🌈" },
+        { text: `+${caloriesOver} kcal - kamu tetap di jalur!`, emoji: "💪" },
+        { text: `+${caloriesOver} kcal - tracking yang baik!`, emoji: "⭐" },
       ];
-      return { ...messages[Math.floor(Math.random() * messages.length)], type: 'over' };
+      return { ...messages[Math.floor(Math.random() * messages.length)], type: 'over', isWarning: true };
     } else if (goal === 'muscle_gain') {
       const messages = [
-        { text: `+${caloriesOver} kcal - surplus untuk pertumbuhan otot! 💪`, emoji: "🔥" },
-        { text: `${caloriesOver} kcal ekstra untuk energi dan pemulihan! 🏋️`, emoji: "💪" },
-        { text: `Lebih ${caloriesOver} kcal - bahan bakar untuk ototmu! 🎯`, emoji: "⚡" },
+        { text: `+${caloriesOver} kcal - surplus untuk pertumbuhan otot!`, emoji: "🔥" },
+        { text: `+${caloriesOver} kcal - energi untuk pemulihan!`, emoji: "💪" },
+        { text: `+${caloriesOver} kcal - bahan bakar untuk otot!`, emoji: "⚡" },
       ];
       return { ...messages[Math.floor(Math.random() * messages.length)], type: 'over' };
     } else {
       const messages = [
-        { text: `+${caloriesOver} kcal hari ini - tetap pantau terus ya! 📊`, emoji: "🌱" },
-        { text: `Lebih ${caloriesOver} kcal - seimbangkan besok dengan lebih ringan 🌿`, emoji: "💚" },
+        { text: `+${caloriesOver} kcal - tetap pantau terus ya!`, emoji: "🌱" },
+        { text: `+${caloriesOver} kcal - seimbangkan besok!`, emoji: "💚" },
       ];
-      return { ...messages[Math.floor(Math.random() * messages.length)], type: 'over' };
+      return { ...messages[Math.floor(Math.random() * messages.length)], type: 'over', isWarning: true };
     }
   }
   
@@ -113,22 +114,22 @@ export const getCalorieFeedback = (
   if (caloriesOver < 0 && percentUnder >= 30) {
     if (goal === 'fat_loss') {
       const messages = [
-        { text: `Masih ${caloriesUnder} kcal tersisa - defisit yang bagus! 🎯`, emoji: "✨" },
-        { text: `${caloriesUnder} kcal di bawah target - progres yang luar biasa! 🌟`, emoji: "💪" },
-        { text: `Sisa ${caloriesUnder} kcal - kamu di jalur yang tepat! 🔥`, emoji: "🏆" },
+        { text: `${caloriesUnder} kcal tersisa - defisit yang bagus!`, emoji: "✨" },
+        { text: `${caloriesUnder} kcal di bawah - progres luar biasa!`, emoji: "💪" },
+        { text: `Sisa ${caloriesUnder} kcal - di jalur yang tepat!`, emoji: "🏆" },
       ];
       return { ...messages[Math.floor(Math.random() * messages.length)], type: 'under' };
     } else if (goal === 'muscle_gain') {
       const messages = [
-        { text: `Masih ${caloriesUnder} kcal lagi - otot butuh nutrisi untuk tumbuh! 🥗`, emoji: "💪" },
-        { text: `${caloriesUnder} kcal tersisa - jangan lupa snack protein! 🍳`, emoji: "🌱" },
-        { text: `Kurang ${caloriesUnder} kcal - tambah makanan untuk dukung pertumbuhanmu! 🎯`, emoji: "⚡" },
+        { text: `${caloriesUnder} kcal tersisa - otot butuh nutrisi!`, emoji: "💪" },
+        { text: `${caloriesUnder} kcal tersisa - tambah snack protein!`, emoji: "🌱" },
+        { text: `-${caloriesUnder} kcal - dukung pertumbuhanmu!`, emoji: "⚡" },
       ];
-      return { ...messages[Math.floor(Math.random() * messages.length)], type: 'under' };
+      return { ...messages[Math.floor(Math.random() * messages.length)], type: 'under', isWarning: true };
     } else {
       const messages = [
-        { text: `${caloriesUnder} kcal tersisa - pastikan tubuh cukup energi ya! 🌿`, emoji: "💚" },
-        { text: `Masih ${caloriesUnder} kcal - dengarkan tubuhmu jika lapar 🍎`, emoji: "🌱" },
+        { text: `${caloriesUnder} kcal tersisa - cukupi energimu!`, emoji: "💚" },
+        { text: `${caloriesUnder} kcal tersisa - dengarkan tubuhmu!`, emoji: "🌱" },
       ];
       return { ...messages[Math.floor(Math.random() * messages.length)], type: 'under' };
     }
