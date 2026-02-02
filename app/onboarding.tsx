@@ -340,7 +340,7 @@ export default function OnboardingScreen() {
         >
           <View style={styles.introImageGlow} />
           <View style={styles.introImageFrame}>
-            <Image source={require('../assets/images/intro.png')} style={styles.introImageLarge} resizeMode="contain" />
+            <Image source={require('../assets/images/intro.png')} style={styles.introImageLarge} resizeMode="cover" />
           </View>
           <View style={styles.introFloatingBadge}>
             <Sparkles size={12} color="#10B981" />
@@ -1776,34 +1776,33 @@ const styles = StyleSheet.create({
   },
   introImageGlow: {
     position: 'absolute' as const,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    width: 200,
+    height: 160,
+    borderRadius: 24,
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
   },
   introImageFrame: {
-    width: 140,
+    width: 180,
     height: 140,
-    borderRadius: 70,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
+    overflow: 'hidden',
   },
   introImageLarge: {
-    width: 85,
-    height: 85,
+    width: '100%',
+    height: '100%',
   },
   introFloatingBadge: {
     position: 'absolute' as const,
-    bottom: -4,
-    right: -12,
+    bottom: -8,
+    right: -8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
