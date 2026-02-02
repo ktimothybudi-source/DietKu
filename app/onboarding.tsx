@@ -244,9 +244,14 @@ export default function OnboardingScreen() {
   }, [animateTransition]);
 
   const handleComplete = useCallback(() => {
+    console.log('handleComplete called:', { sex, activityLevel });
+    
+    // Use defaults if somehow missing
+    const finalSex = sex || 'male';
+    const finalActivityLevel = activityLevel || 'moderate';
+    
     if (!sex || !activityLevel) {
-      console.log('handleComplete: Missing sex or activityLevel', { sex, activityLevel });
-      return;
+      console.warn('handleComplete: Using defaults for missing data', { sex, activityLevel, finalSex, finalActivityLevel });
     }
 
     console.log('handleComplete: Proceeding to sign-in step');
