@@ -76,6 +76,16 @@ export default function EditProfileScreen() {
       return;
     }
 
+    if (goal === 'muscle_gain' && goalWeightNum < weightNum) {
+      Alert.alert('Perhatian', 'Untuk tujuan membangun otot, target berat tidak boleh lebih rendah dari berat saat ini.');
+      return;
+    }
+
+    if (goal === 'fat_loss' && goalWeightNum > weightNum) {
+      Alert.alert('Perhatian', 'Untuk tujuan menurunkan berat badan, target berat tidak boleh lebih tinggi dari berat saat ini.');
+      return;
+    }
+
     if (weeklyWeightChangeNum !== undefined && (weeklyWeightChangeNum < -2 || weeklyWeightChangeNum > 2)) {
       Alert.alert('Error', 'Target per minggu harus antara -2 sampai +2 kg');
       return;

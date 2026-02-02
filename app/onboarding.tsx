@@ -741,7 +741,22 @@ export default function OnboardingScreen() {
     </View>
   );
 
-  const renderDreamWeight = () => (
+  const renderDreamWeight = () => {
+    const isInvalidForGoal = 
+      (selectedGoal === 'gain' && dreamWeight < weight) ||
+      (selectedGoal === 'lose' && dreamWeight > weight);
+
+    const getValidationMessage = () => {
+      if (selectedGoal === 'gain' && dreamWeight < weight) {
+        return 'Untuk menambah berat badan, target harus lebih tinggi dari berat saat ini.';
+      }
+      if (selectedGoal === 'lose' && dreamWeight > weight) {
+        return 'Untuk menurunkan berat badan, target harus lebih rendah dari berat saat ini.';
+      }
+      return '';
+    };
+
+    return (
     <View style={styles.stepContainer}>
       <View style={styles.questionContainer}>
         <Text style={styles.questionTitle}>Berapa berat badan yang Anda inginkan?</Text>
@@ -790,14 +805,26 @@ export default function OnboardingScreen() {
             <View style={styles.inlineHintLine} />
           </View>
         </View>
+
+        {isInvalidForGoal && (
+          <View style={styles.validationWarning}>
+            <Text style={styles.validationWarningText}>{getValidationMessage()}</Text>
+          </View>
+        )}
       </View>
 
-      <TouchableOpacity style={styles.primaryButton} onPress={handleNext} activeOpacity={0.8}>
+      <TouchableOpacity 
+        style={[styles.primaryButton, isInvalidForGoal && styles.primaryButtonDisabled]} 
+        onPress={handleNext} 
+        disabled={isInvalidForGoal}
+        activeOpacity={0.8}
+      >
         <Text style={styles.primaryButtonText}>Selanjutnya</Text>
         <ArrowRight size={20} color="#FFFFFF" />
       </TouchableOpacity>
     </View>
   );
+  };
 
   const renderActivityLevel = () => (
     <View style={styles.stepContainer}>
@@ -2288,4 +2315,19 @@ const styles = StyleSheet.create({
   recommendationText: { fontSize: 13, color: '#374151', lineHeight: 18, marginBottom: 12 },
   recommendationButton: { backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: 'rgba(239, 68, 68, 0.35)', borderRadius: 14, paddingVertical: 12, paddingHorizontal: 14, alignItems: 'center' },
   recommendationButtonText: { fontSize: 14, fontWeight: '700' as const, color: '#EF4444' },
+
+  validationWarning: {
+    marginTop: 16,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderRadius: 12,
+    padding: 14,
+  },
+  validationWarningText: {
+    fontSize: 14,
+    color: '#B45309',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
 });
