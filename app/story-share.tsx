@@ -238,13 +238,13 @@ export default function StoryShareScreen() {
 
         {includeOptions.macros && (
           <View style={styles.macroChips}>
-            <View style={[styles.macroChip, { backgroundColor: 'rgba(16, 185, 129, 0.25)' }]}>
+            <View style={styles.macroChip}>
               <Text style={styles.macroChipText}>💪 {storyData.protein}g</Text>
             </View>
-            <View style={[styles.macroChip, { backgroundColor: 'rgba(16, 185, 129, 0.25)' }]}>
+            <View style={styles.macroChip}>
               <Text style={styles.macroChipText}>🍞 {storyData.carbs}g</Text>
             </View>
-            <View style={[styles.macroChip, { backgroundColor: 'rgba(16, 185, 129, 0.25)' }]}>
+            <View style={styles.macroChip}>
               <Text style={styles.macroChipText}>🥑 {storyData.fat}g</Text>
             </View>
           </View>
@@ -329,7 +329,9 @@ export default function StoryShareScreen() {
         'macros',
         <Utensils size={18} color={includeOptions.macros ? '#FFFFFF' : '#666'} />,
         'Macros',
-        `${storyData.protein}g P • ${storyData.carbs}g C • ${storyData.fat}g F`
+        `${storyData.protein}g P • ${storyData.carbs}g C • ${storyData.fat}g F`,
+        undefined,
+        true
       )}
       
       {renderToggleRow(
@@ -352,14 +354,17 @@ export default function StoryShareScreen() {
           } else {
             toggleOption('location');
           }
-        }
+        },
+        true
       )}
       
       {renderToggleRow(
         'time',
         <Clock size={18} color={includeOptions.time ? '#FFFFFF' : '#666'} />,
         'Time',
-        formatTime(storyData.timestamp)
+        formatTime(storyData.timestamp),
+        undefined,
+        true
       )}
 
       <TouchableOpacity
@@ -617,6 +622,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   macroChipText: {
     fontSize: 14,
