@@ -238,13 +238,13 @@ export default function StoryShareScreen() {
 
         {includeOptions.macros && (
           <View style={styles.macroChips}>
-            <View style={[styles.macroChip, { backgroundColor: 'rgba(239, 68, 68, 0.2)' }]}>
+            <View style={[styles.macroChip, { backgroundColor: 'rgba(16, 185, 129, 0.25)' }]}>
               <Text style={styles.macroChipText}>💪 {storyData.protein}g</Text>
             </View>
-            <View style={[styles.macroChip, { backgroundColor: 'rgba(245, 158, 11, 0.2)' }]}>
+            <View style={[styles.macroChip, { backgroundColor: 'rgba(16, 185, 129, 0.25)' }]}>
               <Text style={styles.macroChipText}>🍞 {storyData.carbs}g</Text>
             </View>
-            <View style={[styles.macroChip, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
+            <View style={[styles.macroChip, { backgroundColor: 'rgba(16, 185, 129, 0.25)' }]}>
               <Text style={styles.macroChipText}>🥑 {storyData.fat}g</Text>
             </View>
           </View>
