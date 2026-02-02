@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { User, Settings as SettingsIcon, LogIn, LogOut, Globe, Moon, Sun, ChevronRight, UserCircle, Target, Flame, Bookmark, Trash2, Star } from 'lucide-react-native';
+import { User, Settings as SettingsIcon, LogIn, LogOut, Globe, Moon, Sun, ChevronRight, UserCircle, Target, Flame, Bookmark, Trash2, Star, FileText, Shield, RefreshCw } from 'lucide-react-native';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -328,6 +328,57 @@ export default function ProfileScreen() {
           >
             <Text style={styles.editButtonText}>Edit Profil</Text>
           </TouchableOpacity>
+
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardTitleRow}>
+                <FileText size={20} color={theme.primary} />
+                <Text style={[styles.cardTitle, { color: theme.text }]}>Legal</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <FileText size={20} color={theme.textSecondary} />
+                <Text style={[styles.rowLabel, { color: theme.text }]}>Ketentuan Layanan</Text>
+              </View>
+              <ChevronRight size={20} color={theme.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.row, { borderTopColor: theme.border }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <Shield size={20} color={theme.textSecondary} />
+                <Text style={[styles.rowLabel, { color: theme.text }]}>Kebijakan Privasi</Text>
+              </View>
+              <ChevronRight size={20} color={theme.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.row, { borderTopColor: theme.border }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowLeft}>
+                <RefreshCw size={20} color={theme.textSecondary} />
+                <Text style={[styles.rowLabel, { color: theme.text }]}>Pulihkan Pembelian</Text>
+              </View>
+              <ChevronRight size={20} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.bottomPadding} />
         </ScrollView>

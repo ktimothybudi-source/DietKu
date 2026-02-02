@@ -18,6 +18,7 @@ export default function EditProfileScreen() {
   const { profile, saveProfile, isSaving } = useNutrition();
   const { theme } = useTheme();
 
+  const [name, setName] = useState(profile?.name || '');
   const [age, setAge] = useState(profile?.age.toString() || '');
   const [sex, setSex] = useState<'male' | 'female'>(profile?.sex || 'male');
   const [height, setHeight] = useState(profile?.height.toString() || '');
@@ -31,6 +32,7 @@ export default function EditProfileScreen() {
 
   useEffect(() => {
     const changed = 
+      name !== (profile?.name || '') ||
       age !== profile?.age.toString() ||
       sex !== profile?.sex ||
       height !== profile?.height.toString() ||
@@ -40,7 +42,7 @@ export default function EditProfileScreen() {
       activityLevel !== profile?.activityLevel ||
       weeklyWeightChange !== (profile?.weeklyWeightChange?.toString() || '');
     setHasChanges(changed);
-  }, [age, sex, height, weight, goalWeight, goal, activityLevel, weeklyWeightChange, profile]);
+  }, [name, age, sex, height, weight, goalWeight, goal, activityLevel, weeklyWeightChange, profile]);
 
   const handleSave = () => {
     if (!age || !height || !weight || !goalWeight) {
@@ -80,6 +82,7 @@ export default function EditProfileScreen() {
     }
 
     const updatedProfile: UserProfile = {
+      name: name.trim() || undefined,
       age: ageNum,
       sex,
       height: heightNum,
@@ -150,6 +153,18 @@ export default function EditProfileScreen() {
       >
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Info Dasar</Text>
+
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: theme.text }]}>Nama</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+              value={name}
+              onChangeText={setName}
+              placeholder="Nama Anda"
+              placeholderTextColor={theme.textSecondary}
+              autoCapitalize="words"
+            />
+          </View>
 
           <View style={styles.field}>
             <Text style={[styles.label, { color: theme.text }]}>Usia (tahun)</Text>
