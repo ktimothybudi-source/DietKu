@@ -24,14 +24,18 @@ interface WeightEntry {
   timestamp: number;
 }
 
-const FAVORITES_KEY = 'nutrition_favorites';
-const RECENT_MEALS_KEY = 'nutrition_recent_meals';
 const AUTH_KEY = 'nutrition_auth';
 
 interface AuthState {
   isSignedIn: boolean;
   email: string | null;
 }
+
+const getStorageKey = (baseKey: string, email: string | null) => {
+  if (!email) return baseKey;
+  const sanitizedEmail = email.replace(/[^a-zA-Z0-9]/g, '_');
+  return `${baseKey}_${sanitizedEmail}`;
+};
 
 export interface PendingFoodEntry {
   id: string;
@@ -43,10 +47,12 @@ export interface PendingFoodEntry {
   error?: string;
 }
 
-const PROFILE_KEY = 'nutrition_profile';
-const FOOD_LOG_KEY = 'nutrition_food_log';
-const STREAK_KEY = 'nutrition_streak';
-const WEIGHT_HISTORY_KEY = 'nutrition_weight_history';
+const BASE_PROFILE_KEY = 'nutrition_profile';
+const BASE_FOOD_LOG_KEY = 'nutrition_food_log';
+const BASE_STREAK_KEY = 'nutrition_streak';
+const BASE_WEIGHT_HISTORY_KEY = 'nutrition_weight_history';
+const BASE_FAVORITES_KEY = 'nutrition_favorites';
+const BASE_RECENT_MEALS_KEY = 'nutrition_recent_meals';
 
 export const [NutritionProvider, useNutrition] = createContextHook(() => {
   const queryClient = useQueryClient();
@@ -64,60 +70,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   const [favorites, setFavorites] = useState<FavoriteMeal[]>([]);
   const [recentMeals, setRecentMeals] = useState<RecentMeal[]>([]);
   const [authState, setAuthState] = useState<AuthState>({ isSignedIn: false, email: null });
-
-  const profileQuery = useQuery({
-    queryKey: ['nutrition_profile'],
-    queryFn: async () => {
-      const stored = await AsyncStorage.getItem(PROFILE_KEY);
-      console.log('Profile loaded from storage:', stored);
-      return stored ? JSON.parse(stored) : null;
-    },
-  });
-
-  const foodLogQuery = useQuery({
-    queryKey: ['nutrition_food_log'],
-    queryFn: async () => {
-      const stored = await AsyncStorage.getItem(FOOD_LOG_KEY);
-      return stored ? JSON.parse(stored) : {};
-    },
-  });
-
-  const streakQuery = useQuery({
-    queryKey: ['nutrition_streak'],
-    queryFn: async () => {
-      const stored = await AsyncStorage.getItem(STREAK_KEY);
-      return stored ? JSON.parse(stored) : {
-        currentStreak: 0,
-        bestStreak: 0,
-        lastLoggedDate: '',
-        graceUsedThisWeek: false,
-      };
-    },
-  });
-
-  const weightHistoryQuery = useQuery({
-    queryKey: ['nutrition_weight_history'],
-    queryFn: async () => {
-      const stored = await AsyncStorage.getItem(WEIGHT_HISTORY_KEY);
-      return stored ? JSON.parse(stored) : [];
-    },
-  });
-
-  const favoritesQuery = useQuery({
-    queryKey: ['nutrition_favorites'],
-    queryFn: async () => {
-      const stored = await AsyncStorage.getItem(FAVORITES_KEY);
-      return stored ? JSON.parse(stored) : [];
-    },
-  });
-
-  const recentMealsQuery = useQuery({
-    queryKey: ['nutrition_recent_meals'],
-    queryFn: async () => {
-      const stored = await AsyncStorage.getItem(RECENT_MEALS_KEY);
-      return stored ? JSON.parse(stored) : [];
-    },
-  });
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
   const authQuery = useQuery({
     queryKey: ['nutrition_auth'],
@@ -128,71 +81,152 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     },
   });
 
+  useEffect(() => {
+    if (authQuery.data !== undefined) {
+      setAuthState(authQuery.data);
+      setCurrentUserEmail(authQuery.data.email);
+      console.log('Auth loaded, current user email:', authQuery.data.email);
+    }
+  }, [authQuery.data]);
+
+  const profileQuery = useQuery({
+    queryKey: ['nutrition_profile', currentUserEmail],
+    queryFn: async () => {
+      const key = getStorageKey(BASE_PROFILE_KEY, currentUserEmail);
+      const stored = await AsyncStorage.getItem(key);
+      console.log('Profile loaded from storage for user:', currentUserEmail, stored);
+      return stored ? JSON.parse(stored) : null;
+    },
+    enabled: authQuery.isSuccess,
+  });
+
+  const foodLogQuery = useQuery({
+    queryKey: ['nutrition_food_log', currentUserEmail],
+    queryFn: async () => {
+      const key = getStorageKey(BASE_FOOD_LOG_KEY, currentUserEmail);
+      const stored = await AsyncStorage.getItem(key);
+      console.log('Food log loaded for user:', currentUserEmail);
+      return stored ? JSON.parse(stored) : {};
+    },
+    enabled: authQuery.isSuccess,
+  });
+
+  const streakQuery = useQuery({
+    queryKey: ['nutrition_streak', currentUserEmail],
+    queryFn: async () => {
+      const key = getStorageKey(BASE_STREAK_KEY, currentUserEmail);
+      const stored = await AsyncStorage.getItem(key);
+      return stored ? JSON.parse(stored) : {
+        currentStreak: 0,
+        bestStreak: 0,
+        lastLoggedDate: '',
+        graceUsedThisWeek: false,
+      };
+    },
+    enabled: authQuery.isSuccess,
+  });
+
+  const weightHistoryQuery = useQuery({
+    queryKey: ['nutrition_weight_history', currentUserEmail],
+    queryFn: async () => {
+      const key = getStorageKey(BASE_WEIGHT_HISTORY_KEY, currentUserEmail);
+      const stored = await AsyncStorage.getItem(key);
+      return stored ? JSON.parse(stored) : [];
+    },
+    enabled: authQuery.isSuccess,
+  });
+
+  const favoritesQuery = useQuery({
+    queryKey: ['nutrition_favorites', currentUserEmail],
+    queryFn: async () => {
+      const key = getStorageKey(BASE_FAVORITES_KEY, currentUserEmail);
+      const stored = await AsyncStorage.getItem(key);
+      return stored ? JSON.parse(stored) : [];
+    },
+    enabled: authQuery.isSuccess,
+  });
+
+  const recentMealsQuery = useQuery({
+    queryKey: ['nutrition_recent_meals', currentUserEmail],
+    queryFn: async () => {
+      const key = getStorageKey(BASE_RECENT_MEALS_KEY, currentUserEmail);
+      const stored = await AsyncStorage.getItem(key);
+      return stored ? JSON.parse(stored) : [];
+    },
+    enabled: authQuery.isSuccess,
+  });
+
   const saveProfileMutation = useMutation({
     mutationFn: async (newProfile: UserProfile) => {
-      await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(newProfile));
-      console.log('Profile saved to storage:', newProfile);
+      const key = getStorageKey(BASE_PROFILE_KEY, currentUserEmail);
+      await AsyncStorage.setItem(key, JSON.stringify(newProfile));
+      console.log('Profile saved to storage for user:', currentUserEmail, newProfile);
       return newProfile;
     },
     onSuccess: (data) => {
       setProfile(data);
-      queryClient.setQueryData(['nutrition_profile'], data);
+      queryClient.setQueryData(['nutrition_profile', currentUserEmail], data);
       console.log('Profile state updated, dailyTargets will recalculate');
     },
   });
 
   const saveFoodLogMutation = useMutation({
     mutationFn: async (newLog: FoodLog) => {
-      await AsyncStorage.setItem(FOOD_LOG_KEY, JSON.stringify(newLog));
+      const key = getStorageKey(BASE_FOOD_LOG_KEY, currentUserEmail);
+      await AsyncStorage.setItem(key, JSON.stringify(newLog));
       return newLog;
     },
     onSuccess: (data) => {
       setFoodLog(data);
-      queryClient.setQueryData(['nutrition_food_log'], data);
+      queryClient.setQueryData(['nutrition_food_log', currentUserEmail], data);
     },
   });
 
   const saveStreakMutation = useMutation({
     mutationFn: async (newStreak: StreakData) => {
-      await AsyncStorage.setItem(STREAK_KEY, JSON.stringify(newStreak));
+      const key = getStorageKey(BASE_STREAK_KEY, currentUserEmail);
+      await AsyncStorage.setItem(key, JSON.stringify(newStreak));
       return newStreak;
     },
     onSuccess: (data) => {
       setStreakData(data);
-      queryClient.setQueryData(['nutrition_streak'], data);
+      queryClient.setQueryData(['nutrition_streak', currentUserEmail], data);
     },
   });
 
   const saveWeightHistoryMutation = useMutation({
     mutationFn: async (newHistory: WeightEntry[]) => {
-      await AsyncStorage.setItem(WEIGHT_HISTORY_KEY, JSON.stringify(newHistory));
+      const key = getStorageKey(BASE_WEIGHT_HISTORY_KEY, currentUserEmail);
+      await AsyncStorage.setItem(key, JSON.stringify(newHistory));
       return newHistory;
     },
     onSuccess: (data) => {
       setWeightHistory(data);
-      queryClient.setQueryData(['nutrition_weight_history'], data);
+      queryClient.setQueryData(['nutrition_weight_history', currentUserEmail], data);
     },
   });
 
   const saveFavoritesMutation = useMutation({
     mutationFn: async (newFavorites: FavoriteMeal[]) => {
-      await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(newFavorites));
+      const key = getStorageKey(BASE_FAVORITES_KEY, currentUserEmail);
+      await AsyncStorage.setItem(key, JSON.stringify(newFavorites));
       return newFavorites;
     },
     onSuccess: (data) => {
       setFavorites(data);
-      queryClient.setQueryData(['nutrition_favorites'], data);
+      queryClient.setQueryData(['nutrition_favorites', currentUserEmail], data);
     },
   });
 
   const saveRecentMealsMutation = useMutation({
     mutationFn: async (newRecent: RecentMeal[]) => {
-      await AsyncStorage.setItem(RECENT_MEALS_KEY, JSON.stringify(newRecent));
+      const key = getStorageKey(BASE_RECENT_MEALS_KEY, currentUserEmail);
+      await AsyncStorage.setItem(key, JSON.stringify(newRecent));
       return newRecent;
     },
     onSuccess: (data) => {
       setRecentMeals(data);
-      queryClient.setQueryData(['nutrition_recent_meals'], data);
+      queryClient.setQueryData(['nutrition_recent_meals', currentUserEmail], data);
     },
   });
 
@@ -204,7 +238,15 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     },
     onSuccess: (data) => {
       setAuthState(data);
+      setCurrentUserEmail(data.email);
       queryClient.setQueryData(['nutrition_auth'], data);
+      queryClient.invalidateQueries({ queryKey: ['nutrition_profile'] });
+      queryClient.invalidateQueries({ queryKey: ['nutrition_food_log'] });
+      queryClient.invalidateQueries({ queryKey: ['nutrition_streak'] });
+      queryClient.invalidateQueries({ queryKey: ['nutrition_weight_history'] });
+      queryClient.invalidateQueries({ queryKey: ['nutrition_favorites'] });
+      queryClient.invalidateQueries({ queryKey: ['nutrition_recent_meals'] });
+      console.log('Auth updated, invalidated all user-specific queries for:', data.email);
     },
   });
 
@@ -244,11 +286,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     }
   }, [recentMealsQuery.data]);
 
-  useEffect(() => {
-    if (authQuery.data !== undefined) {
-      setAuthState(authQuery.data);
-    }
-  }, [authQuery.data]);
+
 
   const updateStreak = (dateKey: string) => {
     const today = new Date();
@@ -726,15 +764,16 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
 
   const clearAllData = useCallback(async () => {
     try {
-      await AsyncStorage.multiRemove([
-        PROFILE_KEY,
-        FOOD_LOG_KEY,
-        STREAK_KEY,
-        WEIGHT_HISTORY_KEY,
-        FAVORITES_KEY,
-        RECENT_MEALS_KEY,
+      const keysToRemove = [
+        getStorageKey(BASE_PROFILE_KEY, currentUserEmail),
+        getStorageKey(BASE_FOOD_LOG_KEY, currentUserEmail),
+        getStorageKey(BASE_STREAK_KEY, currentUserEmail),
+        getStorageKey(BASE_WEIGHT_HISTORY_KEY, currentUserEmail),
+        getStorageKey(BASE_FAVORITES_KEY, currentUserEmail),
+        getStorageKey(BASE_RECENT_MEALS_KEY, currentUserEmail),
         AUTH_KEY,
-      ]);
+      ];
+      await AsyncStorage.multiRemove(keysToRemove);
       setProfile(null);
       setFoodLog({});
       setWeightHistory([]);
@@ -752,7 +791,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     } catch (error) {
       console.error('Error clearing data:', error);
     }
-  }, [queryClient]);
+  }, [queryClient, currentUserEmail]);
 
   return {
     profile,

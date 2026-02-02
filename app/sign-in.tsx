@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SignInScreen() {
   const { t } = useLanguage();
-  const { profile, isLoading, signIn } = useNutrition();
+  const { isLoading, signIn } = useNutrition();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,13 +41,11 @@ export default function SignInScreen() {
       console.log('Sign in attempt:', { email });
       signIn(email.trim());
       
-      if (profile) {
-        console.log('Existing profile found, going to main app');
-        router.replace('/(tabs)');
-      } else {
-        console.log('No profile found, going to onboarding');
-        router.replace('/onboarding');
-      }
+      // Navigate to root which will check profile and route accordingly
+      console.log('Sign in successful, navigating to root for profile check');
+      setTimeout(() => {
+        router.replace('/');
+      }, 500);
     } catch (error) {
       console.error('Sign in error:', error);
       Alert.alert('Error', 'Gagal masuk. Silakan coba lagi.');
@@ -66,13 +64,11 @@ export default function SignInScreen() {
       console.log('Google sign in');
       signIn('google_user@gmail.com');
       
-      if (profile) {
-        console.log('Existing profile found, going to main app');
-        router.replace('/(tabs)');
-      } else {
-        console.log('No profile found, going to onboarding');
-        router.replace('/onboarding');
-      }
+      // Navigate to root which will check profile and route accordingly
+      console.log('Google sign in successful, navigating to root for profile check');
+      setTimeout(() => {
+        router.replace('/');
+      }, 500);
     } catch (error) {
       console.error('Google sign in error:', error);
       Alert.alert('Error', 'Gagal masuk dengan Google. Silakan coba lagi.');
