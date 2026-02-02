@@ -37,10 +37,9 @@ import {
   StoryShareData,
   IncludeOptions,
   HealthRating,
-  TemplateId,
   HEALTH_RATINGS,
 } from '@/types/storyShare';
-import { STORY_TEMPLATES, LOCATION_PRESETS, getTemplateById } from '@/constants/storyShare';
+import { LOCATION_PRESETS } from '@/constants/storyShare';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -56,6 +55,7 @@ export default function StoryShareScreen() {
     fat?: string;
     photoUri?: string;
     timestamp?: string;
+    healthRating?: string;
   }>();
 
   const storyData: StoryShareData = {
@@ -69,7 +69,6 @@ export default function StoryShareScreen() {
     timestamp: parseInt(params.timestamp || Date.now().toString()),
   };
 
-  const [selectedTemplate, setSelectedTemplate] = useState<TemplateId>('minimal');
   const [includeOptions, setIncludeOptions] = useState<IncludeOptions>({
     macros: true,
     healthRating: true,
@@ -77,7 +76,7 @@ export default function StoryShareScreen() {
     time: false,
     name: true,
   });
-  const [healthRating, setHealthRating] = useState<HealthRating>('sehat');
+  const healthRating: HealthRating = (params.healthRating as HealthRating) || 'sehat';
   const [locationName, setLocationName] = useState<string>('');
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [customLocationInput, setCustomLocationInput] = useState('');
@@ -95,8 +94,6 @@ export default function StoryShareScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const template = getTemplateById(selectedTemplate);
-
   const toggleOption = (key: keyof IncludeOptions) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (key === 'location' && !includeOptions.location) {
@@ -107,12 +104,7 @@ export default function StoryShareScreen() {
     }
   };
 
-  const cycleHealthRating = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const currentIndex = HEALTH_RATINGS.findIndex(r => r.id === healthRating);
-    const nextIndex = (currentIndex + 1) % HEALTH_RATINGS.length;
-    setHealthRating(HEALTH_RATINGS[nextIndex].id);
-  };
+
 
   const openLocationSheet = () => {
     setShowLocationSheet(true);
@@ -222,7 +214,7 @@ export default function StoryShareScreen() {
       )}
       
       <LinearGradient
-        colors={template.gradientColors as [string, string, ...string[]]}
+        colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
         locations={[0, 0.4, 1]}
         style={styles.previewGradient}
       />
@@ -289,51 +281,13 @@ export default function StoryShareScreen() {
     </View>
   );
 
-  const renderTemplateSelector = () => (
-    <View style={styles.templateSection}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.templateScroll}
-      >
-        {STORY_TEMPLATES.map((tmpl) => (
-          <TouchableOpacity
-            key={tmpl.id}
-            style={[
-              styles.templateCard,
-              selectedTemplate === tmpl.id && styles.templateCardActive,
-              { borderColor: selectedTemplate === tmpl.id ? tmpl.accentColor : 'transparent' }
-            ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setSelectedTemplate(tmpl.id);
-            }}
-            activeOpacity={0.7}
-          >
-            <LinearGradient
-              colors={tmpl.gradientColors as [string, string, ...string[]]}
-              style={styles.templatePreview}
-            >
-              <View style={[styles.templateAccent, { backgroundColor: tmpl.accentColor }]} />
-            </LinearGradient>
-            <Text style={[
-              styles.templateName,
-              selectedTemplate === tmpl.id && { color: tmpl.accentColor }
-            ]}>
-              {tmpl.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
-
   const renderToggleRow = (
     key: keyof IncludeOptions,
     icon: React.ReactNode,
     label: string,
     subtitle?: string,
-    onTap?: () => void
+    onTap?: () => void,
+    showHighlight?: boolean
   ) => {
     const isActive = includeOptions[key];
     return (
@@ -343,7 +297,7 @@ export default function StoryShareScreen() {
         activeOpacity={0.7}
       >
         <View style={styles.toggleLeft}>
-          <View style={[styles.toggleIcon, isActive && styles.toggleIconActive]}>
+          <View style={[styles.toggleIcon, showHighlight && isActive && styles.toggleIconActive]}>
             {icon}
           </View>
           <View>
@@ -366,7 +320,9 @@ export default function StoryShareScreen() {
         'name',
         <User size={18} color={includeOptions.name ? '#FFFFFF' : '#666'} />,
         'Meal Name',
-        storyData.mealName
+        storyData.mealName,
+        undefined,
+        true
       )}
       
       {renderToggleRow(
@@ -381,13 +337,8 @@ export default function StoryShareScreen() {
         <Heart size={18} color={includeOptions.healthRating ? '#FFFFFF' : '#666'} />,
         'Health Rating',
         currentHealthRating?.label,
-        () => {
-          if (includeOptions.healthRating) {
-            cycleHealthRating();
-          } else {
-            toggleOption('healthRating');
-          }
-        }
+        undefined,
+        true
       )}
       
       {renderToggleRow(
@@ -550,7 +501,6 @@ export default function StoryShareScreen() {
           showsVerticalScrollIndicator={false}
         >
           {renderPreview()}
-          {renderTemplateSelector()}
           {renderIncludePanel()}
         </ScrollView>
 
@@ -698,41 +648,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600' as const,
     color: '#FFFFFF',
-  },
-  templateSection: {
-    marginBottom: 20,
-  },
-  templateScroll: {
-    gap: 12,
-  },
-  templateCard: {
-    alignItems: 'center',
-    padding: 4,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  templateCardActive: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  templatePreview: {
-    width: 64,
-    height: 96,
-    borderRadius: 12,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingBottom: 8,
-  },
-  templateAccent: {
-    width: 20,
-    height: 4,
-    borderRadius: 2,
-  },
-  templateName: {
-    fontSize: 12,
-    fontWeight: '500' as const,
-    color: '#999',
-    marginTop: 8,
   },
   includePanel: {
     backgroundColor: 'rgba(255,255,255,0.05)',
