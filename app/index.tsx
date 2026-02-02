@@ -4,17 +4,21 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 export default function Index() {
-  const { profile, isLoading } = useNutrition();
+  const { profile, isLoading, authState } = useNutrition();
 
   useEffect(() => {
     if (isLoading) return;
 
-    if (profile) {
+    console.log('Index routing check:', { profile: !!profile, isSignedIn: authState.isSignedIn, email: authState.email });
+
+    // If user has a profile OR is signed in, go to main app
+    // User is signed in means they completed onboarding at some point
+    if (profile || authState.isSignedIn) {
       router.replace('/(tabs)');
     } else {
       router.replace('/onboarding');
     }
-  }, [profile, isLoading]);
+  }, [profile, isLoading, authState.isSignedIn]);
 
   return (
     <View style={styles.container}>
