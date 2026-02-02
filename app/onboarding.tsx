@@ -1652,39 +1652,53 @@ export default function OnboardingScreen() {
   const contentPaddingBottom = 40 + (Platform.OS === 'android' ? insets.bottom + 40 : insets.bottom);
   const ScreenWrapper = Platform.OS === 'ios' ? KeyboardAvoidingView : View;
 
+  // Step 14 (renderFinal) has its own ScrollView, so we use View to avoid nested scroll issues on iOS
+  const useViewWrapper = step === 14;
+
+  const renderContent = () => (
+    <>
+      {step > 0 && !showLoading && (
+        <TouchableOpacity style={styles.backButtonTop} onPress={handleBack} activeOpacity={0.7}>
+          <ArrowLeft size={24} color="#666666" />
+        </TouchableOpacity>
+      )}
+
+      {step > 0 && step <= totalSteps && !showLoading && (
+        <View style={styles.progressBarContainer}>
+          <View style={styles.progressBar}>
+            <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
+          </View>
+        </View>
+      )}
+
+      <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+        {renderStep()}
+      </Animated.View>
+    </>
+  );
+
   return (
     <ScreenWrapper
       style={styles.container}
       {...(Platform.OS === 'ios' ? { behavior: 'padding', keyboardVerticalOffset: 0 } : {})}
     >
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: contentPaddingBottom }]}
-        showsVerticalScrollIndicator={false}
-        scrollEnabled={step === 15 && !showLoading}
-        nestedScrollEnabled
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-        contentInsetAdjustmentBehavior="always"
-      >
-        {step > 0 && !showLoading && (
-          <TouchableOpacity style={styles.backButtonTop} onPress={handleBack} activeOpacity={0.7}>
-            <ArrowLeft size={24} color="#666666" />
-          </TouchableOpacity>
-        )}
-
-        {step > 0 && step <= totalSteps && !showLoading && (
-          <View style={styles.progressBarContainer}>
-            <View style={styles.progressBar}>
-              <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
-            </View>
-          </View>
-        )}
-
-        <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-          {renderStep()}
-        </Animated.View>
-      </ScrollView>
+      {useViewWrapper ? (
+        <View style={[styles.scrollContent, { paddingBottom: contentPaddingBottom, flex: 1 }]}>
+          {renderContent()}
+        </View>
+      ) : (
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: contentPaddingBottom }]}
+          showsVerticalScrollIndicator={false}
+          scrollEnabled={step === 15 && !showLoading}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        >
+          {renderContent()}
+        </ScrollView>
+      )}
 
       {showSubscription && renderSubscription()}
     </ScreenWrapper>
