@@ -373,7 +373,7 @@ export default function AnalyticsScreen() {
   };
 
   const renderWeightSection = () => {
-    const hasWeightData = weightChartData.length >= 2;
+    const hasWeightData = weightChartData.length >= 1;
     const targetWeight = profile?.targetWeight ?? 0;
     const goal = profile?.goal;
     
@@ -412,70 +412,64 @@ export default function AnalyticsScreen() {
           </TouchableOpacity>
         </View>
 
-        {hasWeightData ? (
-          <>
-            <View style={styles.weightStats}>
-              <View style={styles.weightStatItem}>
-                <Text style={[styles.weightStatValue, { color: theme.text }]}>
-                  {stats.currentWeight.toFixed(1)}
-                </Text>
-                <Text style={[styles.weightStatLabel, { color: theme.textSecondary }]}>kg saat ini</Text>
-              </View>
-              
-              <View style={[styles.weightStatDivider, { backgroundColor: theme.border }]} />
-              
-              <View style={styles.weightStatItem}>
-                <View style={styles.weightChangeDisplay}>
-                  {stats.weightChange !== 0 && (
-                    stats.weightChange > 0 ? 
-                      <TrendingUp size={18} color={getWeightChangeColor()} /> : 
-                      <TrendingDown size={18} color={getWeightChangeColor()} />
-                  )}
-                  <Text style={[styles.weightStatValue, { color: getWeightChangeColor() }]}>
-                    {stats.weightChange > 0 ? '+' : ''}{stats.weightChange.toFixed(1)}
-                  </Text>
-                </View>
-                <Text style={[styles.weightStatLabel, { color: theme.textSecondary }]}>kg perubahan</Text>
-              </View>
-
-              {targetWeight > 0 && (
-                <>
-                  <View style={[styles.weightStatDivider, { backgroundColor: theme.border }]} />
-                  <View style={styles.weightStatItem}>
-                    <Text style={[styles.weightStatValue, { color: theme.primary }]}>
-                      {targetWeight.toFixed(1)}
-                    </Text>
-                    <Text style={[styles.weightStatLabel, { color: theme.textSecondary }]}>kg target</Text>
-                  </View>
-                </>
-              )}
-            </View>
-
-            {renderWeightGraph()}
-          </>
-        ) : (
-          <View style={styles.emptyWeightState}>
-            <Text style={[styles.emptyWeightText, { color: theme.textSecondary }]}>
-              Catat berat badan minimal 2× untuk melihat grafik perubahan
+        <View style={styles.weightStats}>
+          <View style={styles.weightStatItem}>
+            <Text style={[styles.weightStatValue, { color: theme.text }]}>
+              {hasWeightData ? stats.currentWeight.toFixed(1) : (profile?.weight?.toFixed(1) ?? '-')}
             </Text>
+            <Text style={[styles.weightStatLabel, { color: theme.textSecondary }]}>kg saat ini</Text>
           </View>
-        )}
+          
+          <View style={[styles.weightStatDivider, { backgroundColor: theme.border }]} />
+          
+          <View style={styles.weightStatItem}>
+            <View style={styles.weightChangeDisplay}>
+              {stats.weightChange !== 0 && (
+                stats.weightChange > 0 ? 
+                  <TrendingUp size={18} color={getWeightChangeColor()} /> : 
+                  <TrendingDown size={18} color={getWeightChangeColor()} />
+              )}
+              <Text style={[styles.weightStatValue, { color: getWeightChangeColor() }]}>
+                {stats.weightChange > 0 ? '+' : ''}{stats.weightChange.toFixed(1)}
+              </Text>
+            </View>
+            <Text style={[styles.weightStatLabel, { color: theme.textSecondary }]}>kg perubahan</Text>
+          </View>
+
+          {targetWeight > 0 && (
+            <>
+              <View style={[styles.weightStatDivider, { backgroundColor: theme.border }]} />
+              <View style={styles.weightStatItem}>
+                <Text style={[styles.weightStatValue, { color: theme.primary }]}>
+                  {targetWeight.toFixed(1)}
+                </Text>
+                <Text style={[styles.weightStatLabel, { color: theme.textSecondary }]}>kg target</Text>
+              </View>
+            </>
+          )}
+        </View>
+
+        {renderWeightGraph()}
       </View>
     );
   };
 
   const renderWeightGraph = () => {
-    if (weightChartData.length < 2) return null;
+    if (weightChartData.length < 1) return null;
 
     const weights = weightChartData.map((w: any) => w.weight);
-    const minWeight = Math.min(...weights) - 1;
-    const maxWeight = Math.max(...weights) + 1;
+    const minWeight = Math.min(...weights) - 2;
+    const maxWeight = Math.max(...weights) + 2;
     const chartHeight = 100;
     const chartWidth = SCREEN_WIDTH - 80;
 
     const points = weightChartData.map((w: any, index: number) => {
-      const x = (index / (weightChartData.length - 1)) * chartWidth;
-      const y = chartHeight - ((w.weight - minWeight) / (maxWeight - minWeight)) * chartHeight;
+      const x = weightChartData.length === 1 
+        ? chartWidth / 2 
+        : (index / (weightChartData.length - 1)) * chartWidth;
+      const y = maxWeight === minWeight 
+        ? chartHeight / 2 
+        : chartHeight - ((w.weight - minWeight) / (maxWeight - minWeight)) * chartHeight;
       return { x, y, weight: w.weight, date: w.date };
     });
 
@@ -527,12 +521,20 @@ export default function AnalyticsScreen() {
         </View>
 
         <View style={styles.graphDateLabels}>
-          <Text style={[styles.graphDateLabel, { color: theme.textTertiary }]}>
-            {new Date(weightChartData[0].date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-          </Text>
-          <Text style={[styles.graphDateLabel, { color: theme.textTertiary }]}>
-            {new Date(weightChartData[weightChartData.length - 1].date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-          </Text>
+          {weightChartData.length === 1 ? (
+            <Text style={[styles.graphDateLabel, { color: theme.textTertiary, textAlign: 'center', flex: 1 }]}>
+              {new Date(weightChartData[0].date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+            </Text>
+          ) : (
+            <>
+              <Text style={[styles.graphDateLabel, { color: theme.textTertiary }]}>
+                {new Date(weightChartData[0].date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+              </Text>
+              <Text style={[styles.graphDateLabel, { color: theme.textTertiary }]}>
+                {new Date(weightChartData[weightChartData.length - 1].date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+              </Text>
+            </>
+          )}
         </View>
       </View>
     );
