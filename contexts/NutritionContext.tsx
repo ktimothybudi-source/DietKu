@@ -455,8 +455,16 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     }
     
     mutateWeightHistory(updatedHistory);
+    
+    // Update profile weight to recalculate calorie targets
+    if (profile && weight !== profile.weight) {
+      const updatedProfile = { ...profile, weight };
+      saveProfileMutation.mutate(updatedProfile);
+      console.log('Profile weight updated for calorie recalculation:', weight);
+    }
+    
     console.log('Weight entry saved:', { dateKey, weight, historyLength: updatedHistory.length });
-  }, [weightHistory, mutateWeightHistory]);
+  }, [weightHistory, mutateWeightHistory, profile, saveProfileMutation]);
 
   const updateWeightEntry = useCallback((dateKey: string, newWeight: number) => {
     const updatedHistory = weightHistory.map(entry =>
