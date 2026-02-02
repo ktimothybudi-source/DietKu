@@ -74,6 +74,7 @@ export interface CalorieFeedback {
   emoji: string;
   type: 'over' | 'under' | 'ontrack';
   isWarning?: boolean;
+  isCelebration?: boolean;
 }
 
 export const getCalorieFeedback = (
@@ -94,11 +95,13 @@ export const getCalorieFeedback = (
       return { ...messages[Math.floor(Math.random() * messages.length)], type: 'over', isWarning: true };
     } else if (goal === 'muscle_gain') {
       const messages = [
-        { text: `+${caloriesOver} kcal - surplus untuk pertumbuhan otot!`, emoji: "🔥" },
-        { text: `+${caloriesOver} kcal - energi untuk pemulihan!`, emoji: "💪" },
-        { text: `+${caloriesOver} kcal - bahan bakar untuk otot!`, emoji: "⚡" },
+        { text: `+${caloriesOver} kcal - mantap! Surplus untuk otot! 🎉`, emoji: "🔥" },
+        { text: `+${caloriesOver} kcal - luar biasa! Bahan bakar otot!`, emoji: "💪" },
+        { text: `+${caloriesOver} kcal - perfect! Energi untuk gains!`, emoji: "🏆" },
+        { text: `+${caloriesOver} kcal - terus begini! Otot tumbuh! 💥`, emoji: "⚡" },
+        { text: `+${caloriesOver} kcal - kerja bagus! Bulk mode ON!`, emoji: "🎯" },
       ];
-      return { ...messages[Math.floor(Math.random() * messages.length)], type: 'over' };
+      return { ...messages[Math.floor(Math.random() * messages.length)], type: 'over', isCelebration: true };
     } else {
       const messages = [
         { text: `+${caloriesOver} kcal - tetap pantau terus ya!`, emoji: "🌱" },

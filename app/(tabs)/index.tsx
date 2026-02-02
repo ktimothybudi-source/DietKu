@@ -54,11 +54,11 @@ export default function HomeScreen() {
     return { year: today.getFullYear(), month: today.getMonth() };
   });
   const [shownPendingIds, setShownPendingIds] = useState<Set<string>>(new Set());
-  const [motivationalMessage, setMotivationalMessage] = useState<MotivationalMessage & { isWarning?: boolean } | null>(null);
+  const [motivationalMessage, setMotivationalMessage] = useState<MotivationalMessage & { isWarning?: boolean; isCelebration?: boolean } | null>(null);
   const [showMotivationalToast, setShowMotivationalToast] = useState(false);
   const motivationalToastAnim = useRef(new Animated.Value(-100)).current;
   const motivationalToastOpacity = useRef(new Animated.Value(0)).current;
-  const [notificationQueue, setNotificationQueue] = useState<(MotivationalMessage & { isWarning?: boolean })[]>([]);
+  const [notificationQueue, setNotificationQueue] = useState<(MotivationalMessage & { isWarning?: boolean; isCelebration?: boolean })[]>([]);
   const [targetReachedToday, setTargetReachedToday] = useState(false);
   const isShowingToast = useRef(false);
   const [editedItems, setEditedItems] = useState<{
@@ -88,7 +88,7 @@ export default function HomeScreen() {
   const proteinAnimValue = useRef(new Animated.Value(0)).current;
   const remainingAnimValue = useRef(new Animated.Value(0)).current;
 
-  const showSingleToast = useCallback((message: MotivationalMessage & { isWarning?: boolean }) => {
+  const showSingleToast = useCallback((message: MotivationalMessage & { isWarning?: boolean; isCelebration?: boolean }) => {
     isShowingToast.current = true;
     setMotivationalMessage(message);
     setShowMotivationalToast(true);
@@ -126,7 +126,7 @@ export default function HomeScreen() {
     }, 2500);
   }, [motivationalToastAnim, motivationalToastOpacity]);
 
-  const queueNotification = useCallback((message: MotivationalMessage & { isWarning?: boolean }) => {
+  const queueNotification = useCallback((message: MotivationalMessage & { isWarning?: boolean; isCelebration?: boolean }) => {
     setNotificationQueue(prev => [...prev, message]);
   }, []);
 
@@ -155,7 +155,7 @@ export default function HomeScreen() {
       const justReachedTarget = progress.caloriesProgress >= 90 && progress.caloriesProgress <= 110;
       
       if (calorieFeedback) {
-        queueNotification({ text: calorieFeedback.text, emoji: calorieFeedback.emoji, isWarning: calorieFeedback.isWarning });
+        queueNotification({ text: calorieFeedback.text, emoji: calorieFeedback.emoji, isWarning: calorieFeedback.isWarning, isCelebration: calorieFeedback.isCelebration });
       }
       
       if (justReachedTarget && !targetReachedToday) {
@@ -1080,7 +1080,8 @@ export default function HomeScreen() {
           >
             <View style={[
               styles.motivationalToastContent,
-              motivationalMessage.isWarning && styles.motivationalToastWarning
+              motivationalMessage.isWarning && styles.motivationalToastWarning,
+              motivationalMessage.isCelebration && styles.motivationalToastCelebration
             ]}>
               <Text style={styles.motivationalToastEmoji}>{motivationalMessage.emoji}</Text>
               <Text style={styles.motivationalToastText}>{motivationalMessage.text}</Text>
@@ -2179,6 +2180,10 @@ const styles = StyleSheet.create({
   motivationalToastWarning: {
     backgroundColor: 'rgba(239, 147, 107, 0.95)',
     shadowColor: '#EF936B',
+  },
+  motivationalToastCelebration: {
+    backgroundColor: 'rgba(16, 185, 129, 0.95)',
+    shadowColor: '#10B981',
   },
   motivationalToastEmoji: {
     fontSize: 20,
