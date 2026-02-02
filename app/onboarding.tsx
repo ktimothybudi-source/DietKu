@@ -338,7 +338,6 @@ export default function OnboardingScreen() {
         ]}
       >
         <Image source={require('../assets/images/intro.png')} style={styles.introImageLarge} resizeMode="cover" />
-        <View style={styles.introImageOverlay} />
         <View style={styles.introFloatingBadge}>
           <Sparkles size={12} color="#FFFFFF" />
           <Text style={styles.introFloatingBadgeText}>AI-Powered</Text>
@@ -362,26 +361,10 @@ export default function OnboardingScreen() {
             },
           ]}
         >
-          <Text style={styles.introWelcomeLabel}>Selamat Datang di</Text>
           <Text style={styles.introBrandTitle}>DietKu</Text>
           <Text style={styles.introTagline}>
-            Perjalanan menuju versi terbaik dirimu dimulai dari sini. Pantau nutrisi, capai tujuan, dan transformasi hidupmu.
+            Pantau nutrisi dengan AI, capai tujuanmu, dan transformasi hidupmu.
           </Text>
-
-          <View style={styles.introFeatures}>
-            <View style={styles.introFeatureItem}>
-              <View style={styles.introFeatureDot} />
-              <Text style={styles.introFeatureText}>Analisis makanan dengan AI</Text>
-            </View>
-            <View style={styles.introFeatureItem}>
-              <View style={styles.introFeatureDot} />
-              <Text style={styles.introFeatureText}>Rencana nutrisi personal</Text>
-            </View>
-            <View style={styles.introFeatureItem}>
-              <View style={styles.introFeatureDot} />
-              <Text style={styles.introFeatureText}>Pantau progres real-time</Text>
-            </View>
-          </View>
         </Animated.View>
       </View>
 
@@ -1758,24 +1741,27 @@ const styles = StyleSheet.create({
 
   introContainer: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
   },
   introImageHero: {
-    width: '100%',
-    height: '45%',
+    alignSelf: 'center',
+    width: '85%',
+    aspectRatio: 0.75,
+    maxHeight: '55%',
     position: 'relative' as const,
+    marginTop: 16,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
   },
   introImageLarge: {
     width: '100%',
     height: '100%',
-  },
-  introImageOverlay: {
-    position: 'absolute' as const,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-    background: 'linear-gradient(transparent, #FAFAFA)',
+    borderRadius: 24,
   },
   introFloatingBadge: {
     position: 'absolute' as const,
@@ -1802,60 +1788,31 @@ const styles = StyleSheet.create({
   introHeroSection: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 20,
   },
   introTextSection: {
     alignItems: 'center',
     paddingHorizontal: 8,
   },
-  introWelcomeLabel: {
-    fontSize: 13,
-    fontWeight: '500' as const,
-    color: '#10B981',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase' as const,
-    marginBottom: 4,
-  },
   introBrandTitle: {
-    fontSize: 44,
+    fontSize: 42,
     fontWeight: '800' as const,
     color: '#111827',
-    marginBottom: 14,
+    marginBottom: 12,
     letterSpacing: -1,
   },
   introTagline: {
-    fontSize: 15,
+    fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 23,
-    marginBottom: 24,
-    maxWidth: 300,
-  },
-  introFeatures: {
-    alignItems: 'flex-start',
-    gap: 8,
-  },
-  introFeatureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  introFeatureDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#10B981',
-  },
-  introFeatureText: {
-    fontSize: 13,
-    color: '#4B5563',
-    fontWeight: '500' as const,
+    lineHeight: 24,
+    maxWidth: 320,
   },
   introCtaSection: {
     paddingHorizontal: 24,
-    paddingBottom: 12,
+    paddingBottom: 16,
   },
   introPrimaryButton: {
     backgroundColor: '#10B981',
