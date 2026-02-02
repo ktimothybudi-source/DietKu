@@ -6,6 +6,7 @@ import { UserProfile, FoodEntry, DailyTargets, MealAnalysis, FavoriteMeal, Recen
 import { calculateDailyTargets, getTodayKey } from '@/utils/nutritionCalculations';
 import { analyzeMealPhoto } from '@/utils/photoAnalysis';
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 
 interface FoodLog {
   [date: string]: FoodEntry[];
@@ -563,6 +564,10 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   const signOut = useCallback(() => {
     console.log('Signing out user');
     mutateAuth({ isSignedIn: false, email: null });
+    // Reset navigation stack to onboarding so back button can't return to authenticated screens
+    setTimeout(() => {
+      router.replace('/onboarding');
+    }, 100);
   }, [mutateAuth]);
 
   const removeFromRecent = useCallback((recentId: string) => {
