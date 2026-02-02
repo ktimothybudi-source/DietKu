@@ -1,24 +1,30 @@
-import { useEffect } from 'react';
-import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { router, useRootNavigationState } from 'expo-router';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 export default function Index() {
   const { profile, isLoading, authState } = useNutrition();
+  const rootNavigationState = useRootNavigationState();
+  const [hasNavigated, setHasNavigated] = useState(false);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || hasNavigated) return;
+    
+    // Wait for navigation to be ready
+    if (!rootNavigationState?.key) return;
 
     console.log('Index routing check:', { profile: !!profile, isSignedIn: authState.isSignedIn, email: authState.email });
 
+    setHasNavigated(true);
+    
     // If user has a profile OR is signed in, go to main app
-    // User is signed in means they completed onboarding at some point
     if (profile || authState.isSignedIn) {
       router.replace('/(tabs)');
     } else {
       router.replace('/onboarding');
     }
-  }, [profile, isLoading, authState.isSignedIn]);
+  }, [profile, isLoading, authState.isSignedIn, rootNavigationState?.key, hasNavigated]);
 
   return (
     <View style={styles.container}>
