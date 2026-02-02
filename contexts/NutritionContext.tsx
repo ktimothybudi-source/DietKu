@@ -5,8 +5,10 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { UserProfile, FoodEntry, DailyTargets, MealAnalysis, FavoriteMeal, RecentMeal } from '@/types/nutrition';
 import { calculateDailyTargets, getTodayKey } from '@/utils/nutritionCalculations';
 import { analyzeMealPhoto } from '@/utils/photoAnalysis';
+import { supabase, SupabaseProfile, SupabaseFoodEntry, SupabaseWeightHistory } from '@/lib/supabase';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
+import { Session } from '@supabase/supabase-js';
 
 interface FoodLog {
   [date: string]: FoodEntry[];
@@ -25,12 +27,15 @@ interface WeightEntry {
   timestamp: number;
 }
 
-const AUTH_KEY = 'nutrition_auth';
-
 interface AuthState {
   isSignedIn: boolean;
   email: string | null;
+  userId: string | null;
 }
+
+const BASE_STREAK_KEY = 'nutrition_streak';
+const BASE_FAVORITES_KEY = 'nutrition_favorites';
+const BASE_RECENT_MEALS_KEY = 'nutrition_recent_meals';
 
 const getStorageKey = (baseKey: string, email: string | null) => {
   if (!email) return baseKey;
@@ -48,12 +53,26 @@ export interface PendingFoodEntry {
   error?: string;
 }
 
-const BASE_PROFILE_KEY = 'nutrition_profile';
-const BASE_FOOD_LOG_KEY = 'nutrition_food_log';
-const BASE_STREAK_KEY = 'nutrition_streak';
-const BASE_WEIGHT_HISTORY_KEY = 'nutrition_weight_history';
-const BASE_FAVORITES_KEY = 'nutrition_favorites';
-const BASE_RECENT_MEALS_KEY = 'nutrition_recent_meals';
+const mapSupabaseProfileToUserProfile = (sp: SupabaseProfile): UserProfile => ({
+  name: sp.name || undefined,
+  age: sp.birth_date ? Math.floor((Date.now() - new Date(sp.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 25,
+  sex: (sp.gender === 'male' || sp.gender === 'female') ? sp.gender : 'male',
+  height: sp.height || 170,
+  weight: sp.weight || 70,
+  goalWeight: sp.target_weight || sp.weight || 70,
+  goal: (sp.goal === 'fat_loss' || sp.goal === 'maintenance' || sp.goal === 'muscle_gain') ? sp.goal : 'maintenance',
+  activityLevel: (sp.activity_level === 'low' || sp.activity_level === 'moderate' || sp.activity_level === 'high') ? sp.activity_level : 'moderate',
+});
+
+const mapSupabaseFoodEntryToFoodEntry = (sfe: SupabaseFoodEntry): FoodEntry => ({
+  id: sfe.id,
+  timestamp: new Date(sfe.created_at).getTime(),
+  name: sfe.food_name,
+  calories: sfe.calories,
+  protein: sfe.protein,
+  carbs: sfe.carbs,
+  fat: sfe.fat,
+});
 
 export const [NutritionProvider, useNutrition] = createContextHook(() => {
   const queryClient = useQueryClient();
@@ -70,52 +89,104 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   });
   const [favorites, setFavorites] = useState<FavoriteMeal[]>([]);
   const [recentMeals, setRecentMeals] = useState<RecentMeal[]>([]);
-  const [authState, setAuthState] = useState<AuthState>({ isSignedIn: false, email: null });
-  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
-
-  const authQuery = useQuery({
-    queryKey: ['nutrition_auth'],
-    queryFn: async () => {
-      const stored = await AsyncStorage.getItem(AUTH_KEY);
-      console.log('Auth state loaded from storage:', stored);
-      return stored ? JSON.parse(stored) : { isSignedIn: false, email: null };
-    },
-  });
+  const [authState, setAuthState] = useState<AuthState>({ isSignedIn: false, email: null, userId: null });
+  const [, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
-    if (authQuery.data !== undefined) {
-      setAuthState(authQuery.data);
-      setCurrentUserEmail(authQuery.data.email);
-      console.log('Auth loaded, current user email:', authQuery.data.email);
-    }
-  }, [authQuery.data]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session?.user?.email);
+      setSession(session);
+      if (session?.user) {
+        setAuthState({
+          isSignedIn: true,
+          email: session.user.email || null,
+          userId: session.user.id,
+        });
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('Auth state changed:', _event, session?.user?.email);
+      setSession(session);
+      if (session?.user) {
+        setAuthState({
+          isSignedIn: true,
+          email: session.user.email || null,
+          userId: session.user.id,
+        });
+      } else {
+        setAuthState({ isSignedIn: false, email: null, userId: null });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const profileQuery = useQuery({
-    queryKey: ['nutrition_profile', currentUserEmail],
+    queryKey: ['supabase_profile', authState.userId],
     queryFn: async () => {
-      const key = getStorageKey(BASE_PROFILE_KEY, currentUserEmail);
-      const stored = await AsyncStorage.getItem(key);
-      console.log('Profile loaded from storage for user:', currentUserEmail, stored);
-      return stored ? JSON.parse(stored) : null;
+      if (!authState.userId) return null;
+      console.log('Fetching profile from Supabase for:', authState.userId);
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authState.userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+      console.log('Profile fetched:', data);
+      return data as SupabaseProfile;
     },
-    enabled: authQuery.isSuccess,
+    enabled: authState.isSignedIn && !!authState.userId,
   });
 
-  const foodLogQuery = useQuery({
-    queryKey: ['nutrition_food_log', currentUserEmail],
+  const foodEntriesQuery = useQuery({
+    queryKey: ['supabase_food_entries', authState.userId],
     queryFn: async () => {
-      const key = getStorageKey(BASE_FOOD_LOG_KEY, currentUserEmail);
-      const stored = await AsyncStorage.getItem(key);
-      console.log('Food log loaded for user:', currentUserEmail);
-      return stored ? JSON.parse(stored) : {};
+      if (!authState.userId) return [];
+      console.log('Fetching food entries from Supabase');
+      const { data, error } = await supabase
+        .from('food_entries')
+        .select('*')
+        .eq('user_id', authState.userId)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching food entries:', error);
+        return [];
+      }
+      return data as SupabaseFoodEntry[];
     },
-    enabled: authQuery.isSuccess,
+    enabled: authState.isSignedIn && !!authState.userId,
+  });
+
+  const weightHistoryQuery = useQuery({
+    queryKey: ['supabase_weight_history', authState.userId],
+    queryFn: async () => {
+      if (!authState.userId) return [];
+      console.log('Fetching weight history from Supabase');
+      const { data, error } = await supabase
+        .from('weight_history')
+        .select('*')
+        .eq('user_id', authState.userId)
+        .order('recorded_at', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching weight history:', error);
+        return [];
+      }
+      return data as SupabaseWeightHistory[];
+    },
+    enabled: authState.isSignedIn && !!authState.userId,
   });
 
   const streakQuery = useQuery({
-    queryKey: ['nutrition_streak', currentUserEmail],
+    queryKey: ['nutrition_streak', authState.email],
     queryFn: async () => {
-      const key = getStorageKey(BASE_STREAK_KEY, currentUserEmail);
+      const key = getStorageKey(BASE_STREAK_KEY, authState.email);
       const stored = await AsyncStorage.getItem(key);
       return stored ? JSON.parse(stored) : {
         currentStreak: 0,
@@ -124,170 +195,274 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
         graceUsedThisWeek: false,
       };
     },
-    enabled: authQuery.isSuccess,
-  });
-
-  const weightHistoryQuery = useQuery({
-    queryKey: ['nutrition_weight_history', currentUserEmail],
-    queryFn: async () => {
-      const key = getStorageKey(BASE_WEIGHT_HISTORY_KEY, currentUserEmail);
-      const stored = await AsyncStorage.getItem(key);
-      return stored ? JSON.parse(stored) : [];
-    },
-    enabled: authQuery.isSuccess,
+    enabled: authState.isSignedIn,
   });
 
   const favoritesQuery = useQuery({
-    queryKey: ['nutrition_favorites', currentUserEmail],
+    queryKey: ['nutrition_favorites', authState.email],
     queryFn: async () => {
-      const key = getStorageKey(BASE_FAVORITES_KEY, currentUserEmail);
+      const key = getStorageKey(BASE_FAVORITES_KEY, authState.email);
       const stored = await AsyncStorage.getItem(key);
       return stored ? JSON.parse(stored) : [];
     },
-    enabled: authQuery.isSuccess,
+    enabled: authState.isSignedIn,
   });
 
   const recentMealsQuery = useQuery({
-    queryKey: ['nutrition_recent_meals', currentUserEmail],
+    queryKey: ['nutrition_recent_meals', authState.email],
     queryFn: async () => {
-      const key = getStorageKey(BASE_RECENT_MEALS_KEY, currentUserEmail);
+      const key = getStorageKey(BASE_RECENT_MEALS_KEY, authState.email);
       const stored = await AsyncStorage.getItem(key);
       return stored ? JSON.parse(stored) : [];
     },
-    enabled: authQuery.isSuccess,
-  });
-
-  const saveProfileMutation = useMutation({
-    mutationFn: async (newProfile: UserProfile) => {
-      const key = getStorageKey(BASE_PROFILE_KEY, currentUserEmail);
-      await AsyncStorage.setItem(key, JSON.stringify(newProfile));
-      console.log('Profile saved to storage for user:', currentUserEmail, newProfile);
-      return newProfile;
-    },
-    onSuccess: (data) => {
-      setProfile(data);
-      queryClient.setQueryData(['nutrition_profile', currentUserEmail], data);
-      console.log('Profile state updated, dailyTargets will recalculate');
-    },
-  });
-
-  const saveFoodLogMutation = useMutation({
-    mutationFn: async (newLog: FoodLog) => {
-      const key = getStorageKey(BASE_FOOD_LOG_KEY, currentUserEmail);
-      await AsyncStorage.setItem(key, JSON.stringify(newLog));
-      return newLog;
-    },
-    onSuccess: (data) => {
-      setFoodLog(data);
-      queryClient.setQueryData(['nutrition_food_log', currentUserEmail], data);
-    },
-  });
-
-  const saveStreakMutation = useMutation({
-    mutationFn: async (newStreak: StreakData) => {
-      const key = getStorageKey(BASE_STREAK_KEY, currentUserEmail);
-      await AsyncStorage.setItem(key, JSON.stringify(newStreak));
-      return newStreak;
-    },
-    onSuccess: (data) => {
-      setStreakData(data);
-      queryClient.setQueryData(['nutrition_streak', currentUserEmail], data);
-    },
-  });
-
-  const saveWeightHistoryMutation = useMutation({
-    mutationFn: async (newHistory: WeightEntry[]) => {
-      const key = getStorageKey(BASE_WEIGHT_HISTORY_KEY, currentUserEmail);
-      await AsyncStorage.setItem(key, JSON.stringify(newHistory));
-      return newHistory;
-    },
-    onSuccess: (data) => {
-      setWeightHistory(data);
-      queryClient.setQueryData(['nutrition_weight_history', currentUserEmail], data);
-    },
-  });
-
-  const saveFavoritesMutation = useMutation({
-    mutationFn: async (newFavorites: FavoriteMeal[]) => {
-      const key = getStorageKey(BASE_FAVORITES_KEY, currentUserEmail);
-      await AsyncStorage.setItem(key, JSON.stringify(newFavorites));
-      return newFavorites;
-    },
-    onSuccess: (data) => {
-      setFavorites(data);
-      queryClient.setQueryData(['nutrition_favorites', currentUserEmail], data);
-    },
-  });
-
-  const saveRecentMealsMutation = useMutation({
-    mutationFn: async (newRecent: RecentMeal[]) => {
-      const key = getStorageKey(BASE_RECENT_MEALS_KEY, currentUserEmail);
-      await AsyncStorage.setItem(key, JSON.stringify(newRecent));
-      return newRecent;
-    },
-    onSuccess: (data) => {
-      setRecentMeals(data);
-      queryClient.setQueryData(['nutrition_recent_meals', currentUserEmail], data);
-    },
-  });
-
-  const saveAuthMutation = useMutation({
-    mutationFn: async (newAuth: AuthState) => {
-      await AsyncStorage.setItem(AUTH_KEY, JSON.stringify(newAuth));
-      console.log('Auth state saved to storage:', newAuth);
-      return newAuth;
-    },
-    onSuccess: (data) => {
-      setAuthState(data);
-      setCurrentUserEmail(data.email);
-      queryClient.setQueryData(['nutrition_auth'], data);
-      queryClient.invalidateQueries({ queryKey: ['nutrition_profile'] });
-      queryClient.invalidateQueries({ queryKey: ['nutrition_food_log'] });
-      queryClient.invalidateQueries({ queryKey: ['nutrition_streak'] });
-      queryClient.invalidateQueries({ queryKey: ['nutrition_weight_history'] });
-      queryClient.invalidateQueries({ queryKey: ['nutrition_favorites'] });
-      queryClient.invalidateQueries({ queryKey: ['nutrition_recent_meals'] });
-      console.log('Auth updated, invalidated all user-specific queries for:', data.email);
-    },
+    enabled: authState.isSignedIn,
   });
 
   useEffect(() => {
-    if (profileQuery.data !== undefined) {
-      setProfile(profileQuery.data);
+    if (profileQuery.data) {
+      const mapped = mapSupabaseProfileToUserProfile(profileQuery.data);
+      setProfile(mapped);
+      console.log('Profile state updated from Supabase:', mapped);
     }
   }, [profileQuery.data]);
 
   useEffect(() => {
-    if (foodLogQuery.data !== undefined) {
-      setFoodLog(foodLogQuery.data);
+    if (foodEntriesQuery.data) {
+      const grouped: FoodLog = {};
+      foodEntriesQuery.data.forEach(entry => {
+        const dateKey = entry.date;
+        if (!grouped[dateKey]) grouped[dateKey] = [];
+        grouped[dateKey].push(mapSupabaseFoodEntryToFoodEntry(entry));
+      });
+      setFoodLog(grouped);
+      console.log('Food log updated from Supabase');
     }
-  }, [foodLogQuery.data]);
+  }, [foodEntriesQuery.data]);
 
   useEffect(() => {
-    if (streakQuery.data !== undefined) {
+    if (weightHistoryQuery.data) {
+      const mapped: WeightEntry[] = weightHistoryQuery.data.map(wh => ({
+        date: wh.recorded_at.split('T')[0],
+        weight: wh.weight,
+        timestamp: new Date(wh.recorded_at).getTime(),
+      }));
+      setWeightHistory(mapped);
+      console.log('Weight history updated from Supabase');
+    }
+  }, [weightHistoryQuery.data]);
+
+  useEffect(() => {
+    if (streakQuery.data) {
       setStreakData(streakQuery.data);
     }
   }, [streakQuery.data]);
 
   useEffect(() => {
-    if (weightHistoryQuery.data !== undefined) {
-      setWeightHistory(weightHistoryQuery.data);
-    }
-  }, [weightHistoryQuery.data]);
-
-  useEffect(() => {
-    if (favoritesQuery.data !== undefined) {
+    if (favoritesQuery.data) {
       setFavorites(favoritesQuery.data);
     }
   }, [favoritesQuery.data]);
 
   useEffect(() => {
-    if (recentMealsQuery.data !== undefined) {
+    if (recentMealsQuery.data) {
       setRecentMeals(recentMealsQuery.data);
     }
   }, [recentMealsQuery.data]);
 
+  const saveProfileMutation = useMutation({
+    mutationFn: async (newProfile: UserProfile) => {
+      if (!authState.userId) throw new Error('Not authenticated');
+      
+      console.log('Saving profile to Supabase:', newProfile);
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: authState.userId,
+          email: authState.email,
+          name: newProfile.name || null,
+          gender: newProfile.sex,
+          height: newProfile.height,
+          weight: newProfile.weight,
+          target_weight: newProfile.goalWeight,
+          activity_level: newProfile.activityLevel,
+          goal: newProfile.goal,
+          updated_at: new Date().toISOString(),
+        });
+      
+      if (error) {
+        console.error('Error saving profile:', error);
+        throw error;
+      }
+      return newProfile;
+    },
+    onSuccess: (data) => {
+      setProfile(data);
+      queryClient.invalidateQueries({ queryKey: ['supabase_profile'] });
+      console.log('Profile saved successfully');
+    },
+  });
 
+  const saveFoodEntryMutation = useMutation({
+    mutationFn: async (entry: Omit<FoodEntry, 'id' | 'timestamp'>) => {
+      if (!authState.userId) throw new Error('Not authenticated');
+      
+      const todayKey = getTodayKey();
+      console.log('Saving food entry to Supabase:', entry);
+      const { data, error } = await supabase
+        .from('food_entries')
+        .insert({
+          user_id: authState.userId,
+          date: todayKey,
+          food_name: entry.name,
+          calories: entry.calories,
+          protein: entry.protein,
+          carbs: entry.carbs,
+          fat: entry.fat,
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error saving food entry:', error);
+        throw error;
+      }
+      return data as SupabaseFoodEntry;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['supabase_food_entries'] });
+      console.log('Food entry saved successfully');
+    },
+  });
+
+  const deleteFoodEntryMutation = useMutation({
+    mutationFn: async (entryId: string) => {
+      if (!authState.userId) throw new Error('Not authenticated');
+      
+      console.log('Deleting food entry:', entryId);
+      const { error } = await supabase
+        .from('food_entries')
+        .delete()
+        .eq('id', entryId)
+        .eq('user_id', authState.userId);
+      
+      if (error) {
+        console.error('Error deleting food entry:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['supabase_food_entries'] });
+    },
+  });
+
+  const updateFoodEntryMutation = useMutation({
+    mutationFn: async ({ entryId, updates }: { entryId: string; updates: Omit<FoodEntry, 'id' | 'timestamp'> }) => {
+      if (!authState.userId) throw new Error('Not authenticated');
+      
+      console.log('Updating food entry:', entryId, updates);
+      const { error } = await supabase
+        .from('food_entries')
+        .update({
+          food_name: updates.name,
+          calories: updates.calories,
+          protein: updates.protein,
+          carbs: updates.carbs,
+          fat: updates.fat,
+        })
+        .eq('id', entryId)
+        .eq('user_id', authState.userId);
+      
+      if (error) {
+        console.error('Error updating food entry:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['supabase_food_entries'] });
+    },
+  });
+
+  const saveWeightHistoryMutation = useMutation({
+    mutationFn: async ({ dateKey, weight }: { dateKey: string; weight: number }) => {
+      if (!authState.userId) throw new Error('Not authenticated');
+      
+      console.log('Saving weight to Supabase:', { dateKey, weight });
+      const { error } = await supabase
+        .from('weight_history')
+        .upsert({
+          user_id: authState.userId,
+          weight,
+          recorded_at: new Date(dateKey).toISOString(),
+        }, {
+          onConflict: 'user_id,recorded_at',
+        });
+      
+      if (error) {
+        console.error('Error saving weight:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['supabase_weight_history'] });
+    },
+  });
+
+  const deleteWeightHistoryMutation = useMutation({
+    mutationFn: async (dateKey: string) => {
+      if (!authState.userId) throw new Error('Not authenticated');
+      
+      const { error } = await supabase
+        .from('weight_history')
+        .delete()
+        .eq('user_id', authState.userId)
+        .gte('recorded_at', `${dateKey}T00:00:00`)
+        .lt('recorded_at', `${dateKey}T23:59:59`);
+      
+      if (error) {
+        console.error('Error deleting weight:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['supabase_weight_history'] });
+    },
+  });
+
+  const saveStreakMutation = useMutation({
+    mutationFn: async (newStreak: StreakData) => {
+      const key = getStorageKey(BASE_STREAK_KEY, authState.email);
+      await AsyncStorage.setItem(key, JSON.stringify(newStreak));
+      return newStreak;
+    },
+    onSuccess: (data) => {
+      setStreakData(data);
+      queryClient.setQueryData(['nutrition_streak', authState.email], data);
+    },
+  });
+
+  const saveFavoritesMutation = useMutation({
+    mutationFn: async (newFavorites: FavoriteMeal[]) => {
+      const key = getStorageKey(BASE_FAVORITES_KEY, authState.email);
+      await AsyncStorage.setItem(key, JSON.stringify(newFavorites));
+      return newFavorites;
+    },
+    onSuccess: (data) => {
+      setFavorites(data);
+      queryClient.setQueryData(['nutrition_favorites', authState.email], data);
+    },
+  });
+
+  const saveRecentMealsMutation = useMutation({
+    mutationFn: async (newRecent: RecentMeal[]) => {
+      const key = getStorageKey(BASE_RECENT_MEALS_KEY, authState.email);
+      await AsyncStorage.setItem(key, JSON.stringify(newRecent));
+      return newRecent;
+    },
+    onSuccess: (data) => {
+      setRecentMeals(data);
+      queryClient.setQueryData(['nutrition_recent_meals', authState.email], data);
+    },
+  });
 
   const updateStreak = (dateKey: string) => {
     const today = new Date();
@@ -338,50 +513,26 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     }
   };
 
-  const { mutate: mutateProfile } = saveProfileMutation;
-  const { mutate: mutateWeightHistoryFn } = saveWeightHistoryMutation;
-
   const saveProfile = useCallback((newProfile: UserProfile) => {
     console.log('Saving profile:', newProfile);
-    mutateProfile(newProfile);
+    saveProfileMutation.mutate(newProfile);
     
     const todayKey = getTodayKey();
     const existingEntry = weightHistory.find(entry => entry.date === todayKey);
     
     if (!existingEntry && profile && newProfile.weight !== profile.weight) {
-      const newEntry: WeightEntry = {
-        date: todayKey,
-        weight: newProfile.weight,
-        timestamp: Date.now(),
-      };
-      mutateWeightHistoryFn([...weightHistory, newEntry]);
+      saveWeightHistoryMutation.mutate({ dateKey: todayKey, weight: newProfile.weight });
     } else if (existingEntry && newProfile.weight !== existingEntry.weight) {
-      const updatedHistory = weightHistory.map(entry => 
-        entry.date === todayKey 
-          ? { ...entry, weight: newProfile.weight, timestamp: Date.now() }
-          : entry
-      );
-      mutateWeightHistoryFn(updatedHistory);
+      saveWeightHistoryMutation.mutate({ dateKey: todayKey, weight: newProfile.weight });
     }
-  }, [profile, weightHistory, mutateProfile, mutateWeightHistoryFn]);
+  }, [profile, weightHistory, saveProfileMutation, saveWeightHistoryMutation]);
 
-  const addFoodEntry = (entry: Omit<FoodEntry, 'id' | 'timestamp'>) => {
+  const addFoodEntry = useCallback((entry: Omit<FoodEntry, 'id' | 'timestamp'>) => {
     const todayKey = getTodayKey();
-    const newEntry: FoodEntry = {
-      ...entry,
-      id: Date.now().toString(),
-      timestamp: Date.now(),
-    };
-
-    const updatedLog = {
-      ...foodLog,
-      [todayKey]: [...(foodLog[todayKey] || []), newEntry],
-    };
-
-    saveFoodLogMutation.mutate(updatedLog);
+    saveFoodEntryMutation.mutate(entry);
     updateStreak(todayKey);
     updateRecentMeals(entry);
-  };
+  }, [saveFoodEntryMutation]);
 
   const updateRecentMeals = (entry: Omit<FoodEntry, 'id' | 'timestamp'>) => {
     const normalizedName = entry.name.toLowerCase().trim();
@@ -413,7 +564,6 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   };
 
   const { mutate: mutateFavorites } = saveFavoritesMutation;
-  const { mutate: mutateFoodLog } = saveFoodLogMutation;
 
   const addToFavorites = useCallback((meal: Omit<FavoriteMeal, 'id' | 'createdAt' | 'logCount'>) => {
     const normalizedName = meal.name.toLowerCase().trim();
@@ -457,125 +607,111 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     const favorite = favorites.find(f => f.id === favoriteId);
     if (!favorite) return;
 
-    const todayKey = getTodayKey();
-    const newEntry: FoodEntry = {
-      id: Date.now().toString(),
-      timestamp: Date.now(),
+    addFoodEntry({
       name: favorite.name,
       calories: favorite.calories,
       protein: favorite.protein,
       carbs: favorite.carbs,
       fat: favorite.fat,
-    };
-
-    const updatedLog = {
-      ...foodLog,
-      [todayKey]: [...(foodLog[todayKey] || []), newEntry],
-    };
-    mutateFoodLog(updatedLog);
+    });
 
     const updatedFavorites = favorites.map(f =>
       f.id === favoriteId ? { ...f, logCount: f.logCount + 1 } : f
     );
     mutateFavorites(updatedFavorites);
-  }, [favorites, foodLog, mutateFoodLog, mutateFavorites]);
+  }, [favorites, addFoodEntry, mutateFavorites]);
 
   const logFromRecent = useCallback((recentId: string) => {
     const recent = recentMeals.find(r => r.id === recentId);
     if (!recent) return;
 
-    const todayKey = getTodayKey();
-    const newEntry: FoodEntry = {
-      id: Date.now().toString(),
-      timestamp: Date.now(),
+    addFoodEntry({
       name: recent.name,
       calories: recent.calories,
       protein: recent.protein,
       carbs: recent.carbs,
       fat: recent.fat,
-    };
-
-    const updatedLog = {
-      ...foodLog,
-      [todayKey]: [...(foodLog[todayKey] || []), newEntry],
-    };
-    mutateFoodLog(updatedLog);
-  }, [recentMeals, foodLog, mutateFoodLog]);
+    });
+  }, [recentMeals, addFoodEntry]);
 
   const { mutate: mutateRecentMeals } = saveRecentMealsMutation;
-  const { mutate: mutateAuth } = saveAuthMutation;
 
-  const signIn = useCallback(async (email: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     console.log('Signing in user:', email);
     
-    // Check if there's existing profile data without email (from onboarding before sign in)
-    // and migrate it to the new email-keyed storage
-    try {
-      const existingProfile = await AsyncStorage.getItem(BASE_PROFILE_KEY);
-      const emailKey = getStorageKey(BASE_PROFILE_KEY, email);
-      const emailProfile = await AsyncStorage.getItem(emailKey);
-      
-      // If there's a profile without email but none with email, migrate all data
-      if (existingProfile && !emailProfile) {
-        console.log('Migrating existing profile data to email-keyed storage:', email);
-        
-        // Migrate profile
-        await AsyncStorage.setItem(emailKey, existingProfile);
-        
-        // Migrate food log
-        const existingFoodLog = await AsyncStorage.getItem(BASE_FOOD_LOG_KEY);
-        if (existingFoodLog) {
-          await AsyncStorage.setItem(getStorageKey(BASE_FOOD_LOG_KEY, email), existingFoodLog);
-        }
-        
-        // Migrate streak
-        const existingStreak = await AsyncStorage.getItem(BASE_STREAK_KEY);
-        if (existingStreak) {
-          await AsyncStorage.setItem(getStorageKey(BASE_STREAK_KEY, email), existingStreak);
-        }
-        
-        // Migrate weight history
-        const existingWeight = await AsyncStorage.getItem(BASE_WEIGHT_HISTORY_KEY);
-        if (existingWeight) {
-          await AsyncStorage.setItem(getStorageKey(BASE_WEIGHT_HISTORY_KEY, email), existingWeight);
-        }
-        
-        // Migrate favorites
-        const existingFavorites = await AsyncStorage.getItem(BASE_FAVORITES_KEY);
-        if (existingFavorites) {
-          await AsyncStorage.setItem(getStorageKey(BASE_FAVORITES_KEY, email), existingFavorites);
-        }
-        
-        // Migrate recent meals
-        const existingRecent = await AsyncStorage.getItem(BASE_RECENT_MEALS_KEY);
-        if (existingRecent) {
-          await AsyncStorage.setItem(getStorageKey(BASE_RECENT_MEALS_KEY, email), existingRecent);
-        }
-        
-        console.log('Data migration completed for:', email);
-      } else if (!existingProfile && !emailProfile) {
-        // No profile exists at all - user doesn't have an account
-        console.log('No profile found for email:', email);
-        throw new Error('PROFILE_NOT_FOUND');
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    
+    if (error) {
+      console.error('Sign in error:', error);
+      if (error.message.includes('Invalid login credentials')) {
+        throw new Error('INVALID_CREDENTIALS');
       }
-    } catch (error) {
-      if (error instanceof Error && error.message === 'PROFILE_NOT_FOUND') {
-        throw error;
-      }
-      console.error('Error during data migration:', error);
+      throw error;
     }
     
-    mutateAuth({ isSignedIn: true, email });
-  }, [mutateAuth]);
+    console.log('Sign in successful:', data.user?.email);
+    return data;
+  }, []);
 
-  const signOut = useCallback(() => {
+  const signUp = useCallback(async (email: string, password: string, profileData?: Partial<UserProfile>) => {
+    console.log('Signing up user:', email);
+    
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+    
+    if (error) {
+      console.error('Sign up error:', error);
+      throw error;
+    }
+    
+    if (data.user && profileData) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: data.user.id,
+          email: email,
+          name: profileData.name || null,
+          gender: profileData.sex || null,
+          height: profileData.height || null,
+          weight: profileData.weight || null,
+          target_weight: profileData.goalWeight || null,
+          activity_level: profileData.activityLevel || null,
+          goal: profileData.goal || null,
+        });
+      
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+      }
+    }
+    
+    console.log('Sign up successful:', data.user?.email);
+    return data;
+  }, []);
+
+  const signOut = useCallback(async () => {
     console.log('Signing out user');
-    mutateAuth({ isSignedIn: false, email: null });
-    // Reset navigation stack to onboarding so back button can't return to authenticated screens
+    await supabase.auth.signOut();
+    setProfile(null);
+    setFoodLog({});
+    setWeightHistory([]);
+    setStreakData({
+      currentStreak: 0,
+      bestStreak: 0,
+      lastLoggedDate: '',
+      graceUsedThisWeek: false,
+    });
+    setFavorites([]);
+    setRecentMeals([]);
+    queryClient.clear();
     setTimeout(() => {
       router.replace('/onboarding');
     }, 100);
-  }, [mutateAuth]);
+  }, [queryClient]);
 
   const removeFromRecent = useCallback((recentId: string) => {
     const updatedRecent = recentMeals.filter(r => r.id !== recentId);
@@ -583,70 +719,36 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }, [recentMeals, mutateRecentMeals]);
 
-  const { mutate: mutateWeightHistory } = saveWeightHistoryMutation;
-
   const addWeightEntry = useCallback((dateKey: string, weight: number) => {
     console.log('Adding weight entry:', { dateKey, weight });
-    
-    const existingIndex = weightHistory.findIndex(entry => entry.date === dateKey);
-    let updatedHistory: WeightEntry[];
-    
-    if (existingIndex >= 0) {
-      updatedHistory = weightHistory.map((entry, i) =>
-        i === existingIndex
-          ? { ...entry, weight, timestamp: Date.now() }
-          : entry
-      );
-    } else {
-      const newEntry: WeightEntry = {
-        date: dateKey,
-        weight,
-        timestamp: Date.now(),
-      };
-      updatedHistory = [...weightHistory, newEntry].sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-    }
-    
-    mutateWeightHistory(updatedHistory);
+    saveWeightHistoryMutation.mutate({ dateKey, weight });
     
     if (profile) {
       const updatedProfile = { ...profile, weight };
-      mutateProfile(updatedProfile);
-      console.log('Profile weight updated for calorie recalculation:', weight);
+      saveProfileMutation.mutate(updatedProfile);
     }
-    
-    console.log('Weight entry saved:', { dateKey, weight, historyLength: updatedHistory.length });
-  }, [weightHistory, mutateWeightHistory, profile, mutateProfile]);
+  }, [saveWeightHistoryMutation, profile, saveProfileMutation]);
 
   const updateWeightEntry = useCallback((dateKey: string, newWeight: number) => {
     console.log('Updating weight entry:', { dateKey, newWeight });
+    saveWeightHistoryMutation.mutate({ dateKey, weight: newWeight });
     
-    const updatedHistory = weightHistory.map(entry =>
-      entry.date === dateKey
-        ? { ...entry, weight: newWeight, timestamp: Date.now() }
-        : entry
-    );
-    mutateWeightHistory(updatedHistory);
-    
-    const sortedHistory = [...updatedHistory].sort(
+    const sortedHistory = [...weightHistory].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
     const latestEntry = sortedHistory[0];
     
     if (profile && latestEntry && latestEntry.date === dateKey) {
       const updatedProfile = { ...profile, weight: newWeight };
-      mutateProfile(updatedProfile);
-      console.log('Profile weight updated after weight entry update:', newWeight);
+      saveProfileMutation.mutate(updatedProfile);
     }
-  }, [weightHistory, mutateWeightHistory, profile, mutateProfile]);
+  }, [weightHistory, saveWeightHistoryMutation, profile, saveProfileMutation]);
 
   const deleteWeightEntry = useCallback((dateKey: string) => {
     console.log('Deleting weight entry:', { dateKey });
+    deleteWeightHistoryMutation.mutate(dateKey);
     
     const updatedHistory = weightHistory.filter(entry => entry.date !== dateKey);
-    mutateWeightHistory(updatedHistory);
-    
     if (updatedHistory.length > 0 && profile) {
       const sortedHistory = [...updatedHistory].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -654,13 +756,10 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       const latestEntry = sortedHistory[0];
       if (latestEntry.weight !== profile.weight) {
         const updatedProfile = { ...profile, weight: latestEntry.weight };
-        mutateProfile(updatedProfile);
-        console.log('Profile weight updated after deletion to latest:', latestEntry.weight);
+        saveProfileMutation.mutate(updatedProfile);
       }
     }
-    
-    console.log('Weight entry deleted:', { dateKey, remainingEntries: updatedHistory.length });
-  }, [weightHistory, mutateWeightHistory, profile, mutateProfile]);
+  }, [weightHistory, deleteWeightHistoryMutation, profile, saveProfileMutation]);
 
   const shouldSuggestFavorite = useCallback((mealName: string): boolean => {
     const normalizedName = mealName.toLowerCase().trim();
@@ -769,35 +868,13 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       });
   }, [pendingEntries]);
 
-  const deleteFoodEntry = (entryId: string) => {
-    const todayKey = getTodayKey();
-    const todayEntries = foodLog[todayKey] || [];
-    const updatedEntries = todayEntries.filter(entry => entry.id !== entryId);
+  const deleteFoodEntry = useCallback((entryId: string) => {
+    deleteFoodEntryMutation.mutate(entryId);
+  }, [deleteFoodEntryMutation]);
 
-    const updatedLog = {
-      ...foodLog,
-      [todayKey]: updatedEntries,
-    };
-
-    saveFoodLogMutation.mutate(updatedLog);
-  };
-
-  const updateFoodEntry = (entryId: string, updates: Omit<FoodEntry, 'id' | 'timestamp'>) => {
-    const todayKey = getTodayKey();
-    const todayEntries = foodLog[todayKey] || [];
-    const updatedEntries = todayEntries.map(entry => 
-      entry.id === entryId 
-        ? { ...entry, ...updates }
-        : entry
-    );
-
-    const updatedLog = {
-      ...foodLog,
-      [todayKey]: updatedEntries,
-    };
-
-    saveFoodLogMutation.mutate(updatedLog);
-  };
+  const updateFoodEntry = useCallback((entryId: string, updates: Omit<FoodEntry, 'id' | 'timestamp'>) => {
+    updateFoodEntryMutation.mutate({ entryId, updates });
+  }, [updateFoodEntryMutation]);
 
   const dailyTargets: DailyTargets | null = useMemo(() => {
     if (!profile) {
@@ -827,16 +904,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
 
   const clearAllData = useCallback(async () => {
     try {
-      const keysToRemove = [
-        getStorageKey(BASE_PROFILE_KEY, currentUserEmail),
-        getStorageKey(BASE_FOOD_LOG_KEY, currentUserEmail),
-        getStorageKey(BASE_STREAK_KEY, currentUserEmail),
-        getStorageKey(BASE_WEIGHT_HISTORY_KEY, currentUserEmail),
-        getStorageKey(BASE_FAVORITES_KEY, currentUserEmail),
-        getStorageKey(BASE_RECENT_MEALS_KEY, currentUserEmail),
-        AUTH_KEY,
-      ];
-      await AsyncStorage.multiRemove(keysToRemove);
+      await supabase.auth.signOut();
       setProfile(null);
       setFoodLog({});
       setWeightHistory([]);
@@ -848,13 +916,12 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       });
       setFavorites([]);
       setRecentMeals([]);
-      setAuthState({ isSignedIn: false, email: null });
       queryClient.clear();
       console.log('All data cleared');
     } catch (error) {
       console.error('Error clearing data:', error);
     }
-  }, [queryClient, currentUserEmail]);
+  }, [queryClient]);
 
   return {
     profile,
@@ -889,12 +956,13 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     addWeightEntry,
     authState,
     signIn,
+    signUp,
     signOut,
     updateWeightEntry,
     deleteWeightEntry,
     clearAllData,
-    isLoading: profileQuery.isLoading || foodLogQuery.isLoading || streakQuery.isLoading || weightHistoryQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading || authQuery.isLoading,
-    isSaving: saveProfileMutation.isPending || saveFoodLogMutation.isPending || saveStreakMutation.isPending || saveWeightHistoryMutation.isPending || saveFavoritesMutation.isPending || saveRecentMealsMutation.isPending || saveAuthMutation.isPending,
+    isLoading: profileQuery.isLoading || foodEntriesQuery.isLoading || weightHistoryQuery.isLoading || streakQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading,
+    isSaving: saveProfileMutation.isPending || saveFoodEntryMutation.isPending || saveWeightHistoryMutation.isPending || saveFavoritesMutation.isPending || saveRecentMealsMutation.isPending,
   };
 });
 

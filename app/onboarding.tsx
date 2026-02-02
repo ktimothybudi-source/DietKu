@@ -11,6 +11,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useNutrition } from '@/contexts/NutritionContext';
@@ -25,7 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ANIMATION_DURATION, SPRING_CONFIG } from '@/constants/animations';
 
 export default function OnboardingScreen() {
-  const { saveProfile, profile } = useNutrition();
+  const { saveProfile, profile, signUp } = useNutrition();
   const { language, toggleLanguage, t } = useLanguage();
   const { enableNotifications } = useNotifications();
   const insets = useSafeAreaInsets();
@@ -273,6 +274,8 @@ export default function OnboardingScreen() {
     handleNext();
   }, [sex, activityLevel, dreamWeight, weight, birthDate, height, weeklyWeightChange, saveProfile, handleNext]);
 
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+
   const openSubscription = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setShowSubscription(true);
@@ -283,13 +286,59 @@ export default function OnboardingScreen() {
     }).start();
   }, [subscriptionSlideAnim]);
 
-  const handleSignIn = useCallback(() => {
-    openSubscription();
-  }, [openSubscription]);
+  const handleSignIn = useCallback(async () => {
+    if (!signInEmail.trim() || !signInPassword.trim()) {
+      Alert.alert('Error', 'Mohon masukkan email dan password');
+      return;
+    }
+
+    if (signInPassword.length < 6) {
+      Alert.alert('Error', 'Password minimal 6 karakter');
+      return;
+    }
+
+    setIsCreatingAccount(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear() -
+        (today.getMonth() < birthDate.getMonth() ||
+        (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate()) ? 1 : 0);
+
+      const calculatedGoal = dreamWeight < weight ? 'fat_loss' : dreamWeight > weight ? 'muscle_gain' : 'maintenance';
+
+      await signUp(signInEmail.trim(), signInPassword, {
+        age,
+        sex: sex || 'male',
+        height,
+        weight,
+        goalWeight: dreamWeight,
+        goal: calculatedGoal,
+        activityLevel: activityLevel || 'moderate',
+        weeklyWeightChange,
+      });
+
+      console.log('Account created successfully');
+      openSubscription();
+    } catch (error) {
+      console.error('Sign up error:', error);
+      if (error instanceof Error) {
+        if (error.message.includes('already registered')) {
+          Alert.alert('Email Sudah Terdaftar', 'Email ini sudah digunakan. Silakan gunakan email lain atau masuk dengan akun yang ada.');
+        } else {
+          Alert.alert('Error', 'Gagal membuat akun. Silakan coba lagi.');
+        }
+      }
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  }, [signInEmail, signInPassword, signUp, birthDate, sex, height, weight, dreamWeight, activityLevel, weeklyWeightChange, openSubscription]);
 
   const handleGoogleSignIn = useCallback(() => {
-    openSubscription();
-  }, [openSubscription]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert('Coming Soon', 'Login dengan Google akan segera tersedia.');
+  }, []);
 
   const handleSkipSignIn = useCallback(() => {
     openSubscription();
@@ -1564,9 +1613,14 @@ export default function OnboardingScreen() {
           />
         </View>
 
-        <TouchableOpacity style={styles.primaryButton} onPress={handleSignIn} activeOpacity={0.8}>
-          <Text style={styles.primaryButtonText}>Masuk</Text>
-          <ArrowRight size={20} color="#FFFFFF" />
+        <TouchableOpacity 
+          style={[styles.primaryButton, isCreatingAccount && styles.primaryButtonDisabled]} 
+          onPress={handleSignIn} 
+          activeOpacity={0.8}
+          disabled={isCreatingAccount}
+        >
+          <Text style={styles.primaryButtonText}>{isCreatingAccount ? 'Membuat akun...' : 'Daftar'}</Text>
+          {!isCreatingAccount && <ArrowRight size={20} color="#FFFFFF" />}
         </TouchableOpacity>
 
         <View style={styles.divider}>

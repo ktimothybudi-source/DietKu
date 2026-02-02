@@ -36,27 +36,24 @@ export default function SignInScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       console.log('Sign in attempt:', { email });
-      await signIn(email.trim());
+      await signIn(email.trim(), password);
       
-      // Navigate to main app after successful sign in with data migration
       console.log('Sign in successful, navigating to main app');
       router.replace('/(tabs)');
     } catch (error) {
       console.error('Sign in error:', error);
-      if (error instanceof Error && error.message === 'PROFILE_NOT_FOUND') {
+      if (error instanceof Error && error.message === 'INVALID_CREDENTIALS') {
         Alert.alert(
-          'Akun Tidak Ditemukan',
-          'Email yang Anda masukkan tidak terdaftar. Silakan daftar terlebih dahulu.',
-          [
-            { text: 'Batal', style: 'cancel' },
-            { 
-              text: 'Daftar Sekarang', 
-              onPress: () => router.replace('/onboarding')
-            }
-          ]
+          'Login Gagal',
+          'Email atau password salah. Silakan coba lagi.',
+          [{ text: 'OK' }]
+        );
+      } else if (error instanceof Error && error.message.includes('Email not confirmed')) {
+        Alert.alert(
+          'Email Belum Dikonfirmasi',
+          'Silakan cek email Anda untuk mengkonfirmasi akun.',
+          [{ text: 'OK' }]
         );
       } else {
         Alert.alert('Error', 'Gagal masuk. Silakan coba lagi.');
@@ -68,23 +65,11 @@ export default function SignInScreen() {
 
   const handleGoogleSignIn = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setIsSigningIn(true);
-
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('Google sign in');
-      await signIn('google_user@gmail.com');
-      
-      // Navigate to main app after successful sign in with data migration
-      console.log('Google sign in successful, navigating to main app');
-      router.replace('/(tabs)');
-    } catch (error) {
-      console.error('Google sign in error:', error);
-      Alert.alert('Error', 'Gagal masuk dengan Google. Silakan coba lagi.');
-    } finally {
-      setIsSigningIn(false);
-    }
+    Alert.alert(
+      'Coming Soon',
+      'Login dengan Google akan segera tersedia.',
+      [{ text: 'OK' }]
+    );
   };
 
   const handleBack = () => {
