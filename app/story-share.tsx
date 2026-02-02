@@ -190,7 +190,7 @@ export default function StoryShareScreen() {
         message += `\n📍 ${locationName}`;
       }
       if (showWatermark) {
-        message += '\n\nTracked by DietKu';
+        message += '\n\nTracked with DietKu';
       }
       
       await Share.share({ message });
@@ -212,7 +212,7 @@ export default function StoryShareScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await Share.share({
-        message: `${customMealName} - ${storyData.calories} kcal 🔥${showWatermark ? '\n\nTracked by DietKu' : ''}`,
+        message: `${customMealName} - ${storyData.calories} kcal 🔥${showWatermark ? '\n\nTracked with DietKu' : ''}`,
       });
     } catch (error) {
       console.error('Share error:', error);
@@ -376,7 +376,7 @@ export default function StoryShareScreen() {
           {showWatermark && (
             <View style={styles.trackedByContainer}>
               <Text style={styles.trackedByText}>
-                Tracked by <Text style={styles.trackedByBrand}>DietKu</Text>
+                Tracked with <Text style={styles.trackedByBrand}>DietKu</Text>
               </Text>
             </View>
           )}
@@ -540,7 +540,7 @@ export default function StoryShareScreen() {
         }}
         activeOpacity={0.7}
       >
-        <Text style={styles.watermarkLabel}>Show Tracked by DietKu</Text>
+        <Text style={styles.watermarkLabel}>Show Tracked with DietKu</Text>
         <View style={[styles.toggleCheck, showWatermark && styles.toggleCheckActive]}>
           {showWatermark && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
         </View>
