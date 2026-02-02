@@ -203,9 +203,7 @@ export default function StoryShareScreen() {
 
   const currentHealthRating = HEALTH_RATINGS.find(r => r.id === healthRating);
 
-  const hasAnyPills = (includeOptions.healthRating && currentHealthRating) || 
-    (includeOptions.location && locationName) || 
-    includeOptions.time;
+  const hasAnyPills = includeOptions.healthRating && currentHealthRating;
 
   const renderPreview = () => (
     <View style={styles.previewContainer}>
@@ -227,6 +225,21 @@ export default function StoryShareScreen() {
         locations={[0, 0.4, 1]}
         style={styles.previewGradient}
       />
+
+      {(includeOptions.location && locationName) || includeOptions.time ? (
+        <View style={styles.topInfoContainer}>
+          {includeOptions.time && (
+            <View style={styles.topInfoPill}>
+              <Text style={styles.topInfoText}>🕐 {formatTime(storyData.timestamp)}</Text>
+            </View>
+          )}
+          {includeOptions.location && locationName && (
+            <View style={styles.topInfoPill}>
+              <Text style={styles.topInfoText}>📍 {locationName}</Text>
+            </View>
+          )}
+        </View>
+      ) : null}
 
       <View style={[
         styles.previewContent,
@@ -283,18 +296,6 @@ export default function StoryShareScreen() {
                 <Text style={styles.previewPillText}>
                   {currentHealthRating.icon} {currentHealthRating.label}
                 </Text>
-              </View>
-            )}
-
-            {includeOptions.location && locationName && (
-              <View style={[styles.previewPill, { backgroundColor: 'rgba(236, 72, 153, 0.2)' }]}>
-                <Text style={styles.previewPillText}>📍 {locationName}</Text>
-              </View>
-            )}
-
-            {includeOptions.time && (
-              <View style={[styles.previewPill, { backgroundColor: 'rgba(99, 102, 241, 0.2)' }]}>
-                <Text style={styles.previewPillText}>🕐 {formatTime(storyData.timestamp)}</Text>
               </View>
             )}
           </View>
@@ -551,7 +552,13 @@ export default function StoryShareScreen() {
             <X size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Share Story</Text>
-          <View style={{ width: 44 }} />
+          <TouchableOpacity
+            style={styles.headerShareButton}
+            onPress={handleShareInstagram}
+            activeOpacity={0.7}
+          >
+            <Share2 size={20} color="#FFFFFF" />
+          </TouchableOpacity>
         </Animated.View>
 
         <ScrollView
@@ -560,12 +567,6 @@ export default function StoryShareScreen() {
           showsVerticalScrollIndicator={false}
         >
           {renderPreview()}
-          
-          <View style={styles.paginationDots}>
-            <View style={[styles.dot, styles.dotActive]} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-          </View>
 
           {renderIncludePanel()}
 
@@ -674,23 +675,34 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1a1a2e',
-    marginBottom: 16,
-  },
-  paginationDots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
     marginBottom: 24,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+  headerShareButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(16, 185, 129, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  dotActive: {
-    backgroundColor: '#FFFFFF',
+  topInfoContainer: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  topInfoPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  topInfoText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
   },
   previewImage: {
     ...StyleSheet.absoluteFillObject,
