@@ -76,7 +76,7 @@ export default function OnboardingScreen() {
   const [signInPassword, setSignInPassword] = useState('');
   const [userName, setUserName] = useState('');
 
-  const totalSteps = 17;
+  const totalSteps = 16;
 
   // Y positions for inputs
   const heightY = useRef(0);
@@ -1637,14 +1637,12 @@ export default function OnboardingScreen() {
       case 13:
         return renderThanks();
       case 14:
-        return renderNotificationPermission();
-      case 15:
         return renderFinal();
-      case 16:
+      case 15:
         return renderSignIn();
-      case 17:
+      case 16:
         return renderThankYouName();
-      case 18:
+      case 17:
         return renderNotificationPermission();
       default:
         return renderIntro();
