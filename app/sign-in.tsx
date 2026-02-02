@@ -8,64 +8,89 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
-import { ArrowRight } from 'lucide-react-native';
+import { ArrowRight, ArrowLeft } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { Svg, Path } from 'react-native-svg';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNutrition } from '@/contexts/NutritionContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SignInScreen() {
   const { t } = useLanguage();
-  const { saveProfile } = useNutrition();
+  const { profile, isLoading } = useNutrition();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Mohon masukkan email dan password');
+      return;
+    }
+
+    setIsSigningIn(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    saveProfile({
-      age: 30,
-      sex: 'male',
-      height: 170,
-      weight: 70,
-      goalWeight: 65,
-      weeklyWeightChange: 0.5,
-      goal: 'fat_loss',
-      activityLevel: 'moderate',
-    });
-    router.replace('/(tabs)');
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('Sign in attempt:', { email });
+      
+      if (profile) {
+        console.log('Existing profile found, going to main app');
+        router.replace('/(tabs)');
+      } else {
+        console.log('No profile found, going to onboarding');
+        router.replace('/onboarding');
+      }
+    } catch (error) {
+      console.error('Sign in error:', error);
+      Alert.alert('Error', 'Gagal masuk. Silakan coba lagi.');
+    } finally {
+      setIsSigningIn(false);
+    }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    saveProfile({
-      age: 30,
-      sex: 'male',
-      height: 170,
-      weight: 70,
-      goalWeight: 65,
-      weeklyWeightChange: 0.5,
-      goal: 'fat_loss',
-      activityLevel: 'moderate',
-    });
-    router.replace('/(tabs)');
+    setIsSigningIn(true);
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('Google sign in');
+      
+      if (profile) {
+        console.log('Existing profile found, going to main app');
+        router.replace('/(tabs)');
+      } else {
+        console.log('No profile found, going to onboarding');
+        router.replace('/onboarding');
+      }
+    } catch (error) {
+      console.error('Google sign in error:', error);
+      Alert.alert('Error', 'Gagal masuk dengan Google. Silakan coba lagi.');
+    } finally {
+      setIsSigningIn(false);
+    }
   };
 
-  const handleSkip = () => {
+  const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    saveProfile({
-      age: 30,
-      sex: 'male',
-      height: 170,
-      weight: 70,
-      goalWeight: 65,
-      weeklyWeightChange: 0.5,
-      goal: 'fat_loss',
-      activityLevel: 'moderate',
-    });
-    router.replace('/(tabs)');
+    router.back();
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -74,10 +99,14 @@ export default function SignInScreen() {
       keyboardVerticalOffset={0}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
+          <ArrowLeft size={24} color="#666666" />
+        </TouchableOpacity>
+
         <View style={styles.content}>
           <View style={styles.header}>
             <View style={styles.iconCircle}>
@@ -104,6 +133,7 @@ export default function SignInScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
+                editable={!isSigningIn}
               />
             </View>
 
@@ -118,16 +148,20 @@ export default function SignInScreen() {
                 secureTextEntry
                 autoCapitalize="none"
                 autoCorrect={false}
+                editable={!isSigningIn}
               />
             </View>
 
             <TouchableOpacity
-              style={styles.signInButton}
+              style={[styles.signInButton, isSigningIn && styles.signInButtonDisabled]}
               onPress={handleSignIn}
               activeOpacity={0.8}
+              disabled={isSigningIn}
             >
-              <Text style={styles.signInButtonText}>{t.signIn.signIn}</Text>
-              <ArrowRight size={20} color="#FFFFFF" />
+              <Text style={styles.signInButtonText}>
+                {isSigningIn ? 'Memproses...' : t.signIn.signIn}
+              </Text>
+              {!isSigningIn && <ArrowRight size={20} color="#FFFFFF" />}
             </TouchableOpacity>
 
             <View style={styles.divider}>
@@ -137,9 +171,10 @@ export default function SignInScreen() {
             </View>
 
             <TouchableOpacity
-              style={styles.googleButton}
+              style={[styles.googleButton, isSigningIn && styles.googleButtonDisabled]}
               onPress={handleGoogleSignIn}
               activeOpacity={0.7}
+              disabled={isSigningIn}
             >
               <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <Path
@@ -162,9 +197,18 @@ export default function SignInScreen() {
               <Text style={styles.googleButtonText}>{t.signIn.googleSignIn}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.skipButton} onPress={handleSkip} activeOpacity={0.7}>
-              <Text style={styles.skipButtonText}>{t.signIn.skip}</Text>
-            </TouchableOpacity>
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Belum punya akun? </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.replace('/onboarding');
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.footerLink}>Daftar Sekarang</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -177,17 +221,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666666',
+  },
   scrollContent: {
     flexGrow: 1,
-    paddingTop: 60,
+    paddingHorizontal: 24,
+  },
+  backButton: {
+    marginBottom: 20,
+    alignSelf: 'flex-start',
+    padding: 4,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 40,
   },
   iconCircle: {
     width: 100,
@@ -243,6 +299,9 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 8,
   },
+  signInButtonDisabled: {
+    opacity: 0.6,
+  },
   signInButtonText: {
     fontSize: 18,
     fontWeight: '600' as const,
@@ -274,19 +333,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
   },
+  googleButtonDisabled: {
+    opacity: 0.6,
+  },
   googleButtonText: {
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#000000',
   },
-  skipButton: {
-    padding: 16,
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 24,
+    paddingBottom: 32,
   },
-  skipButtonText: {
-    fontSize: 16,
-    fontWeight: '600' as const,
+  footerText: {
+    fontSize: 15,
     color: '#666666',
+  },
+  footerLink: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#10B981',
   },
 });

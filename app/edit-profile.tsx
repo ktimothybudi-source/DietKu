@@ -54,7 +54,7 @@ export default function EditProfileScreen() {
     const heightNum = parseInt(height);
     const weightNum = parseFloat(weight);
     const goalWeightNum = parseFloat(goalWeight);
-    const weeklyWeightChangeNum = weeklyWeightChange ? parseFloat(weeklyWeightChange) : undefined;
+    let weeklyWeightChangeNum = weeklyWeightChange ? parseFloat(weeklyWeightChange) : undefined;
 
     if (ageNum < 15 || ageNum > 100) {
       Alert.alert('Error', 'Usia harus antara 15-100 tahun');
@@ -86,10 +86,22 @@ export default function EditProfileScreen() {
       return;
     }
 
-    if (weeklyWeightChangeNum !== undefined && (weeklyWeightChangeNum < -2 || weeklyWeightChangeNum > 2)) {
-      Alert.alert('Error', 'Target per minggu harus antara -2 sampai +2 kg');
-      return;
+    if (weeklyWeightChangeNum !== undefined) {
+      const absValue = Math.abs(weeklyWeightChangeNum);
+      if (absValue > 2) {
+        Alert.alert('Error', 'Target per minggu harus antara 0.1 sampai 2 kg');
+        return;
+      }
+      weeklyWeightChangeNum = absValue;
     }
+
+    console.log('Saving profile with:', {
+      weight: weightNum,
+      goalWeight: goalWeightNum,
+      goal,
+      weeklyWeightChange: weeklyWeightChangeNum,
+      activityLevel,
+    });
 
     const updatedProfile: UserProfile = {
       name: name.trim() || undefined,
@@ -105,7 +117,7 @@ export default function EditProfileScreen() {
 
     saveProfile(updatedProfile);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Berhasil', 'Profil berhasil diperbarui', [
+    Alert.alert('Berhasil', 'Profil dan target kalori berhasil diperbarui', [
       { text: 'OK', onPress: () => router.back() }
     ]);
   };

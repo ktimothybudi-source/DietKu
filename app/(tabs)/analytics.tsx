@@ -800,8 +800,8 @@ export default function AnalyticsScreen() {
 
   const renderMacroChart = () => {
     const targetProtein = dailyTargets?.protein ?? 0;
-    const targetCarbs = dailyTargets?.carbs ?? 0;
-    const targetFat = dailyTargets?.fat ?? 0;
+    const targetCarbs = dailyTargets ? Math.round((dailyTargets.carbsMin + dailyTargets.carbsMax) / 2) : 0;
+    const targetFat = dailyTargets ? Math.round((dailyTargets.fatMin + dailyTargets.fatMax) / 2) : 0;
     
     const macros = [
       { 

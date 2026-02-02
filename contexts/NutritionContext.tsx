@@ -62,6 +62,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     queryKey: ['nutrition_profile'],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(PROFILE_KEY);
+      console.log('Profile loaded from storage:', stored);
       return stored ? JSON.parse(stored) : null;
     },
   });
@@ -114,12 +115,13 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   const saveProfileMutation = useMutation({
     mutationFn: async (newProfile: UserProfile) => {
       await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(newProfile));
+      console.log('Profile saved to storage:', newProfile);
       return newProfile;
     },
     onSuccess: (data) => {
       setProfile(data);
       queryClient.setQueryData(['nutrition_profile'], data);
-      console.log('Profile saved successfully:', data);
+      console.log('Profile state updated, dailyTargets will recalculate');
     },
   });
 
@@ -263,8 +265,12 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     }
   };
 
-  const saveProfile = (newProfile: UserProfile) => {
-    saveProfileMutation.mutate(newProfile);
+  const { mutate: mutateProfile } = saveProfileMutation;
+  const { mutate: mutateWeightHistoryFn } = saveWeightHistoryMutation;
+
+  const saveProfile = useCallback((newProfile: UserProfile) => {
+    console.log('Saving profile:', newProfile);
+    mutateProfile(newProfile);
     
     const todayKey = getTodayKey();
     const existingEntry = weightHistory.find(entry => entry.date === todayKey);
@@ -275,16 +281,16 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
         weight: newProfile.weight,
         timestamp: Date.now(),
       };
-      saveWeightHistoryMutation.mutate([...weightHistory, newEntry]);
+      mutateWeightHistoryFn([...weightHistory, newEntry]);
     } else if (existingEntry && newProfile.weight !== existingEntry.weight) {
       const updatedHistory = weightHistory.map(entry => 
         entry.date === todayKey 
           ? { ...entry, weight: newProfile.weight, timestamp: Date.now() }
           : entry
       );
-      saveWeightHistoryMutation.mutate(updatedHistory);
+      mutateWeightHistoryFn(updatedHistory);
     }
-  };
+  }, [profile, weightHistory, mutateProfile, mutateWeightHistoryFn]);
 
   const addFoodEntry = (entry: Omit<FoodEntry, 'id' | 'timestamp'>) => {
     const todayKey = getTodayKey();
@@ -434,6 +440,8 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   const { mutate: mutateWeightHistory } = saveWeightHistoryMutation;
 
   const addWeightEntry = useCallback((dateKey: string, weight: number) => {
+    console.log('Adding weight entry:', { dateKey, weight });
+    
     const existingIndex = weightHistory.findIndex(entry => entry.date === dateKey);
     let updatedHistory: WeightEntry[];
     
@@ -456,31 +464,57 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     
     mutateWeightHistory(updatedHistory);
     
-    // Update profile weight to recalculate calorie targets
-    if (profile && weight !== profile.weight) {
+    if (profile) {
       const updatedProfile = { ...profile, weight };
-      saveProfileMutation.mutate(updatedProfile);
+      mutateProfile(updatedProfile);
       console.log('Profile weight updated for calorie recalculation:', weight);
     }
     
     console.log('Weight entry saved:', { dateKey, weight, historyLength: updatedHistory.length });
-  }, [weightHistory, mutateWeightHistory, profile, saveProfileMutation]);
+  }, [weightHistory, mutateWeightHistory, profile, mutateProfile]);
 
   const updateWeightEntry = useCallback((dateKey: string, newWeight: number) => {
+    console.log('Updating weight entry:', { dateKey, newWeight });
+    
     const updatedHistory = weightHistory.map(entry =>
       entry.date === dateKey
         ? { ...entry, weight: newWeight, timestamp: Date.now() }
         : entry
     );
     mutateWeightHistory(updatedHistory);
-    console.log('Weight entry updated:', { dateKey, newWeight });
-  }, [weightHistory, mutateWeightHistory]);
+    
+    const sortedHistory = [...updatedHistory].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    const latestEntry = sortedHistory[0];
+    
+    if (profile && latestEntry && latestEntry.date === dateKey) {
+      const updatedProfile = { ...profile, weight: newWeight };
+      mutateProfile(updatedProfile);
+      console.log('Profile weight updated after weight entry update:', newWeight);
+    }
+  }, [weightHistory, mutateWeightHistory, profile, mutateProfile]);
 
   const deleteWeightEntry = useCallback((dateKey: string) => {
+    console.log('Deleting weight entry:', { dateKey });
+    
     const updatedHistory = weightHistory.filter(entry => entry.date !== dateKey);
     mutateWeightHistory(updatedHistory);
+    
+    if (updatedHistory.length > 0 && profile) {
+      const sortedHistory = [...updatedHistory].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      const latestEntry = sortedHistory[0];
+      if (latestEntry.weight !== profile.weight) {
+        const updatedProfile = { ...profile, weight: latestEntry.weight };
+        mutateProfile(updatedProfile);
+        console.log('Profile weight updated after deletion to latest:', latestEntry.weight);
+      }
+    }
+    
     console.log('Weight entry deleted:', { dateKey, remainingEntries: updatedHistory.length });
-  }, [weightHistory, mutateWeightHistory]);
+  }, [weightHistory, mutateWeightHistory, profile, mutateProfile]);
 
   const shouldSuggestFavorite = useCallback((mealName: string): boolean => {
     const normalizedName = mealName.toLowerCase().trim();
@@ -620,8 +654,13 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   };
 
   const dailyTargets: DailyTargets | null = useMemo(() => {
-    if (!profile) return null;
-    return calculateDailyTargets(profile);
+    if (!profile) {
+      console.log('No profile, cannot calculate dailyTargets');
+      return null;
+    }
+    const targets = calculateDailyTargets(profile);
+    console.log('Daily targets calculated:', targets);
+    return targets;
   }, [profile]);
 
   const todayEntries = useMemo(() => {
@@ -639,6 +678,34 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       { calories: 0, protein: 0, carbs: 0, fat: 0 }
     );
   }, [todayEntries]);
+
+  const clearAllData = useCallback(async () => {
+    try {
+      await AsyncStorage.multiRemove([
+        PROFILE_KEY,
+        FOOD_LOG_KEY,
+        STREAK_KEY,
+        WEIGHT_HISTORY_KEY,
+        FAVORITES_KEY,
+        RECENT_MEALS_KEY,
+      ]);
+      setProfile(null);
+      setFoodLog({});
+      setWeightHistory([]);
+      setStreakData({
+        currentStreak: 0,
+        bestStreak: 0,
+        lastLoggedDate: '',
+        graceUsedThisWeek: false,
+      });
+      setFavorites([]);
+      setRecentMeals([]);
+      queryClient.clear();
+      console.log('All data cleared');
+    } catch (error) {
+      console.error('Error clearing data:', error);
+    }
+  }, [queryClient]);
 
   return {
     profile,
@@ -673,6 +740,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     addWeightEntry,
     updateWeightEntry,
     deleteWeightEntry,
+    clearAllData,
     isLoading: profileQuery.isLoading || foodLogQuery.isLoading || streakQuery.isLoading || weightHistoryQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading,
     isSaving: saveProfileMutation.isPending || saveFoodLogMutation.isPending || saveStreakMutation.isPending || saveWeightHistoryMutation.isPending || saveFavoritesMutation.isPending || saveRecentMealsMutation.isPending,
   };
