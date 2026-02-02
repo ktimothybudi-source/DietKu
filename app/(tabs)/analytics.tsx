@@ -24,7 +24,6 @@ import {
   ChevronRight,
   Target,
   Flame,
-  CheckCircle,
 } from 'lucide-react-native';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -503,17 +502,16 @@ export default function AnalyticsScreen() {
             <Text style={[styles.weightStatLabel, { color: theme.textSecondary }]}>kg perubahan</Text>
           </View>
 
-          {targetWeight > 0 && (
-            <>
-              <View style={[styles.weightStatDivider, { backgroundColor: theme.border }]} />
-              <View style={styles.weightStatItem}>
-                <Text style={[styles.weightStatValue, { color: theme.primary }]}>
-                  {targetWeight.toFixed(1)}
-                </Text>
-                <Text style={[styles.weightStatLabel, { color: theme.textSecondary }]}>kg target</Text>
-              </View>
-            </>
-          )}
+          <View style={[styles.weightStatDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.weightStatItem}>
+            <View style={styles.weightChangeDisplay}>
+              <Target size={16} color={theme.primary} />
+              <Text style={[styles.weightStatValue, { color: theme.primary, fontSize: 22 }]}>
+                {targetWeight > 0 ? targetWeight.toFixed(1) : '-'}
+              </Text>
+            </View>
+            <Text style={[styles.weightStatLabel, { color: theme.textSecondary }]}>kg target</Text>
+          </View>
         </View>
 
         {renderWeightGraph()}
@@ -525,10 +523,14 @@ export default function AnalyticsScreen() {
     if (weightChartData.length < 1) return null;
 
     const weights = weightChartData.map((w: any) => w.weight);
-    const minWeight = Math.min(...weights) - 2;
-    const maxWeight = Math.max(...weights) + 2;
-    const chartHeight = 100;
-    const chartWidth = SCREEN_WIDTH - 80;
+    const targetWeight = profile?.targetWeight ?? 0;
+    const allWeights = targetWeight > 0 ? [...weights, targetWeight] : weights;
+    const minWeight = Math.min(...allWeights) - 2;
+    const maxWeight = Math.max(...allWeights) + 2;
+    const chartHeight = 120;
+    const labelWidth = 50;
+    const horizontalPadding = 16;
+    const chartWidth = SCREEN_WIDTH - 80 - labelWidth - horizontalPadding;
 
     const points = weightChartData.map((w: any, index: number) => {
       const x = weightChartData.length === 1 
@@ -540,54 +542,76 @@ export default function AnalyticsScreen() {
       return { x, y, weight: w.weight, date: w.date };
     });
 
+    const targetY = targetWeight > 0 && maxWeight !== minWeight
+      ? chartHeight - ((targetWeight - minWeight) / (maxWeight - minWeight)) * chartHeight
+      : null;
+
     return (
       <View style={styles.weightGraphContainer}>
-        <View style={[styles.weightGraph, { height: chartHeight }]}>
-          {points.map((point: { x: number; y: number; weight: number; date: string }, index: number) => (
-            <View
-              key={index}
-              style={[
-                styles.graphDot,
-                {
-                  left: point.x - 5,
-                  top: point.y - 5,
-                  backgroundColor: '#3B82F6',
-                }
-              ]}
-            />
-          ))}
-          {points.length > 1 && points.map((point: { x: number; y: number; weight: number; date: string }, index: number) => {
-            if (index === 0) return null;
-            const prev = points[index - 1];
-            const dx = point.x - prev.x;
-            const dy = point.y - prev.y;
-            const length = Math.sqrt(dx * dx + dy * dy);
-            const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-            
-            return (
-              <View
-                key={`line-${index}`}
+        <View style={styles.graphWrapper}>
+          <View style={[styles.graphYLabels, { height: chartHeight }]}>
+            <Text style={[styles.graphLabel, { color: theme.textTertiary }]}>{maxWeight.toFixed(0)} kg</Text>
+            {targetWeight > 0 && (
+              <Text style={[styles.graphLabel, styles.targetLabel, { color: theme.primary }]}>
+                {targetWeight.toFixed(0)} kg
+              </Text>
+            )}
+            <Text style={[styles.graphLabel, { color: theme.textTertiary }]}>{minWeight.toFixed(0)} kg</Text>
+          </View>
+          
+          <View style={[styles.weightGraph, { height: chartHeight, width: chartWidth }]}>
+            {targetY !== null && (
+              <View 
                 style={[
-                  styles.graphLine,
+                  styles.targetGraphLine, 
+                  { 
+                    top: targetY,
+                    backgroundColor: theme.primary + '40',
+                  }
+                ]} 
+              />
+            )}
+            {points.map((point: { x: number; y: number; weight: number; date: string }, index: number) => (
+              <View
+                key={index}
+                style={[
+                  styles.graphDot,
                   {
-                    width: length,
-                    left: prev.x,
-                    top: prev.y,
+                    left: point.x - 6,
+                    top: point.y - 6,
                     backgroundColor: '#3B82F6',
-                    transform: [{ rotate: `${angle}deg` }],
                   }
                 ]}
               />
-            );
-          })}
-        </View>
-        
-        <View style={styles.graphLabels}>
-          <Text style={[styles.graphLabel, { color: theme.textTertiary }]}>{maxWeight.toFixed(1)} kg</Text>
-          <Text style={[styles.graphLabel, { color: theme.textTertiary }]}>{minWeight.toFixed(1)} kg</Text>
+            ))}
+            {points.length > 1 && points.map((point: { x: number; y: number; weight: number; date: string }, index: number) => {
+              if (index === 0) return null;
+              const prev = points[index - 1];
+              const dx = point.x - prev.x;
+              const dy = point.y - prev.y;
+              const length = Math.sqrt(dx * dx + dy * dy);
+              const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+              
+              return (
+                <View
+                  key={`line-${index}`}
+                  style={[
+                    styles.graphLine,
+                    {
+                      width: length,
+                      left: prev.x,
+                      top: prev.y,
+                      backgroundColor: '#3B82F6',
+                      transform: [{ rotate: `${angle}deg` }],
+                    }
+                  ]}
+                />
+              );
+            })}
+          </View>
         </View>
 
-        <View style={styles.graphDateLabels}>
+        <View style={[styles.graphDateLabels, { marginLeft: labelWidth }]}>
           {weightChartData.length === 1 ? (
             <Text style={[styles.graphDateLabel, { color: theme.textTertiary, textAlign: 'center', flex: 1 }]}>
               {new Date(weightChartData[0].date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
@@ -641,10 +665,10 @@ export default function AnalyticsScreen() {
           <View style={styles.header}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>Analitik</Text>
             {profile?.targetWeight && profile.targetWeight > 0 && (
-              <View style={[styles.progressBadge, { backgroundColor: stats.weightProgress >= 100 ? '#10B981' + '20' : theme.primary + '15' }]}>
-                <CheckCircle size={16} color={stats.weightProgress >= 100 ? '#10B981' : theme.primary} />
-                <Text style={[styles.progressBadgeText, { color: stats.weightProgress >= 100 ? '#10B981' : theme.primary }]}>
-                  {stats.weightProgress}%
+              <View style={[styles.progressBadge, { backgroundColor: stats.weightProgress >= 100 ? '#10B981' + '20' : '#3B82F6' + '15' }]}>
+                <Target size={16} color={stats.weightProgress >= 100 ? '#10B981' : '#3B82F6'} />
+                <Text style={[styles.progressBadgeText, { color: stats.weightProgress >= 100 ? '#10B981' : '#3B82F6' }]}>
+                  {stats.weightProgress}% tercapai
                 </Text>
               </View>
             )}
@@ -993,15 +1017,32 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
   },
+  graphWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  graphYLabels: {
+    width: 50,
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingRight: 8,
+  },
   weightGraph: {
     position: 'relative',
-    marginHorizontal: 10,
+    flex: 1,
   },
   graphDot: {
     position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
   },
   graphLine: {
     position: 'absolute',
@@ -1009,22 +1050,25 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     transformOrigin: 'left center',
   },
-  graphLabels: {
+  targetGraphLine: {
     position: 'absolute',
+    left: 0,
     right: 0,
-    top: 0,
-    height: 100,
-    justifyContent: 'space-between',
+    height: 2,
+    borderRadius: 1,
+    borderStyle: 'dashed',
   },
   graphLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500' as const,
+  },
+  targetLabel: {
+    fontWeight: '600' as const,
   },
   graphDateLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 12,
-    paddingHorizontal: 4,
   },
   graphDateLabel: {
     fontSize: 11,
