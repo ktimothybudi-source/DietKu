@@ -1,6 +1,6 @@
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { UserProfile, FoodEntry, DailyTargets, MealAnalysis, FavoriteMeal, RecentMeal } from '@/types/nutrition';
 import { calculateDailyTargets, getTodayKey } from '@/utils/nutritionCalculations';
@@ -43,6 +43,7 @@ const STREAK_KEY = 'nutrition_streak';
 const WEIGHT_HISTORY_KEY = 'nutrition_weight_history';
 
 export const [NutritionProvider, useNutrition] = createContextHook(() => {
+  const queryClient = useQueryClient();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [foodLog, setFoodLog] = useState<FoodLog>({});
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
@@ -117,6 +118,8 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     },
     onSuccess: (data) => {
       setProfile(data);
+      queryClient.setQueryData(['nutrition_profile'], data);
+      console.log('Profile saved successfully:', data);
     },
   });
 
@@ -127,6 +130,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     },
     onSuccess: (data) => {
       setFoodLog(data);
+      queryClient.setQueryData(['nutrition_food_log'], data);
     },
   });
 
@@ -137,6 +141,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     },
     onSuccess: (data) => {
       setStreakData(data);
+      queryClient.setQueryData(['nutrition_streak'], data);
     },
   });
 
@@ -147,6 +152,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     },
     onSuccess: (data) => {
       setWeightHistory(data);
+      queryClient.setQueryData(['nutrition_weight_history'], data);
     },
   });
 
@@ -157,6 +163,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     },
     onSuccess: (data) => {
       setFavorites(data);
+      queryClient.setQueryData(['nutrition_favorites'], data);
     },
   });
 
@@ -167,6 +174,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     },
     onSuccess: (data) => {
       setRecentMeals(data);
+      queryClient.setQueryData(['nutrition_recent_meals'], data);
     },
   });
 
