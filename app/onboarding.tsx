@@ -244,35 +244,15 @@ export default function OnboardingScreen() {
   }, [animateTransition]);
 
   const handleComplete = useCallback(() => {
-    if (!sex || !activityLevel) return;
+    if (!sex || !activityLevel) {
+      console.log('handleComplete: Missing sex or activityLevel', { sex, activityLevel });
+      return;
+    }
 
-    const calculatedGoal: Goal =
-      dreamWeight < weight ? 'fat_loss' : dreamWeight > weight ? 'muscle_gain' : 'maintenance';
-
-    const today = new Date();
-    const age =
-      today.getFullYear() -
-      birthDate.getFullYear() -
-      (today.getMonth() < birthDate.getMonth() ||
-      (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate())
-        ? 1
-        : 0);
-
+    console.log('handleComplete: Proceeding to sign-in step');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-    saveProfile({
-      age,
-      sex,
-      height,
-      weight,
-      goalWeight: dreamWeight,
-      weeklyWeightChange,
-      goal: calculatedGoal,
-      activityLevel,
-    });
-
     handleNext();
-  }, [sex, activityLevel, dreamWeight, weight, birthDate, height, weeklyWeightChange, saveProfile, handleNext]);
+  }, [sex, activityLevel, handleNext]);
 
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
 
