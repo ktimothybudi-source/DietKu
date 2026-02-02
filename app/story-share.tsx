@@ -41,6 +41,7 @@ import {
   HEALTH_RATINGS,
 } from '@/types/storyShare';
 import { LOCATION_PRESETS } from '@/constants/storyShare';
+import { ANIMATION_DURATION, SPRING_CONFIG } from '@/constants/animations';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -94,7 +95,7 @@ export default function StoryShareScreen() {
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 300,
+      duration: ANIMATION_DURATION.slow,
       useNativeDriver: true,
     }).start();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,15 +118,14 @@ export default function StoryShareScreen() {
     Animated.spring(locationSheetAnim, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 65,
-      friction: 11,
+      ...SPRING_CONFIG.default,
     }).start();
   };
 
   const closeLocationSheet = () => {
     Animated.timing(locationSheetAnim, {
       toValue: 0,
-      duration: 200,
+      duration: ANIMATION_DURATION.standard,
       useNativeDriver: true,
     }).start(() => {
       setShowLocationSheet(false);
@@ -138,15 +138,14 @@ export default function StoryShareScreen() {
     Animated.spring(shareSheetAnim, {
       toValue: 1,
       useNativeDriver: true,
-      tension: 65,
-      friction: 11,
+      ...SPRING_CONFIG.default,
     }).start();
   };
 
   const closeShareSheet = () => {
     Animated.timing(shareSheetAnim, {
       toValue: 0,
-      duration: 200,
+      duration: ANIMATION_DURATION.standard,
       useNativeDriver: true,
     }).start(() => {
       setShowShareSheet(false);
@@ -173,12 +172,12 @@ export default function StoryShareScreen() {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 200,
+        duration: ANIMATION_DURATION.standard,
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim, {
         toValue: 0.95,
-        duration: 200,
+        duration: ANIMATION_DURATION.standard,
         useNativeDriver: true,
       }),
     ]).start(() => {

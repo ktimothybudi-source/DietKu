@@ -22,6 +22,7 @@ import * as Haptics from 'expo-haptics';
 import { Svg, Path, Circle, G } from 'react-native-svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ANIMATION_DURATION, SPRING_CONFIG } from '@/constants/animations';
 
 export default function OnboardingScreen() {
   const { saveProfile, profile } = useNutrition();
@@ -95,7 +96,7 @@ export default function OnboardingScreen() {
     const progress = step > 0 ? step / totalSteps : 0;
     Animated.timing(progressAnim, {
       toValue: progress,
-      duration: 250,
+      duration: ANIMATION_DURATION.medium,
       useNativeDriver: false,
     }).start();
   }, [step, progressAnim]);
@@ -158,21 +159,20 @@ export default function OnboardingScreen() {
   useEffect(() => {
     if (step !== 0) return;
 
-    Animated.stagger(200, [
+    Animated.stagger(ANIMATION_DURATION.standard, [
       Animated.spring(introScaleAnim, {
         toValue: 1,
         useNativeDriver: true,
-        tension: 40,
-        friction: 8,
+        ...SPRING_CONFIG.gentle,
       }),
       Animated.timing(introTextAnim, {
         toValue: 1,
-        duration: 400,
+        duration: ANIMATION_DURATION.slower,
         useNativeDriver: true,
       }),
       Animated.timing(introCtaAnim, {
         toValue: 1,
-        duration: 400,
+        duration: ANIMATION_DURATION.slower,
         useNativeDriver: true,
       }),
     ]).start();
@@ -185,12 +185,12 @@ export default function OnboardingScreen() {
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 200,
+          duration: ANIMATION_DURATION.standard,
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
           toValue: forward ? -20 : 20,
-          duration: 200,
+          duration: ANIMATION_DURATION.standard,
           useNativeDriver: true,
         }),
       ]).start(() => {
@@ -200,12 +200,12 @@ export default function OnboardingScreen() {
         Animated.parallel([
           Animated.timing(fadeAnim, {
             toValue: 1,
-            duration: 250,
+            duration: ANIMATION_DURATION.medium,
             useNativeDriver: true,
           }),
           Animated.timing(slideAnim, {
             toValue: 0,
-            duration: 250,
+            duration: ANIMATION_DURATION.medium,
             useNativeDriver: true,
           }),
         ]).start();
@@ -221,13 +221,13 @@ export default function OnboardingScreen() {
       Keyboard.dismiss();
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 300,
+        duration: ANIMATION_DURATION.slow,
         useNativeDriver: true,
       }).start(() => {
         setShowLoading(true);
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 400,
+          duration: ANIMATION_DURATION.slower,
           useNativeDriver: true,
         }).start();
       });
@@ -279,8 +279,7 @@ export default function OnboardingScreen() {
     Animated.spring(subscriptionSlideAnim, {
       toValue: 0,
       useNativeDriver: true,
-      tension: 65,
-      friction: 11,
+      ...SPRING_CONFIG.default,
     }).start();
   }, [subscriptionSlideAnim]);
 

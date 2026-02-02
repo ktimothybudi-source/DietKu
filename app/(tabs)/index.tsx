@@ -24,6 +24,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { analyzeMealPhoto } from '@/utils/photoAnalysis';
 import { getTodayKey } from '@/utils/nutritionCalculations';
 import ProgressRing from '@/components/ProgressRing';
+import { ANIMATION_DURATION } from '@/constants/animations';
 
 export default function HomeScreen() {
   const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, removeFromRecent, shouldSuggestFavorite } = useNutrition();
@@ -82,7 +83,7 @@ export default function HomeScreen() {
   useEffect(() => {
     Animated.timing(caloriesAnimValue, {
       toValue: todayTotals.calories,
-      duration: 250,
+      duration: ANIMATION_DURATION.medium,
       useNativeDriver: false,
     }).start();
   }, [todayTotals.calories, caloriesAnimValue]);
@@ -90,7 +91,7 @@ export default function HomeScreen() {
   useEffect(() => {
     Animated.timing(proteinAnimValue, {
       toValue: todayTotals.protein,
-      duration: 250,
+      duration: ANIMATION_DURATION.medium,
       useNativeDriver: false,
     }).start();
   }, [todayTotals.protein, proteinAnimValue]);
@@ -98,7 +99,7 @@ export default function HomeScreen() {
   useEffect(() => {
     Animated.timing(remainingAnimValue, {
       toValue: progress?.caloriesRemaining || 0,
-      duration: 250,
+      duration: ANIMATION_DURATION.medium,
       useNativeDriver: false,
     }).start();
   }, [progress?.caloriesRemaining, remainingAnimValue]);

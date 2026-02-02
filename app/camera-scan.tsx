@@ -18,6 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ANIMATION_DURATION } from '@/constants/animations';
 
 type FlashMode = 'off' | 'auto' | 'on';
 
@@ -98,12 +99,12 @@ export default function CameraScanScreen() {
     Animated.sequence([
       Animated.timing(shutterScale, {
         toValue: 0.92,
-        duration: 100,
+        duration: ANIMATION_DURATION.instant,
         useNativeDriver: true,
       }),
       Animated.timing(shutterScale, {
         toValue: 1,
-        duration: 150,
+        duration: ANIMATION_DURATION.quick,
         useNativeDriver: true,
       }),
     ]).start();
