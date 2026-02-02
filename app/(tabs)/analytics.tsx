@@ -162,7 +162,7 @@ export default function AnalyticsScreen() {
       : initialWeight;
     const weightChange = currentWeight - initialWeight;
 
-    const targetWeight = profile?.targetWeight ?? 0;
+    const targetWeight = profile?.goalWeight ?? 0;
     let weightProgress = 0;
     if (targetWeight > 0 && initialWeight > 0 && targetWeight !== initialWeight) {
       const totalToChange = Math.abs(initialWeight - targetWeight);
@@ -456,9 +456,9 @@ export default function AnalyticsScreen() {
   };
 
   const goalProjection = useMemo(() => {
-    if (!profile?.targetWeight || !profile?.weight) return null;
+    if (!profile?.goalWeight || !profile?.weight) return null;
     
-    const targetWeight = profile.targetWeight;
+    const targetWeight = profile.goalWeight;
     const initialWeight = profile.weight;
     const currentWeight = stats.currentWeight || initialWeight;
     const goal = profile.goal;
@@ -640,7 +640,7 @@ export default function AnalyticsScreen() {
     if (weightChartData.length < 1) return null;
 
     const weights = weightChartData.map((w: any) => w.weight);
-    const targetWeight = profile?.targetWeight ?? 0;
+    const targetWeight = profile?.goalWeight ?? 0;
     const allWeights = targetWeight > 0 ? [...weights, targetWeight] : weights;
     const minWeight = Math.min(...allWeights) - 2;
     const maxWeight = Math.max(...allWeights) + 2;
@@ -756,29 +756,23 @@ export default function AnalyticsScreen() {
     const macros = [
       { 
         name: 'Protein', 
-        shortName: 'P',
         avg: stats.avgProtein, 
         target: targetProtein, 
         color: '#3B82F6',
-        bgColor: '#3B82F6' + '12',
         unit: 'g'
       },
       { 
-        name: 'Karbo', 
-        shortName: 'C',
+        name: 'Karbohidrat', 
         avg: stats.avgCarbs, 
         target: targetCarbs, 
         color: '#F59E0B',
-        bgColor: '#F59E0B' + '12',
         unit: 'g'
       },
       { 
         name: 'Lemak', 
-        shortName: 'F',
         avg: stats.avgFat, 
         target: targetFat, 
         color: '#EF4444',
-        bgColor: '#EF4444' + '12',
         unit: 'g'
       },
     ];
@@ -799,52 +793,38 @@ export default function AnalyticsScreen() {
           </View>
         </View>
         
-        <View style={styles.macroGridContainer}>
+        <View style={styles.macroListContainer}>
           {macros.map((macro) => {
-            const progress = macro.target > 0 ? Math.min((macro.avg / macro.target) * 100, 100) : 0;
+            const progress = macro.target > 0 ? Math.min((macro.avg / macro.target) * 100, 150) : 0;
+            const clampedProgress = Math.min(progress, 100);
             const isOver = macro.avg > macro.target && macro.target > 0;
-            const progressAngle = (progress / 100) * 360;
             
             return (
-              <View key={macro.name} style={[styles.macroCard, { backgroundColor: macro.bgColor }]}>
-                <View style={styles.macroCardHeader}>
-                  <View style={[styles.macroIconCircle, { backgroundColor: macro.color + '20' }]}>
-                    <Text style={[styles.macroIconText, { color: macro.color }]}>{macro.shortName}</Text>
+              <View key={macro.name} style={styles.macroListItem}>
+                <View style={styles.macroListHeader}>
+                  <View style={styles.macroListLeft}>
+                    <View style={[styles.macroColorDot, { backgroundColor: macro.color }]} />
+                    <Text style={[styles.macroListName, { color: theme.text }]}>{macro.name}</Text>
                   </View>
-                  <Text style={[styles.macroCardName, { color: theme.text }]}>{macro.name}</Text>
+                  <View style={styles.macroListRight}>
+                    <Text style={[styles.macroListValue, { color: isOver ? '#EF4444' : theme.text }]}>
+                      {macro.avg}
+                    </Text>
+                    <Text style={[styles.macroListTarget, { color: theme.textTertiary }]}>
+                      / {macro.target}{macro.unit}
+                    </Text>
+                  </View>
                 </View>
-                
-                <View style={styles.macroCardContent}>
-                  <View style={styles.macroRingContainer}>
-                    <View style={[styles.macroRingBg, { borderColor: theme.border }]} />
-                    <View 
-                      style={[
-                        styles.macroRingProgress, 
-                        { 
-                          borderColor: isOver ? '#EF4444' : macro.color,
-                          borderTopColor: progressAngle > 180 ? (isOver ? '#EF4444' : macro.color) : 'transparent',
-                          borderRightColor: progressAngle > 90 ? (isOver ? '#EF4444' : macro.color) : 'transparent',
-                          borderBottomColor: progressAngle > 270 ? (isOver ? '#EF4444' : macro.color) : 'transparent',
-                          borderLeftColor: progressAngle > 0 ? (isOver ? '#EF4444' : macro.color) : 'transparent',
-                          transform: [{ rotate: `${Math.min(progressAngle, 360) - 90}deg` }],
-                        }
-                      ]} 
-                    />
-                    <View style={styles.macroRingCenter}>
-                      <Text style={[styles.macroRingPercent, { color: isOver ? '#EF4444' : macro.color }]}>
-                        {Math.round(progress)}%
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.macroCardValues}>
-                    <Text style={[styles.macroCardAvg, { color: isOver ? '#EF4444' : theme.text }]}>
-                      {macro.avg}<Text style={styles.macroCardUnit}>{macro.unit}</Text>
-                    </Text>
-                    <Text style={[styles.macroCardTarget, { color: theme.textTertiary }]}>
-                      Target: {macro.target}{macro.unit}
-                    </Text>
-                  </View>
+                <View style={[styles.macroProgressBg, { backgroundColor: theme.border }]}>
+                  <View 
+                    style={[
+                      styles.macroProgressFill, 
+                      { 
+                        width: `${clampedProgress}%`,
+                        backgroundColor: isOver ? '#EF4444' : macro.color,
+                      }
+                    ]} 
+                  />
                 </View>
               </View>
             );
@@ -887,7 +867,7 @@ export default function AnalyticsScreen() {
         >
           <View style={styles.header}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>Analitik</Text>
-            {profile?.targetWeight && profile?.weight && profile.targetWeight !== profile.weight && (
+            {profile?.goalWeight && profile?.weight && profile.goalWeight !== profile.weight && (
               <View style={[styles.progressBadge, { backgroundColor: stats.weightProgress >= 100 ? '#10B981' + '20' : '#3B82F6' + '15' }]}>
                 <Target size={16} color={stats.weightProgress >= 100 ? '#10B981' : '#3B82F6'} />
                 <Text style={[styles.progressBadgeText, { color: stats.weightProgress >= 100 ? '#10B981' : '#3B82F6' }]}>
@@ -1430,85 +1410,52 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500' as const,
   },
-  macroGridContainer: {
-    flexDirection: 'row',
+  macroListContainer: {
+    gap: 16,
+  },
+  macroListItem: {
     gap: 10,
   },
-  macroCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 14,
+  macroListHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  macroCardHeader: {
+  macroListLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    gap: 10,
   },
-  macroIconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
+  macroColorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
-  macroIconText: {
-    fontSize: 12,
-    fontWeight: '800' as const,
-  },
-  macroCardName: {
-    fontSize: 12,
+  macroListName: {
+    fontSize: 15,
     fontWeight: '600' as const,
   },
-  macroCardContent: {
-    alignItems: 'center',
-    gap: 10,
+  macroListRight: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 2,
   },
-  macroRingContainer: {
-    width: 56,
-    height: 56,
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  macroRingBg: {
-    position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 5,
-  },
-  macroRingProgress: {
-    position: 'absolute',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 5,
-  },
-  macroRingCenter: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  macroRingPercent: {
-    fontSize: 13,
-    fontWeight: '800' as const,
-  },
-  macroCardValues: {
-    alignItems: 'center',
-  },
-  macroCardAvg: {
-    fontSize: 18,
+  macroListValue: {
+    fontSize: 17,
     fontWeight: '700' as const,
   },
-  macroCardUnit: {
-    fontSize: 12,
+  macroListTarget: {
+    fontSize: 13,
     fontWeight: '500' as const,
   },
-  macroCardTarget: {
-    fontSize: 10,
-    fontWeight: '500' as const,
-    marginTop: 2,
+  macroProgressBg: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  macroProgressFill: {
+    height: '100%',
+    borderRadius: 4,
   },
   statsGrid: {
     flexDirection: 'row',
