@@ -328,19 +328,26 @@ export default function OnboardingScreen() {
         <Text style={styles.languageText}>{language === 'id' ? 'ID' : 'EN'}</Text>
       </TouchableOpacity>
 
-      <Animated.View
-        style={[
-          styles.introImageSection,
-          {
-            transform: [{ scale: introScaleAnim }],
-            opacity: introScaleAnim,
-          },
-        ]}
-      >
-        <Image source={require('../assets/images/intro.png')} style={styles.introImageRect} resizeMode="cover" />
-      </Animated.View>
-
       <View style={styles.introHeroSection}>
+        <Animated.View
+          style={[
+            styles.introImageWrapper,
+            {
+              transform: [{ scale: introScaleAnim }],
+              opacity: introScaleAnim,
+            },
+          ]}
+        >
+          <View style={styles.introImageGlow} />
+          <View style={styles.introImageFrame}>
+            <Image source={require('../assets/images/intro.png')} style={styles.introImageLarge} resizeMode="contain" />
+          </View>
+          <View style={styles.introFloatingBadge}>
+            <Sparkles size={12} color="#10B981" />
+            <Text style={styles.introFloatingBadgeText}>AI-Powered</Text>
+          </View>
+        </Animated.View>
+
         <Animated.View
           style={[
             styles.introTextSection,
@@ -350,15 +357,33 @@ export default function OnboardingScreen() {
                 {
                   translateY: introTextAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [20, 0],
+                    outputRange: [30, 0],
                   }),
                 },
               ],
             },
           ]}
         >
+          <Text style={styles.introWelcomeLabel}>Selamat Datang di</Text>
           <Text style={styles.introBrandTitle}>DietKu</Text>
-          <Text style={styles.introTagline}>Nutrisi cerdas untuk hidup lebih sehat</Text>
+          <Text style={styles.introTagline}>
+            Perjalanan menuju versi terbaik dirimu dimulai dari sini. Pantau nutrisi, capai tujuan, dan transformasi hidupmu.
+          </Text>
+
+          <View style={styles.introFeatures}>
+            <View style={styles.introFeatureItem}>
+              <View style={styles.introFeatureDot} />
+              <Text style={styles.introFeatureText}>Analisis makanan dengan AI</Text>
+            </View>
+            <View style={styles.introFeatureItem}>
+              <View style={styles.introFeatureDot} />
+              <Text style={styles.introFeatureText}>Rencana nutrisi personal</Text>
+            </View>
+            <View style={styles.introFeatureItem}>
+              <View style={styles.introFeatureDot} />
+              <Text style={styles.introFeatureText}>Pantau progres real-time</Text>
+            </View>
+          </View>
         </Animated.View>
       </View>
 
@@ -1710,38 +1735,114 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAFAFA',
   },
-  introImageSection: {
-    width: '100%',
-    paddingHorizontal: 24,
-    paddingTop: 20,
-  },
-  introImageRect: {
-    width: '100%',
-    height: 280,
-    borderRadius: 24,
-  },
   introHeroSection: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
+  introImageWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+    position: 'relative' as const,
+  },
+  introImageGlow: {
+    position: 'absolute' as const,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+  },
+  introImageFrame: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.08)',
+  },
+  introImageLarge: {
+    width: 85,
+    height: 85,
+  },
+  introFloatingBadge: {
+    position: 'absolute' as const,
+    bottom: -4,
+    right: -12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.12)',
+  },
+  introFloatingBadgeText: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: '#10B981',
+  },
   introTextSection: {
     alignItems: 'center',
     paddingHorizontal: 8,
   },
+  introWelcomeLabel: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: '#10B981',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase' as const,
+    marginBottom: 4,
+  },
   introBrandTitle: {
-    fontSize: 48,
+    fontSize: 44,
     fontWeight: '800' as const,
     color: '#111827',
-    marginBottom: 8,
+    marginBottom: 14,
     letterSpacing: -1,
   },
   introTagline: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 23,
+    marginBottom: 24,
+    maxWidth: 300,
+  },
+  introFeatures: {
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  introFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  introFeatureDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10B981',
+  },
+  introFeatureText: {
+    fontSize: 13,
+    color: '#4B5563',
+    fontWeight: '500' as const,
   },
   introCtaSection: {
     paddingHorizontal: 24,

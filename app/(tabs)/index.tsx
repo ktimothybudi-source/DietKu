@@ -25,7 +25,7 @@ import { analyzeMealPhoto } from '@/utils/photoAnalysis';
 import { getTodayKey } from '@/utils/nutritionCalculations';
 import ProgressRing from '@/components/ProgressRing';
 import { ANIMATION_DURATION } from '@/constants/animations';
-import { getTimeBasedMessage, getProgressMessage, MotivationalMessage } from '@/constants/motivationalMessages';
+import { getTimeBasedMessage, getProgressMessage, getCalorieFeedback, MotivationalMessage } from '@/constants/motivationalMessages';
 
 export default function HomeScreen() {
   const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, removeFromRecent, shouldSuggestFavorite } = useNutrition();
@@ -124,16 +124,23 @@ export default function HomeScreen() {
   const prevEntriesCount = useRef(todayEntries.length);
   
   useEffect(() => {
-    if (todayEntries.length > prevEntriesCount.current && progress && streakData) {
-      const message = getProgressMessage(
-        progress.caloriesProgress,
-        progress.proteinProgress,
-        streakData.currentStreak
-      );
-      showMotivationalFeedback(message);
+    if (todayEntries.length > prevEntriesCount.current && progress && streakData && profile && dailyTargets) {
+      const caloriesOver = todayTotals.calories - dailyTargets.calories;
+      const calorieFeedback = getCalorieFeedback(caloriesOver, profile.goal, dailyTargets.calories);
+      
+      if (calorieFeedback) {
+        showMotivationalFeedback({ text: calorieFeedback.text, emoji: calorieFeedback.emoji });
+      } else {
+        const message = getProgressMessage(
+          progress.caloriesProgress,
+          progress.proteinProgress,
+          streakData.currentStreak
+        );
+        showMotivationalFeedback(message);
+      }
     }
     prevEntriesCount.current = todayEntries.length;
-  }, [todayEntries.length, progress, streakData, showMotivationalFeedback]);
+  }, [todayEntries.length, progress, streakData, showMotivationalFeedback, profile, dailyTargets, todayTotals.calories]);
 
   useEffect(() => {
     Animated.timing(caloriesAnimValue, {
