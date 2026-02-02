@@ -70,6 +70,8 @@ export default function StoryShareScreen() {
     timestamp: parseInt(params.timestamp || Date.now().toString()),
   };
 
+  const [customMealName, setCustomMealName] = useState(storyData.mealName);
+  const [isEditingName, setIsEditingName] = useState(false);
   const [includeOptions, setIncludeOptions] = useState<IncludeOptions>({
     macros: true,
     healthRating: true,
@@ -154,7 +156,7 @@ export default function StoryShareScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     try {
       const healthInfo = HEALTH_RATINGS.find(r => r.id === healthRating);
-      let message = `${storyData.mealName} - ${storyData.calories} kcal 🔥`;
+      let message = `${customMealName} - ${storyData.calories} kcal 🔥`;
       if (includeOptions.macros) {
         message += `\n💪 ${storyData.protein}g protein • 🍞 ${storyData.carbs}g carbs • 🥑 ${storyData.fat}g fat`;
       }
@@ -164,7 +166,9 @@ export default function StoryShareScreen() {
       if (includeOptions.location && locationName) {
         message += `\n📍 ${locationName}`;
       }
-      message += '\n\nTracked with DietKu';
+      if (showWatermark) {
+        message += '\n\nTracked by DietKu';
+      }
       
       await Share.share({ message });
     } catch (error) {
@@ -185,7 +189,7 @@ export default function StoryShareScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await Share.share({
-        message: `${storyData.mealName} - ${storyData.calories} kcal 🔥\n\nTracked with DietKu`,
+        message: `${customMealName} - ${storyData.calories} kcal 🔥${showWatermark ? '\n\nTracked by DietKu' : ''}`,
       });
     } catch (error) {
       console.error('Share error:', error);
@@ -198,6 +202,10 @@ export default function StoryShareScreen() {
   };
 
   const currentHealthRating = HEALTH_RATINGS.find(r => r.id === healthRating);
+
+  const hasAnyPills = (includeOptions.healthRating && currentHealthRating) || 
+    (includeOptions.location && locationName) || 
+    includeOptions.time;
 
   const renderPreview = () => (
     <View style={styles.previewContainer}>
@@ -220,25 +228,42 @@ export default function StoryShareScreen() {
         style={styles.previewGradient}
       />
 
-      <View style={styles.previewContent}>
+      <View style={[
+        styles.previewContent,
+        !includeOptions.name && !includeOptions.macros && !hasAnyPills && styles.previewContentMinimal
+      ]}>
         {includeOptions.name && (
-          <Animated.Text 
-            style={[
-              styles.previewMealName,
-              { opacity: includeOptions.name ? 1 : 0 }
-            ]}
-          >
-            {storyData.mealName}
-          </Animated.Text>
+          <Text style={[
+            styles.previewMealName,
+            !includeOptions.macros && !hasAnyPills && styles.previewMealNameLarge
+          ]}>
+            {customMealName}
+          </Text>
         )}
 
-        <Text style={styles.previewCalories}>
-          {storyData.calories}
-          <Text style={styles.previewCaloriesUnit}> kcal</Text>
-        </Text>
+        <View style={styles.caloriesBlock}>
+          <Text style={[
+            styles.previewCalories,
+            !includeOptions.name && !includeOptions.macros && styles.previewCaloriesHero
+          ]}>
+            {storyData.calories}
+            <Text style={styles.previewCaloriesUnit}> kcal</Text>
+          </Text>
+          
+          {showWatermark && (
+            <View style={styles.trackedByContainer}>
+              <Text style={styles.trackedByText}>
+                Tracked by <Text style={styles.trackedByBrand}>DietKu</Text>
+              </Text>
+            </View>
+          )}
+        </View>
 
         {includeOptions.macros && (
-          <View style={styles.macroChips}>
+          <View style={[
+            styles.macroChips,
+            !hasAnyPills && styles.macroChipsSpaced
+          ]}>
             <View style={styles.macroChip}>
               <Text style={styles.macroChipText}>💪 {storyData.protein}g</Text>
             </View>
@@ -251,34 +276,30 @@ export default function StoryShareScreen() {
           </View>
         )}
 
-        <View style={styles.previewPills}>
-          {includeOptions.healthRating && currentHealthRating && (
-            <View style={[styles.previewPill, { backgroundColor: `${currentHealthRating.color}20` }]}>
-              <Text style={styles.previewPillText}>
-                {currentHealthRating.icon} {currentHealthRating.label}
-              </Text>
-            </View>
-          )}
+        {hasAnyPills && (
+          <View style={styles.previewPills}>
+            {includeOptions.healthRating && currentHealthRating && (
+              <View style={[styles.previewPill, { backgroundColor: `${currentHealthRating.color}20` }]}>
+                <Text style={styles.previewPillText}>
+                  {currentHealthRating.icon} {currentHealthRating.label}
+                </Text>
+              </View>
+            )}
 
-          {includeOptions.location && locationName && (
-            <View style={[styles.previewPill, { backgroundColor: 'rgba(236, 72, 153, 0.2)' }]}>
-              <Text style={styles.previewPillText}>📍 {locationName}</Text>
-            </View>
-          )}
+            {includeOptions.location && locationName && (
+              <View style={[styles.previewPill, { backgroundColor: 'rgba(236, 72, 153, 0.2)' }]}>
+                <Text style={styles.previewPillText}>📍 {locationName}</Text>
+              </View>
+            )}
 
-          {includeOptions.time && (
-            <View style={[styles.previewPill, { backgroundColor: 'rgba(99, 102, 241, 0.2)' }]}>
-              <Text style={styles.previewPillText}>🕐 {formatTime(storyData.timestamp)}</Text>
-            </View>
-          )}
-        </View>
+            {includeOptions.time && (
+              <View style={[styles.previewPill, { backgroundColor: 'rgba(99, 102, 241, 0.2)' }]}>
+                <Text style={styles.previewPillText}>🕐 {formatTime(storyData.timestamp)}</Text>
+              </View>
+            )}
+          </View>
+        )}
       </View>
-
-      {showWatermark && (
-        <View style={styles.previewWatermark}>
-          <Text style={styles.previewWatermarkText}>DietKu</Text>
-        </View>
-      )}
     </View>
   );
 
@@ -317,14 +338,46 @@ export default function StoryShareScreen() {
     <View style={styles.includePanel}>
       <Text style={styles.includePanelTitle}>Include On Story</Text>
       
-      {renderToggleRow(
-        'name',
-        <User size={18} color={includeOptions.name ? '#FFFFFF' : '#666'} />,
-        'Meal Name',
-        storyData.mealName,
-        undefined,
-        true
-      )}
+      <TouchableOpacity
+        style={styles.toggleRow}
+        onPress={() => toggleOption('name')}
+        activeOpacity={0.7}
+      >
+        <View style={styles.toggleLeft}>
+          <View style={[styles.toggleIcon, includeOptions.name && styles.toggleIconActive]}>
+            <User size={18} color={includeOptions.name ? '#FFFFFF' : '#666'} />
+          </View>
+          <View style={styles.toggleTextContainer}>
+            <Text style={styles.toggleLabel}>Meal Name</Text>
+            {isEditingName ? (
+              <TextInput
+                style={styles.nameEditInput}
+                value={customMealName}
+                onChangeText={setCustomMealName}
+                onBlur={() => setIsEditingName(false)}
+                onSubmitEditing={() => setIsEditingName(false)}
+                autoFocus
+                placeholder="Enter meal name"
+                placeholderTextColor="#666"
+              />
+            ) : (
+              <TouchableOpacity 
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setIsEditingName(true);
+                }}
+                style={styles.nameEditTouchable}
+              >
+                <Text style={styles.toggleSubtitle}>{customMealName}</Text>
+                <Edit3 size={12} color="#10B981" style={styles.editIcon} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+        <View style={[styles.toggleCheck, includeOptions.name && styles.toggleCheckActive]}>
+          {includeOptions.name && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
+        </View>
+      </TouchableOpacity>
       
       {renderToggleRow(
         'macros',
@@ -376,7 +429,7 @@ export default function StoryShareScreen() {
         }}
         activeOpacity={0.7}
       >
-        <Text style={styles.watermarkLabel}>Show DietKu watermark</Text>
+        <Text style={styles.watermarkLabel}>Show Tracked by DietKu</Text>
         <View style={[styles.toggleCheck, showWatermark && styles.toggleCheckActive]}>
           {showWatermark && <Check size={14} color="#FFFFFF" strokeWidth={3} />}
         </View>
@@ -647,27 +700,55 @@ const styles = StyleSheet.create({
   },
   previewContent: {
     position: 'absolute',
-    bottom: 60,
+    bottom: 40,
     left: 20,
     right: 20,
   },
+  previewContentMinimal: {
+    bottom: 60,
+    alignItems: 'center',
+  },
   previewMealName: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700' as const,
     color: '#FFFFFF',
-    marginBottom: 8,
+    marginBottom: 4,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
+  previewMealNameLarge: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  caloriesBlock: {
+    marginBottom: 12,
+  },
   previewCalories: {
-    fontSize: 56,
+    fontSize: 52,
     fontWeight: '800' as const,
     color: '#FFFFFF',
-    marginBottom: 16,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+  },
+  previewCaloriesHero: {
+    fontSize: 64,
+  },
+  trackedByContainer: {
+    marginTop: 4,
+  },
+  trackedByText: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: 'rgba(255,255,255,0.7)',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  trackedByBrand: {
+    fontWeight: '700' as const,
+    color: '#10B981',
   },
   previewCaloriesUnit: {
     fontSize: 24,
@@ -676,7 +757,10 @@ const styles = StyleSheet.create({
   macroChips: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 10,
+  },
+  macroChipsSpaced: {
+    marginBottom: 0,
   },
   macroChip: {
     paddingHorizontal: 12,
@@ -704,16 +788,25 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: '#FFFFFF',
   },
-  previewWatermark: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    opacity: 0.4,
+  toggleTextContainer: {
+    flex: 1,
   },
-  previewWatermarkText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
+  nameEditInput: {
+    fontSize: 13,
+    color: '#10B981',
+    marginTop: 2,
+    paddingVertical: 4,
+    paddingHorizontal: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#10B981',
+  },
+  nameEditTouchable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  editIcon: {
+    marginLeft: 6,
   },
   includePanel: {
     backgroundColor: 'rgba(255,255,255,0.05)',
