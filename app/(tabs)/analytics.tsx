@@ -66,6 +66,7 @@ export default function AnalyticsScreen() {
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [weightInput, setWeightInput] = useState('');
   const [weightError, setWeightError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   const setupReady = !!profile && !!dailyTargets;
   const timeRangeDays = getTimeRangeDays(timeRange);
@@ -166,11 +167,12 @@ export default function AnalyticsScreen() {
   const openWeightModal = () => {
     setWeightInput('');
     setWeightError(null);
+    setSelectedDate(new Date());
     setShowWeightModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const logWeightToday = async () => {
+  const logWeight = async () => {
     setWeightError(null);
     const raw = weightInput.replace(',', '.').trim();
     const value = Number(raw);
@@ -182,8 +184,7 @@ export default function AnalyticsScreen() {
 
     try {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      const today = new Date();
-      const dateKey = formatDateKey(today);
+      const dateKey = formatDateKey(selectedDate);
 
       const addWeightEntry = nutrition?.addWeightEntry;
       const addWeight = nutrition?.addWeight;
@@ -204,6 +205,31 @@ export default function AnalyticsScreen() {
     }
   };
 
+  const getDateOptions = () => {
+    const options: Date[] = [];
+    const today = new Date();
+    for (let i = 0; i < 14; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      options.push(date);
+    }
+    return options;
+  };
+
+  const formatDisplayDate = (date: Date) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    
+    if (formatDateKey(date) === formatDateKey(today)) {
+      return 'Hari ini';
+    }
+    if (formatDateKey(date) === formatDateKey(yesterday)) {
+      return 'Kemarin';
+    }
+    return date.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+  };
+
   const getInsightMessage = () => {
     if (stats.daysLogged < 7) {
       return `Kami butuh minimal ${7 - stats.daysLogged} hari lagi untuk wawasan yang lebih akurat.`;
@@ -217,6 +243,28 @@ export default function AnalyticsScreen() {
     return 'Yuk mulai catat makananmu lebih rutin untuk hasil yang lebih baik.';
   };
 
+  const getAxisLabel = (day: DayData, index: number, totalDays: number, range: TimeRange) => {
+    const date = new Date(day.dateKey);
+    if (range === '7h') {
+      return date.toLocaleDateString('id-ID', { weekday: 'short' }).slice(0, 2);
+    } else if (range === '30h') {
+      if (index === 0 || index === totalDays - 1 || index % 5 === 0) {
+        return date.toLocaleDateString('id-ID', { day: 'numeric' });
+      }
+      return '';
+    } else if (range === '90h') {
+      if (index === 0 || index === totalDays - 1 || index % 15 === 0) {
+        return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }).replace(' ', '\n');
+      }
+      return '';
+    } else {
+      if (index === 0 || index === totalDays - 1 || index % 30 === 0) {
+        return date.toLocaleDateString('id-ID', { month: 'short' });
+      }
+      return '';
+    }
+  };
+
   const renderCalorieChart = () => {
     const displayDays = timeRange === '7h' ? dayData.slice(-7) : 
                         timeRange === '30h' ? dayData.slice(-30) :
@@ -225,9 +273,9 @@ export default function AnalyticsScreen() {
     const maxCalories = Math.max(...displayDays.map(d => d.calories), stats.targetCalories);
     const chartHeight = 120;
     
-    const visibleDays = displayDays.length > 14 ? 
-      displayDays.filter((_, i) => i % Math.ceil(displayDays.length / 14) === 0 || i === displayDays.length - 1) :
-      displayDays;
+    const maxBars = timeRange === '7h' ? 7 : timeRange === '30h' ? 15 : timeRange === '90h' ? 12 : 12;
+    const step = displayDays.length > maxBars ? Math.ceil(displayDays.length / maxBars) : 1;
+    const visibleDays = displayDays.filter((_, i) => i % step === 0 || i === displayDays.length - 1);
 
     const avgCaloriesInRange = displayDays.filter(d => d.entries.length > 0).length > 0 
       ? Math.round(displayDays.filter(d => d.entries.length > 0).reduce((sum, d) => sum + d.calories, 0) / displayDays.filter(d => d.entries.length > 0).length)
@@ -258,11 +306,12 @@ export default function AnalyticsScreen() {
               const barHeight = maxCalories > 0 ? (day.calories / maxCalories) * chartHeight : 0;
               const isOverTarget = day.calories > stats.targetCalories;
               const isToday = day.dateKey === formatDateKey(new Date());
+              const axisLabel = getAxisLabel(day, index, visibleDays.length, timeRange);
               
               return (
                 <View key={day.dateKey} style={styles.barColumn}>
                   <Text style={[styles.barValue, { color: theme.textTertiary }]}>
-                    {day.calories > 0 ? day.calories : ''}
+                    {day.calories > 0 && timeRange === '7h' ? day.calories : ''}
                   </Text>
                   <View 
                     style={[
@@ -281,7 +330,7 @@ export default function AnalyticsScreen() {
                     ]} 
                   />
                   <Text style={[styles.barLabel, { color: isToday ? theme.primary : theme.textTertiary, fontWeight: isToday ? '700' as const : '500' as const }]}>
-                    {day.date.split(' ')[1]}
+                    {axisLabel}
                   </Text>
                 </View>
               );
@@ -541,9 +590,9 @@ export default function AnalyticsScreen() {
     const maxProtein = Math.max(...displayDays.map(d => d.protein), targetProtein);
     const chartHeight = 100;
     
-    const visibleDays = displayDays.length > 14 ? 
-      displayDays.filter((_, i) => i % Math.ceil(displayDays.length / 14) === 0 || i === displayDays.length - 1) :
-      displayDays;
+    const maxBars = timeRange === '7h' ? 7 : timeRange === '30h' ? 15 : timeRange === '90h' ? 12 : 12;
+    const step = displayDays.length > maxBars ? Math.ceil(displayDays.length / maxBars) : 1;
+    const visibleDays = displayDays.filter((_, i) => i % step === 0 || i === displayDays.length - 1);
 
     return (
       <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -566,15 +615,16 @@ export default function AnalyticsScreen() {
           </View>
           
           <View style={styles.barsContainer}>
-            {visibleDays.map((day) => {
+            {visibleDays.map((day, index) => {
               const barHeight = maxProtein > 0 ? (day.protein / maxProtein) * chartHeight : 0;
               const isOverTarget = day.protein >= targetProtein;
               const isToday = day.dateKey === formatDateKey(new Date());
+              const axisLabel = getAxisLabel(day, index, visibleDays.length, timeRange);
               
               return (
                 <View key={day.dateKey} style={styles.barColumn}>
                   <Text style={[styles.barValue, { color: theme.textTertiary }]}>
-                    {day.protein > 0 ? day.protein : ''}
+                    {day.protein > 0 && timeRange === '7h' ? day.protein : ''}
                   </Text>
                   <View 
                     style={[
@@ -593,7 +643,7 @@ export default function AnalyticsScreen() {
                     ]} 
                   />
                   <Text style={[styles.barLabel, { color: isToday ? '#10B981' : theme.textTertiary, fontWeight: isToday ? '700' as const : '500' as const }]}>
-                    {day.date.split(' ')[1]}
+                    {axisLabel}
                   </Text>
                 </View>
               );
@@ -744,7 +794,42 @@ export default function AnalyticsScreen() {
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={[styles.modalLabel, { color: theme.textSecondary }]}>Berat badan hari ini</Text>
+              <Text style={[styles.modalLabel, { color: theme.textSecondary }]}>Pilih tanggal</Text>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                style={styles.datePickerScroll}
+                contentContainerStyle={styles.datePickerContent}
+              >
+                {getDateOptions().map((date) => {
+                  const isSelected = formatDateKey(date) === formatDateKey(selectedDate);
+                  return (
+                    <TouchableOpacity
+                      key={formatDateKey(date)}
+                      style={[
+                        styles.dateOption,
+                        { backgroundColor: theme.background, borderColor: theme.border },
+                        isSelected && { backgroundColor: theme.primary, borderColor: theme.primary },
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setSelectedDate(date);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.dateOptionText,
+                        { color: theme.textSecondary },
+                        isSelected && { color: '#FFFFFF' },
+                      ]}>
+                        {formatDisplayDate(date)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <Text style={[styles.modalLabel, { color: theme.textSecondary, marginTop: 16 }]}>Berat badan</Text>
               <View style={styles.weightInputContainer}>
                 <TextInput
                   value={weightInput}
@@ -776,7 +861,7 @@ export default function AnalyticsScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.saveButton, { backgroundColor: theme.primary }]}
-                onPress={logWeightToday}
+                onPress={logWeight}
                 activeOpacity={0.7}
               >
                 <Text style={styles.saveButtonText}>Simpan</Text>
@@ -1241,6 +1326,22 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
     marginTop: 12,
     textAlign: 'center',
+  },
+  datePickerScroll: {
+    marginBottom: 4,
+  },
+  datePickerContent: {
+    gap: 8,
+  },
+  dateOption: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  dateOptionText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
   },
   modalFooter: {
     flexDirection: 'row',
