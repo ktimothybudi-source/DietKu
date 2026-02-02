@@ -662,14 +662,34 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          name: profileData?.name || null,
+          gender: profileData?.sex || null,
+          height: profileData?.height || null,
+          weight: profileData?.weight || null,
+          target_weight: profileData?.goalWeight || null,
+          activity_level: profileData?.activityLevel || null,
+          goal: profileData?.goal || null,
+        },
+      },
     });
     
     if (error) {
-      console.error('Sign up error:', error);
+      console.error('Sign up error:', error.message, error);
       throw error;
     }
+
+    console.log('Sign up response:', { user: data.user?.id, session: !!data.session });
     
-    if (data.user && profileData) {
+    if (!data.user) {
+      throw new Error('No user returned from sign up');
+    }
+
+    // Check if we have a session (email confirmation disabled) or not (email confirmation enabled)
+    if (data.session && profileData) {
+      // User is immediately authenticated, create profile
+      console.log('Session available, creating profile...');
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
@@ -685,8 +705,14 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
         });
       
       if (profileError) {
-        console.error('Error creating profile:', profileError);
+        console.error('Error creating profile:', profileError.message, profileError);
+        // Don't throw here, user is created but profile failed - can retry later
+      } else {
+        console.log('Profile created successfully');
       }
+    } else if (!data.session) {
+      // Email confirmation is required - but user trigger should create empty profile
+      console.log('Email confirmation required or user already exists. Check your email.');
     }
     
     console.log('Sign up successful:', data.user?.email);
