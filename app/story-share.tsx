@@ -84,9 +84,11 @@ export default function StoryShareScreen() {
   const [showLocationSheet, setShowLocationSheet] = useState(false);
   const [customLocationInput, setCustomLocationInput] = useState('');
   const [showWatermark, setShowWatermark] = useState(true);
+  const [showShareSheet, setShowShareSheet] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const locationSheetAnim = useRef(new Animated.Value(0)).current;
+  const shareSheetAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -126,6 +128,27 @@ export default function StoryShareScreen() {
       useNativeDriver: true,
     }).start(() => {
       setShowLocationSheet(false);
+    });
+  };
+
+  const openShareSheet = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowShareSheet(true);
+    Animated.spring(shareSheetAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
+  };
+
+  const closeShareSheet = () => {
+    Animated.timing(shareSheetAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowShareSheet(false);
     });
   };
 
@@ -202,6 +225,93 @@ export default function StoryShareScreen() {
   };
 
   const currentHealthRating = HEALTH_RATINGS.find(r => r.id === healthRating);
+
+  const renderShareSheet = () => {
+    if (!showShareSheet) return null;
+
+    return (
+      <View style={styles.sheetOverlay}>
+        <TouchableOpacity
+          style={styles.sheetBackdrop}
+          onPress={closeShareSheet}
+          activeOpacity={1}
+        />
+        <Animated.View
+          style={[
+            styles.shareSheet,
+            {
+              transform: [{
+                translateY: shareSheetAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [400, 0],
+                }),
+              }],
+            },
+          ]}
+        >
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>Share to</Text>
+
+          <View style={styles.shareGrid}>
+            <TouchableOpacity style={styles.shareAppItem} onPress={() => { closeShareSheet(); handleShareInstagram(); }}>
+              <LinearGradient
+                colors={['#833AB4', '#E1306C', '#F77737']}
+                style={styles.shareAppIcon}
+              >
+                <Text style={styles.shareAppEmoji}>📸</Text>
+              </LinearGradient>
+              <Text style={styles.shareAppLabel}>Instagram{"\n"}Story</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.shareAppItem} onPress={() => { closeShareSheet(); handleShareInstagram(); }}>
+              <LinearGradient
+                colors={['#833AB4', '#E1306C', '#F77737']}
+                style={styles.shareAppIcon}
+              >
+                <MessageCircle size={24} color="#FFFFFF" />
+              </LinearGradient>
+              <Text style={styles.shareAppLabel}>Instagram{"\n"}Messages</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.shareAppItem} onPress={() => { closeShareSheet(); handleMoreOptions(); }}>
+              <View style={[styles.shareAppIcon, { backgroundColor: '#25D366' }]}>
+                <Text style={styles.shareAppEmoji}>💬</Text>
+              </View>
+              <Text style={styles.shareAppLabel}>WhatsApp</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.shareAppItem} onPress={() => { closeShareSheet(); handleMoreOptions(); }}>
+              <View style={[styles.shareAppIcon, { backgroundColor: '#34C759' }]}>
+                <MessageCircle size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.shareAppLabel}>Message</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.shareAppItem} onPress={() => { closeShareSheet(); handleSaveImage(); }}>
+              <View style={[styles.shareAppIcon, styles.shareAppIconOutline]}>
+                <ImageIcon size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.shareAppLabel}>Save{"\n"}Image</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.shareAppItem} onPress={() => { closeShareSheet(); handleMoreOptions(); }}>
+              <View style={[styles.shareAppIcon, styles.shareAppIconOutline]}>
+                <Link size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.shareAppLabel}>Copy{"\n"}Link</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.shareAppItem} onPress={() => { closeShareSheet(); handleMoreOptions(); }}>
+              <View style={[styles.shareAppIcon, styles.shareAppIconOutline]}>
+                <Share2 size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.shareAppLabel}>More</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </View>
+    );
+  };
 
   const hasAnyPills = includeOptions.healthRating && currentHealthRating;
 
@@ -554,7 +664,7 @@ export default function StoryShareScreen() {
           <Text style={styles.headerTitle}>Share Story</Text>
           <TouchableOpacity
             style={styles.headerShareButton}
-            onPress={handleShareInstagram}
+            onPress={openShareSheet}
             activeOpacity={0.7}
           >
             <Share2 size={20} color="#FFFFFF" />
@@ -569,69 +679,10 @@ export default function StoryShareScreen() {
           {renderPreview()}
 
           {renderIncludePanel()}
-
-          <View style={styles.shareSection}>
-            <Text style={styles.shareSectionTitle}>Share to</Text>
-            <View style={styles.shareGrid}>
-              <TouchableOpacity style={styles.shareAppItem} onPress={handleShareInstagram}>
-                <LinearGradient
-                  colors={['#833AB4', '#E1306C', '#F77737']}
-                  style={styles.shareAppIcon}
-                >
-                  <Text style={styles.shareAppEmoji}>📸</Text>
-                </LinearGradient>
-                <Text style={styles.shareAppLabel}>Instagram{"\n"}Story</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.shareAppItem} onPress={handleShareInstagram}>
-                <LinearGradient
-                  colors={['#833AB4', '#E1306C', '#F77737']}
-                  style={styles.shareAppIcon}
-                >
-                  <MessageCircle size={24} color="#FFFFFF" />
-                </LinearGradient>
-                <Text style={styles.shareAppLabel}>Instagram{"\n"}Messages</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.shareAppItem} onPress={handleMoreOptions}>
-                <View style={[styles.shareAppIcon, { backgroundColor: '#25D366' }]}>
-                  <Text style={styles.shareAppEmoji}>💬</Text>
-                </View>
-                <Text style={styles.shareAppLabel}>WhatsApp</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.shareAppItem} onPress={handleMoreOptions}>
-                <View style={[styles.shareAppIcon, { backgroundColor: '#34C759' }]}>
-                  <MessageCircle size={24} color="#FFFFFF" />
-                </View>
-                <Text style={styles.shareAppLabel}>Message</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.shareAppItem} onPress={handleSaveImage}>
-                <View style={[styles.shareAppIcon, styles.shareAppIconOutline]}>
-                  <ImageIcon size={24} color="#FFFFFF" />
-                </View>
-                <Text style={styles.shareAppLabel}>Save{"\n"}Image</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.shareAppItem} onPress={handleMoreOptions}>
-                <View style={[styles.shareAppIcon, styles.shareAppIconOutline]}>
-                  <Link size={24} color="#FFFFFF" />
-                </View>
-                <Text style={styles.shareAppLabel}>Copy{"\n"}Link</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.shareAppItem} onPress={handleMoreOptions}>
-                <View style={[styles.shareAppIcon, styles.shareAppIconOutline]}>
-                  <Share2 size={24} color="#FFFFFF" />
-                </View>
-                <Text style={styles.shareAppLabel}>More</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
         </ScrollView>
 
         {renderLocationSheet()}
+        {renderShareSheet()}
       </View>
     </>
   );
@@ -890,14 +941,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
   },
-  shareSection: {
-    marginBottom: 20,
-  },
-  shareSectionTitle: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: '#FFFFFF',
-    marginBottom: 16,
+  shareSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#1a1a24',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
   },
   shareGrid: {
     flexDirection: 'row',
