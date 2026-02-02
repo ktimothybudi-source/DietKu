@@ -183,6 +183,12 @@ export default function ProfileScreen() {
             </View>
 
             <View style={styles.profileStats}>
+              {profile.name && (
+                <View style={[styles.statRow, { borderBottomColor: theme.border }]}>
+                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Nama</Text>
+                  <Text style={[styles.statValue, { color: theme.text }]}>{profile.name}</Text>
+                </View>
+              )}
               <View style={[styles.statRow, { borderBottomColor: theme.border }]}>
                 <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Usia</Text>
                 <Text style={[styles.statValue, { color: theme.text }]}>{profile.age} tahun</Text>

@@ -25,6 +25,7 @@ import { analyzeMealPhoto } from '@/utils/photoAnalysis';
 import { getTodayKey } from '@/utils/nutritionCalculations';
 import ProgressRing from '@/components/ProgressRing';
 import { ANIMATION_DURATION } from '@/constants/animations';
+import { getTimeBasedMessage, getProgressMessage, MotivationalMessage } from '@/constants/motivationalMessages';
 
 export default function HomeScreen() {
   const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, removeFromRecent, shouldSuggestFavorite } = useNutrition();
@@ -53,6 +54,7 @@ export default function HomeScreen() {
     return { year: today.getFullYear(), month: today.getMonth() };
   });
   const [shownPendingIds, setShownPendingIds] = useState<Set<string>>(new Set());
+  const [motivationalMessage, setMotivationalMessage] = useState<MotivationalMessage | null>(null);
   const [editedItems, setEditedItems] = useState<{
     name: string;
     portion: string;
@@ -79,6 +81,29 @@ export default function HomeScreen() {
   const caloriesAnimValue = useRef(new Animated.Value(0)).current;
   const proteinAnimValue = useRef(new Animated.Value(0)).current;
   const remainingAnimValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const updateMessage = () => {
+      if (progress && streakData) {
+        const hasEntries = todayEntries.length > 0;
+        if (hasEntries) {
+          setMotivationalMessage(getProgressMessage(
+            progress.caloriesProgress,
+            progress.proteinProgress,
+            streakData.currentStreak
+          ));
+        } else {
+          setMotivationalMessage(getTimeBasedMessage());
+        }
+      } else {
+        setMotivationalMessage(getTimeBasedMessage());
+      }
+    };
+    
+    updateMessage();
+    const interval = setInterval(updateMessage, 30 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [progress, streakData, todayEntries.length]);
 
   useEffect(() => {
     Animated.timing(caloriesAnimValue, {
@@ -706,6 +731,15 @@ export default function HomeScreen() {
               </View>
             )}
           </View>
+
+          {motivationalMessage && (
+            <View style={[styles.motivationalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <Text style={styles.motivationalEmoji}>{motivationalMessage.emoji}</Text>
+              <Text style={[styles.motivationalText, { color: theme.text }]}>
+                {motivationalMessage.text}
+              </Text>
+            </View>
+          )}
           
           <View style={styles.dateNavigation}>
             <TouchableOpacity 
@@ -2011,6 +2045,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800' as const,
     color: '#FF6B35',
+  },
+  motivationalCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  motivationalEmoji: {
+    fontSize: 18,
+  },
+  motivationalText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500' as const,
+    lineHeight: 18,
   },
   content: {
     flex: 1,
