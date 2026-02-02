@@ -87,6 +87,7 @@ export default function StoryShareScreen() {
   const [showShareSheet, setShowShareSheet] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
   const locationSheetAnim = useRef(new Animated.Value(0)).current;
   const shareSheetAnim = useRef(new Animated.Value(0)).current;
 
@@ -168,11 +169,25 @@ export default function StoryShareScreen() {
 
   const handleClose = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/(tabs)');
-    }
+    
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)');
+      }
+    });
   };
 
   const handleShareInstagram = async () => {
@@ -653,7 +668,7 @@ export default function StoryShareScreen() {
           style={StyleSheet.absoluteFill}
         />
 
-        <Animated.View style={[styles.header, { paddingTop: insets.top + 8, opacity: fadeAnim }]}>
+        <Animated.View style={[styles.header, { paddingTop: insets.top + 8, opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
           <TouchableOpacity
             style={styles.closeButton}
             onPress={handleClose}
@@ -671,15 +686,17 @@ export default function StoryShareScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        <ScrollView
-          style={styles.scrollContent}
-          contentContainerStyle={[styles.scrollContentContainer, { paddingBottom: insets.bottom + 40 }]}
-          showsVerticalScrollIndicator={false}
-        >
-          {renderPreview()}
+        <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ scale: scaleAnim }] }}>
+          <ScrollView
+            style={styles.scrollContent}
+            contentContainerStyle={[styles.scrollContentContainer, { paddingBottom: insets.bottom + 40 }]}
+            showsVerticalScrollIndicator={false}
+          >
+            {renderPreview()}
 
-          {renderIncludePanel()}
-        </ScrollView>
+            {renderIncludePanel()}
+          </ScrollView>
+        </Animated.View>
 
         {renderLocationSheet()}
         {renderShareSheet()}
