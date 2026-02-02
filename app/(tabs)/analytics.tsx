@@ -38,6 +38,8 @@ interface DayData {
   dateKey: string;
   calories: number;
   protein: number;
+  carbs: number;
+  fat: number;
   entries: FoodEntry[];
 }
 
@@ -88,8 +90,10 @@ export default function AnalyticsScreen() {
         (acc, entry) => ({
           calories: acc.calories + (entry.calories || 0),
           protein: acc.protein + (entry.protein || 0),
+          carbs: acc.carbs + (entry.carbs || 0),
+          fat: acc.fat + (entry.fat || 0),
         }),
-        { calories: 0, protein: 0 }
+        { calories: 0, protein: 0, carbs: 0, fat: 0 }
       );
 
       days.push({
@@ -97,6 +101,8 @@ export default function AnalyticsScreen() {
         dateKey,
         calories: totals.calories,
         protein: totals.protein,
+        carbs: totals.carbs,
+        fat: totals.fat,
         entries,
       });
 
@@ -136,6 +142,12 @@ export default function AnalyticsScreen() {
     const totalProtein = daysWithData.reduce((sum, d) => sum + d.protein, 0);
     const avgProtein = daysWithData.length > 0 ? Math.round(totalProtein / daysWithData.length) : 0;
 
+    const totalCarbs = daysWithData.reduce((sum, d) => sum + d.carbs, 0);
+    const avgCarbs = daysWithData.length > 0 ? Math.round(totalCarbs / daysWithData.length) : 0;
+
+    const totalFat = daysWithData.reduce((sum, d) => sum + d.fat, 0);
+    const avgFat = daysWithData.length > 0 ? Math.round(totalFat / daysWithData.length) : 0;
+
     return {
       avgCalories,
       daysLogged: daysWithData.length,
@@ -143,6 +155,8 @@ export default function AnalyticsScreen() {
       daysWithinTarget,
       weightChange,
       avgProtein,
+      avgCarbs,
+      avgFat,
       targetCalories,
       startWeight,
       currentWeight,
@@ -204,16 +218,33 @@ export default function AnalyticsScreen() {
   };
 
   const renderCalorieChart = () => {
-    const maxCalories = Math.max(...dayData.map(d => d.calories), stats.targetCalories);
+    const displayDays = timeRange === '7h' ? dayData.slice(-7) : 
+                        timeRange === '30h' ? dayData.slice(-30) :
+                        timeRange === '90h' ? dayData.slice(-90) : dayData;
+    
+    const maxCalories = Math.max(...displayDays.map(d => d.calories), stats.targetCalories);
     const chartHeight = 120;
     
-    const displayDays = dayData.slice(-7);
+    const visibleDays = displayDays.length > 14 ? 
+      displayDays.filter((_, i) => i % Math.ceil(displayDays.length / 14) === 0 || i === displayDays.length - 1) :
+      displayDays;
+
+    const avgCaloriesInRange = displayDays.filter(d => d.entries.length > 0).length > 0 
+      ? Math.round(displayDays.filter(d => d.entries.length > 0).reduce((sum, d) => sum + d.calories, 0) / displayDays.filter(d => d.entries.length > 0).length)
+      : 0;
 
     return (
       <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={styles.chartHeader}>
-          <Text style={[styles.chartTitle, { color: theme.text }]}>Kalori Harian</Text>
-          <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>7 hari terakhir</Text>
+          <View>
+            <Text style={[styles.chartTitle, { color: theme.text }]}>Kalori Harian</Text>
+            <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
+              Rata-rata: {avgCaloriesInRange} kkal
+            </Text>
+          </View>
+          <View style={[styles.avgBadge, { backgroundColor: theme.primary + '15' }]}>
+            <Text style={[styles.avgBadgeText, { color: theme.primary }]}>Target: {stats.targetCalories}</Text>
+          </View>
         </View>
         
         <View style={[styles.chartContainer, { height: chartHeight + 40 }]}>
@@ -223,13 +254,16 @@ export default function AnalyticsScreen() {
           </View>
           
           <View style={styles.barsContainer}>
-            {displayDays.map((day, index) => {
+            {visibleDays.map((day, index) => {
               const barHeight = maxCalories > 0 ? (day.calories / maxCalories) * chartHeight : 0;
               const isOverTarget = day.calories > stats.targetCalories;
-              const isToday = index === displayDays.length - 1;
+              const isToday = day.dateKey === formatDateKey(new Date());
               
               return (
                 <View key={day.dateKey} style={styles.barColumn}>
+                  <Text style={[styles.barValue, { color: theme.textTertiary }]}>
+                    {day.calories > 0 ? day.calories : ''}
+                  </Text>
                   <View 
                     style={[
                       styles.bar, 
@@ -241,15 +275,28 @@ export default function AnalyticsScreen() {
                             ? '#EF4444' 
                             : '#10B981',
                         opacity: isToday ? 1 : 0.7,
+                        borderWidth: isToday ? 2 : 0,
+                        borderColor: isToday ? theme.primary : 'transparent',
                       }
                     ]} 
                   />
-                  <Text style={[styles.barLabel, { color: theme.textTertiary }]}>
+                  <Text style={[styles.barLabel, { color: isToday ? theme.primary : theme.textTertiary, fontWeight: isToday ? '700' as const : '500' as const }]}>
                     {day.date.split(' ')[1]}
                   </Text>
                 </View>
               );
             })}
+          </View>
+        </View>
+
+        <View style={styles.chartLegend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Di bawah target</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Di atas target</Text>
           </View>
         </View>
       </View>
@@ -386,20 +433,42 @@ export default function AnalyticsScreen() {
   };
 
   const renderMacroChart = () => {
-    const remaining = Math.max(0, stats.avgCalories - stats.avgProtein * 4);
-    const avgFat = Math.round((remaining * 0.3) / 9);
-    const avgCarbs = Math.round((remaining * 0.7) / 4);
-    const total = stats.avgProtein + avgCarbs + avgFat;
+    const total = stats.avgProtein + stats.avgCarbs + stats.avgFat;
+    const hasData = total > 0;
     
-    const proteinPercent = total > 0 ? (stats.avgProtein / total) * 100 : 33;
-    const carbsPercent = total > 0 ? (avgCarbs / total) * 100 : 33;
-    const fatPercent = total > 0 ? (avgFat / total) * 100 : 34;
+    const proteinPercent = hasData ? (stats.avgProtein / total) * 100 : 33;
+    const carbsPercent = hasData ? (stats.avgCarbs / total) * 100 : 33;
+    const fatPercent = hasData ? (stats.avgFat / total) * 100 : 34;
+
+    const proteinCalories = stats.avgProtein * 4;
+    const carbsCalories = stats.avgCarbs * 4;
+    const fatCalories = stats.avgFat * 9;
+    const totalMacroCalories = proteinCalories + carbsCalories + fatCalories;
+
+    if (!hasData) {
+      return (
+        <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.chartHeader}>
+            <Text style={[styles.chartTitle, { color: theme.text }]}>Distribusi Makro</Text>
+            <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>Rata-rata harian</Text>
+          </View>
+          <View style={styles.emptyChartState}>
+            <Flame size={32} color={theme.textTertiary} />
+            <Text style={[styles.emptyChartText, { color: theme.textSecondary }]}>
+              Catat makanan untuk melihat distribusi makro
+            </Text>
+          </View>
+        </View>
+      );
+    }
 
     return (
       <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={styles.chartHeader}>
-          <Text style={[styles.chartTitle, { color: theme.text }]}>Distribusi Makro</Text>
-          <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>Rata-rata harian</Text>
+          <View>
+            <Text style={[styles.chartTitle, { color: theme.text }]}>Distribusi Makro</Text>
+            <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>Total: {totalMacroCalories} kkal/hari</Text>
+          </View>
         </View>
 
         <View style={styles.macroBarContainer}>
@@ -410,21 +479,125 @@ export default function AnalyticsScreen() {
           </View>
         </View>
 
-        <View style={styles.macroLegend}>
-          <View style={styles.macroLegendItem}>
-            <View style={[styles.macroLegendDot, { backgroundColor: '#10B981' }]} />
-            <Text style={[styles.macroLegendLabel, { color: theme.textSecondary }]}>Protein</Text>
-            <Text style={[styles.macroLegendValue, { color: theme.text }]}>{stats.avgProtein}g</Text>
+        <View style={styles.macroDetails}>
+          <View style={[styles.macroDetailCard, { backgroundColor: '#10B981' + '15' }]}>
+            <View style={styles.macroDetailHeader}>
+              <View style={[styles.macroLegendDot, { backgroundColor: '#10B981' }]} />
+              <Text style={[styles.macroDetailTitle, { color: '#10B981' }]}>Protein</Text>
+            </View>
+            <Text style={[styles.macroDetailValue, { color: theme.text }]}>{stats.avgProtein}g</Text>
+            <Text style={[styles.macroDetailPercent, { color: theme.textSecondary }]}>{Math.round(proteinPercent)}%</Text>
+            <Text style={[styles.macroDetailCalories, { color: theme.textTertiary }]}>{proteinCalories} kkal</Text>
           </View>
-          <View style={styles.macroLegendItem}>
-            <View style={[styles.macroLegendDot, { backgroundColor: '#3B82F6' }]} />
-            <Text style={[styles.macroLegendLabel, { color: theme.textSecondary }]}>Karbo</Text>
-            <Text style={[styles.macroLegendValue, { color: theme.text }]}>{avgCarbs}g</Text>
+          
+          <View style={[styles.macroDetailCard, { backgroundColor: '#3B82F6' + '15' }]}>
+            <View style={styles.macroDetailHeader}>
+              <View style={[styles.macroLegendDot, { backgroundColor: '#3B82F6' }]} />
+              <Text style={[styles.macroDetailTitle, { color: '#3B82F6' }]}>Karbohidrat</Text>
+            </View>
+            <Text style={[styles.macroDetailValue, { color: theme.text }]}>{stats.avgCarbs}g</Text>
+            <Text style={[styles.macroDetailPercent, { color: theme.textSecondary }]}>{Math.round(carbsPercent)}%</Text>
+            <Text style={[styles.macroDetailCalories, { color: theme.textTertiary }]}>{carbsCalories} kkal</Text>
           </View>
-          <View style={styles.macroLegendItem}>
-            <View style={[styles.macroLegendDot, { backgroundColor: '#F59E0B' }]} />
-            <Text style={[styles.macroLegendLabel, { color: theme.textSecondary }]}>Lemak</Text>
-            <Text style={[styles.macroLegendValue, { color: theme.text }]}>{avgFat}g</Text>
+          
+          <View style={[styles.macroDetailCard, { backgroundColor: '#F59E0B' + '15' }]}>
+            <View style={styles.macroDetailHeader}>
+              <View style={[styles.macroLegendDot, { backgroundColor: '#F59E0B' }]} />
+              <Text style={[styles.macroDetailTitle, { color: '#F59E0B' }]}>Lemak</Text>
+            </View>
+            <Text style={[styles.macroDetailValue, { color: theme.text }]}>{stats.avgFat}g</Text>
+            <Text style={[styles.macroDetailPercent, { color: theme.textSecondary }]}>{Math.round(fatPercent)}%</Text>
+            <Text style={[styles.macroDetailCalories, { color: theme.textTertiary }]}>{fatCalories} kkal</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderProteinTrendChart = () => {
+    const displayDays = timeRange === '7h' ? dayData.slice(-7) : 
+                        timeRange === '30h' ? dayData.slice(-30) :
+                        timeRange === '90h' ? dayData.slice(-90) : dayData;
+    
+    const daysWithProtein = displayDays.filter(d => d.protein > 0);
+    if (daysWithProtein.length < 2) {
+      return (
+        <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.chartHeader}>
+            <Text style={[styles.chartTitle, { color: theme.text }]}>Tren Protein</Text>
+            <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>Asupan harian</Text>
+          </View>
+          <View style={styles.emptyChartState}>
+            <TrendingUp size={32} color={theme.textTertiary} />
+            <Text style={[styles.emptyChartText, { color: theme.textSecondary }]}>
+              Catat makanan minimal 2 hari untuk melihat tren protein
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    const targetProtein = dailyTargets?.protein ?? 50;
+    const maxProtein = Math.max(...displayDays.map(d => d.protein), targetProtein);
+    const chartHeight = 100;
+    
+    const visibleDays = displayDays.length > 14 ? 
+      displayDays.filter((_, i) => i % Math.ceil(displayDays.length / 14) === 0 || i === displayDays.length - 1) :
+      displayDays;
+
+    return (
+      <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.chartHeader}>
+          <View>
+            <Text style={[styles.chartTitle, { color: theme.text }]}>Tren Protein</Text>
+            <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
+              Rata-rata: {stats.avgProtein}g/hari
+            </Text>
+          </View>
+          <View style={[styles.avgBadge, { backgroundColor: '#10B981' + '15' }]}>
+            <Text style={[styles.avgBadgeText, { color: '#10B981' }]}>Target: {targetProtein}g</Text>
+          </View>
+        </View>
+
+        <View style={[styles.chartContainer, { height: chartHeight + 40 }]}>
+          <View style={[styles.targetLine, { bottom: (targetProtein / maxProtein) * chartHeight + 20 }]}>
+            <View style={[styles.targetLineDash, { backgroundColor: '#10B981' }]} />
+            <Text style={[styles.targetLineLabel, { color: '#10B981' }]}>{targetProtein}g</Text>
+          </View>
+          
+          <View style={styles.barsContainer}>
+            {visibleDays.map((day) => {
+              const barHeight = maxProtein > 0 ? (day.protein / maxProtein) * chartHeight : 0;
+              const isOverTarget = day.protein >= targetProtein;
+              const isToday = day.dateKey === formatDateKey(new Date());
+              
+              return (
+                <View key={day.dateKey} style={styles.barColumn}>
+                  <Text style={[styles.barValue, { color: theme.textTertiary }]}>
+                    {day.protein > 0 ? day.protein : ''}
+                  </Text>
+                  <View 
+                    style={[
+                      styles.bar, 
+                      { 
+                        height: Math.max(barHeight, 4),
+                        backgroundColor: day.protein === 0 
+                          ? theme.border 
+                          : isOverTarget 
+                            ? '#10B981' 
+                            : '#10B981' + '60',
+                        opacity: isToday ? 1 : 0.8,
+                        borderWidth: isToday ? 2 : 0,
+                        borderColor: isToday ? '#10B981' : 'transparent',
+                      }
+                    ]} 
+                  />
+                  <Text style={[styles.barLabel, { color: isToday ? '#10B981' : theme.textTertiary, fontWeight: isToday ? '700' as const : '500' as const }]}>
+                    {day.date.split(' ')[1]}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         </View>
       </View>
@@ -500,6 +673,7 @@ export default function AnalyticsScreen() {
 
           {renderWeightChart()}
           {renderCalorieChart()}
+          {renderProteinTrendChart()}
           {renderMacroChart()}
 
           <View style={styles.streakSection}>
@@ -842,6 +1016,78 @@ const styles = StyleSheet.create({
   macroLegendValue: {
     fontSize: 12,
     fontWeight: '700' as const,
+  },
+  macroDetails: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  macroDetailCard: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  macroDetailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  macroDetailTitle: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+  },
+  macroDetailValue: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+  },
+  macroDetailPercent: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    marginTop: 2,
+  },
+  macroDetailCalories: {
+    fontSize: 10,
+    fontWeight: '500' as const,
+    marginTop: 2,
+  },
+  chartLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 20,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+  },
+  avgBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  avgBadgeText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  barValue: {
+    fontSize: 9,
+    fontWeight: '500' as const,
+    marginBottom: 4,
+    height: 12,
   },
   sectionTitle: {
     fontSize: 18,
