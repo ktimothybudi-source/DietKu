@@ -328,26 +328,24 @@ export default function OnboardingScreen() {
         <Text style={styles.languageText}>{language === 'id' ? 'ID' : 'EN'}</Text>
       </TouchableOpacity>
 
-      <View style={styles.introHeroSection}>
-        <Animated.View
-          style={[
-            styles.introImageWrapper,
-            {
-              transform: [{ scale: introScaleAnim }],
-              opacity: introScaleAnim,
-            },
-          ]}
-        >
-          <View style={styles.introImageGlow} />
-          <View style={styles.introImageFrame}>
-            <Image source={require('../assets/images/intro.png')} style={styles.introImageLarge} resizeMode="cover" />
-          </View>
-          <View style={styles.introFloatingBadge}>
-            <Sparkles size={12} color="#10B981" />
-            <Text style={styles.introFloatingBadgeText}>AI-Powered</Text>
-          </View>
-        </Animated.View>
+      <Animated.View
+        style={[
+          styles.introImageHero,
+          {
+            transform: [{ scale: introScaleAnim }],
+            opacity: introScaleAnim,
+          },
+        ]}
+      >
+        <Image source={require('../assets/images/intro.png')} style={styles.introImageLarge} resizeMode="cover" />
+        <View style={styles.introImageOverlay} />
+        <View style={styles.introFloatingBadge}>
+          <Sparkles size={12} color="#FFFFFF" />
+          <Text style={styles.introFloatingBadgeText}>AI-Powered</Text>
+        </View>
+      </Animated.View>
 
+      <View style={styles.introHeroSection}>
         <Animated.View
           style={[
             styles.introTextSection,
@@ -1762,66 +1760,51 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAFAFA',
   },
-  introHeroSection: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  introImageWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 32,
+  introImageHero: {
+    width: '100%',
+    height: '45%',
     position: 'relative' as const,
-  },
-  introImageGlow: {
-    position: 'absolute' as const,
-    width: 200,
-    height: 160,
-    borderRadius: 24,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-  },
-  introImageFrame: {
-    width: 180,
-    height: 140,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
-    overflow: 'hidden',
   },
   introImageLarge: {
     width: '100%',
     height: '100%',
   },
+  introImageOverlay: {
+    position: 'absolute' as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    background: 'linear-gradient(transparent, #FAFAFA)',
+  },
   introFloatingBadge: {
     position: 'absolute' as const,
-    bottom: -8,
-    right: -8,
+    bottom: 16,
+    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.12)',
+    gap: 6,
+    backgroundColor: 'rgba(16, 185, 129, 0.95)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   introFloatingBadgeText: {
-    fontSize: 10,
-    fontWeight: '600' as const,
-    color: '#10B981',
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+  },
+  introHeroSection: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 24,
+    paddingTop: 24,
   },
   introTextSection: {
     alignItems: 'center',
