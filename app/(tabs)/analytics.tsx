@@ -69,6 +69,11 @@ export default function AnalyticsScreen() {
   const [weightInput, setWeightInput] = useState('');
   const [weightError, setWeightError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const today = new Date();
+    return { year: today.getFullYear(), month: today.getMonth() };
+  });
 
   const setupReady = !!profile && !!dailyTargets;
   const timeRangeDays = getTimeRangeDays(timeRange);
@@ -116,14 +121,25 @@ export default function AnalyticsScreen() {
   }, [foodLog, timeRangeDays]);
 
   const weightChartData = useMemo(() => {
-    const list = (weightHistory || [])
+    let list = (weightHistory || [])
       .filter((w: any) => Number.isFinite(new Date(w.date).getTime()))
       .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // Add initial weight from profile if no weight history exists
+    if (profile?.weight && list.length === 0) {
+      const today = new Date();
+      const todayKey = formatDateKey(today);
+      list = [{
+        date: todayKey,
+        weight: profile.weight,
+        timestamp: Date.now(),
+      }];
+    }
 
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - timeRangeDays);
     return list.filter((w: any) => new Date(w.date) >= cutoff);
-  }, [weightHistory, timeRangeDays]);
+  }, [weightHistory, timeRangeDays, profile]);
 
   const stats = useMemo(() => {
     const daysWithData = dayData.filter(d => d.entries.length > 0);
@@ -207,22 +223,6 @@ export default function AnalyticsScreen() {
     }
   };
 
-  const navigateDate = (direction: 'prev' | 'next') => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() + (direction === 'prev' ? -1 : 1));
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const minDate = new Date(today);
-    minDate.setDate(minDate.getDate() - 30);
-    
-    if (newDate <= today && newDate >= minDate) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setSelectedDate(newDate);
-    }
-  };
-
   const formatDisplayDate = (date: Date) => {
     const today = new Date();
     const yesterday = new Date(today);
@@ -237,21 +237,79 @@ export default function AnalyticsScreen() {
     return date.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' });
   };
 
-  const canGoNext = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const selected = new Date(selectedDate);
-    selected.setHours(0, 0, 0, 0);
-    return selected < today;
+  const openCalendarPicker = () => {
+    const date = new Date(selectedDate);
+    setCalendarMonth({ year: date.getFullYear(), month: date.getMonth() });
+    setShowCalendarPicker(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const canGoPrev = () => {
-    const minDate = new Date();
+  const selectDateFromCalendar = (day: number) => {
+    const newDate = new Date(calendarMonth.year, calendarMonth.month, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const minDate = new Date(today);
     minDate.setDate(minDate.getDate() - 30);
-    minDate.setHours(0, 0, 0, 0);
-    const selected = new Date(selectedDate);
-    selected.setHours(0, 0, 0, 0);
-    return selected > minDate;
+    
+    if (newDate <= today && newDate >= minDate) {
+      setSelectedDate(newDate);
+      setShowCalendarPicker(false);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+  };
+
+  const goToPreviousMonth = () => {
+    setCalendarMonth(prev => {
+      if (prev.month === 0) {
+        return { year: prev.year - 1, month: 11 };
+      }
+      return { year: prev.year, month: prev.month - 1 };
+    });
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const goToNextMonth = () => {
+    const today = new Date();
+    const nextMonth = calendarMonth.month === 11 ? 0 : calendarMonth.month + 1;
+    const nextYear = calendarMonth.month === 11 ? calendarMonth.year + 1 : calendarMonth.year;
+    
+    if (nextYear < today.getFullYear() || (nextYear === today.getFullYear() && nextMonth <= today.getMonth())) {
+      setCalendarMonth({ year: nextYear, month: nextMonth });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+  const getCalendarDays = () => {
+    const { year, month } = calendarMonth;
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const minDate = new Date(today);
+    minDate.setDate(minDate.getDate() - 30);
+    
+    const days: { day: number; isCurrentMonth: boolean; isSelectable: boolean; isSelected: boolean; isToday: boolean }[] = [];
+    
+    for (let i = 0; i < firstDay; i++) {
+      days.push({ day: 0, isCurrentMonth: false, isSelectable: false, isSelected: false, isToday: false });
+    }
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const isSelectable = date <= today && date >= minDate;
+      const isSelected = formatDateKey(date) === formatDateKey(selectedDate);
+      const isToday = formatDateKey(date) === formatDateKey(today);
+      days.push({ day, isCurrentMonth: true, isSelectable, isSelected, isToday });
+    }
+    
+    return days;
+  };
+
+  const getMonthName = (month: number) => {
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    return months[month];
   };
 
   const renderCalorieChart = () => {
@@ -677,51 +735,36 @@ export default function AnalyticsScreen() {
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={[styles.modalLabel, { color: theme.textSecondary }]}>Tanggal</Text>
-              <View style={[styles.datePickerRow, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                <TouchableOpacity 
-                  onPress={() => navigateDate('prev')}
-                  style={[styles.dateNavBtn, !canGoPrev() && { opacity: 0.3 }]}
-                  disabled={!canGoPrev()}
-                >
-                  <ChevronLeft size={22} color={theme.text} />
-                </TouchableOpacity>
-                <View style={styles.dateDisplay}>
-                  <Text style={[styles.dateDisplayText, { color: theme.text }]}>
-                    {formatDisplayDate(selectedDate)}
-                  </Text>
-                </View>
-                <TouchableOpacity 
-                  onPress={() => navigateDate('next')}
-                  style={[styles.dateNavBtn, !canGoNext() && { opacity: 0.3 }]}
-                  disabled={!canGoNext()}
-                >
-                  <ChevronRight size={22} color={theme.text} />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={[styles.modalLabel, { color: theme.textSecondary, marginTop: 20 }]}>Berat badan</Text>
-              <View style={styles.weightInputRow}>
-                <TextInput
-                  value={weightInput}
-                  onChangeText={setWeightInput}
-                  placeholder="0.0"
-                  placeholderTextColor={theme.textTertiary}
-                  keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
-                  style={[styles.weightInput, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                  autoFocus
-                />
-                <View style={[styles.weightUnitBox, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                  <Text style={[styles.weightUnit, { color: theme.textSecondary }]}>kg</Text>
-                </View>
-              </View>
+              <Text style={[styles.modalLabel, { color: theme.textSecondary }]}>Berat badan (kg)</Text>
+              <TextInput
+                value={weightInput}
+                onChangeText={setWeightInput}
+                placeholder={stats.currentWeight > 0 ? stats.currentWeight.toFixed(1) : '70.0'}
+                placeholderTextColor={theme.textTertiary}
+                keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
+                style={[styles.weightInputLarge, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                autoFocus
+              />
               {weightError && <Text style={styles.weightError}>{weightError}</Text>}
               
               {stats.currentWeight > 0 && (
                 <Text style={[styles.currentWeightHint, { color: theme.textTertiary }]}>
-                  Terakhir dicatat: {stats.currentWeight.toFixed(1)} kg
+                  Berat terakhir: {stats.currentWeight.toFixed(1)} kg
                 </Text>
               )}
+
+              <Text style={[styles.modalLabel, { color: theme.textSecondary, marginTop: 24 }]}>Tanggal</Text>
+              <TouchableOpacity
+                style={[styles.datePickerButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                onPress={openCalendarPicker}
+                activeOpacity={0.7}
+              >
+                <Calendar size={20} color={theme.primary} />
+                <Text style={[styles.datePickerButtonText, { color: theme.text }]}>
+                  {formatDisplayDate(selectedDate)}
+                </Text>
+                <ChevronRight size={18} color={theme.textTertiary} />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.modalFooter}>
@@ -742,6 +785,70 @@ export default function AnalyticsScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal
+        visible={showCalendarPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCalendarPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.calendarModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowCalendarPicker(false)}
+        >
+          <View style={[styles.calendarModalContent, { backgroundColor: theme.card }]}>
+            <TouchableOpacity activeOpacity={1}>
+              <View style={styles.calendarHeader}>
+                <TouchableOpacity onPress={goToPreviousMonth} style={styles.calendarNavBtn}>
+                  <ChevronLeft size={22} color={theme.text} />
+                </TouchableOpacity>
+                <Text style={[styles.calendarMonthText, { color: theme.text }]}>
+                  {getMonthName(calendarMonth.month)} {calendarMonth.year}
+                </Text>
+                <TouchableOpacity 
+                  onPress={goToNextMonth} 
+                  style={[styles.calendarNavBtn, {
+                    opacity: (calendarMonth.year === new Date().getFullYear() && calendarMonth.month >= new Date().getMonth()) ? 0.3 : 1
+                  }]}
+                >
+                  <ChevronRight size={22} color={theme.text} />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.calendarWeekdays}>
+                {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map((day, i) => (
+                  <Text key={i} style={[styles.calendarWeekday, { color: theme.textSecondary }]}>{day}</Text>
+                ))}
+              </View>
+              
+              <View style={styles.calendarGrid}>
+                {getCalendarDays().map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.calendarDay,
+                      item.isSelected && styles.calendarDaySelected,
+                      item.isToday && !item.isSelected && [styles.calendarDayToday, { borderColor: theme.primary }],
+                    ]}
+                    onPress={() => item.isCurrentMonth && item.isSelectable && selectDateFromCalendar(item.day)}
+                    disabled={!item.isCurrentMonth || !item.isSelectable}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.calendarDayText,
+                      { color: item.isCurrentMonth ? (item.isSelectable ? theme.text : theme.textTertiary) : 'transparent' },
+                      item.isSelected && styles.calendarDayTextSelected,
+                    ]}>
+                      {item.day || ''}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </>
   );
@@ -1144,6 +1251,15 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     textAlign: 'center',
   },
+  weightInputLarge: {
+    height: 64,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    fontSize: 32,
+    fontWeight: '700' as const,
+    textAlign: 'center',
+  },
   weightUnitBox: {
     width: 60,
     height: 60,
@@ -1154,6 +1270,20 @@ const styles = StyleSheet.create({
   },
   weightUnit: {
     fontSize: 18,
+    fontWeight: '600' as const,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  datePickerButtonText: {
+    flex: 1,
+    fontSize: 16,
     fontWeight: '600' as const,
   },
   weightError: {
@@ -1195,5 +1325,64 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#FFFFFF',
+  },
+  calendarModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  calendarModalContent: {
+    width: SCREEN_WIDTH - 48,
+    borderRadius: 20,
+    padding: 20,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  calendarNavBtn: {
+    padding: 8,
+  },
+  calendarMonthText: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+  },
+  calendarWeekdays: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  calendarWeekday: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calendarDay: {
+    width: '14.28%',
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+  },
+  calendarDaySelected: {
+    backgroundColor: '#3B82F6',
+  },
+  calendarDayToday: {
+    borderWidth: 2,
+  },
+  calendarDayText: {
+    fontSize: 15,
+    fontWeight: '500' as const,
+  },
+  calendarDayTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700' as const,
   },
 });
