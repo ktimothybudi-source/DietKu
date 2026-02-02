@@ -24,8 +24,8 @@ import {
   ChevronRight,
   Target,
   Flame,
-  Clock,
   Zap,
+  Trash2,
 } from 'lucide-react-native';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -75,6 +75,9 @@ export default function AnalyticsScreen() {
     const today = new Date();
     return { year: today.getFullYear(), month: today.getMonth() };
   });
+  const [showEditWeightModal, setShowEditWeightModal] = useState(false);
+  const [selectedWeightEntry, setSelectedWeightEntry] = useState<{ date: string; weight: number } | null>(null);
+  const [editWeightInput, setEditWeightInput] = useState('');
 
   const setupReady = !!profile && !!dailyTargets;
   const timeRangeDays = getTimeRangeDays(timeRange);
@@ -199,6 +202,50 @@ export default function AnalyticsScreen() {
       weightProgress,
     };
   }, [dayData, dailyTargets, profile, weightChartData]);
+
+  const handleDotPress = (entry: { date: string; weight: number }) => {
+    setSelectedWeightEntry(entry);
+    setEditWeightInput(entry.weight.toString());
+    setShowEditWeightModal(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const updateWeight = async () => {
+    if (!selectedWeightEntry) return;
+    
+    const raw = editWeightInput.replace(',', '.').trim();
+    const value = Number(raw);
+
+    if (!raw || !Number.isFinite(value) || value <= 0 || value > 500) {
+      return;
+    }
+
+    try {
+      if (typeof nutrition.updateWeightEntry === 'function') {
+        nutrition.updateWeightEntry(selectedWeightEntry.date, value);
+      }
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowEditWeightModal(false);
+      setSelectedWeightEntry(null);
+    } catch (error) {
+      console.error('Failed to update weight:', error);
+    }
+  };
+
+  const deleteWeight = async () => {
+    if (!selectedWeightEntry) return;
+
+    try {
+      if (typeof nutrition.deleteWeightEntry === 'function') {
+        nutrition.deleteWeightEntry(selectedWeightEntry.date);
+      }
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowEditWeightModal(false);
+      setSelectedWeightEntry(null);
+    } catch (error) {
+      console.error('Failed to delete weight:', error);
+    }
+  };
 
   const openWeightModal = () => {
     setWeightInput('');
@@ -607,17 +654,11 @@ export default function AnalyticsScreen() {
         
         {goalProjection && targetWeight > 0 && (
           <View style={[styles.projectionCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
-            <View style={styles.projectionHeader}>
-              <Clock size={16} color={goalProjection.type === 'projected' || goalProjection.type === 'estimated' ? '#10B981' : '#F59E0B'} />
-              <Text style={[styles.projectionTitle, { color: theme.text }]}>Proyeksi Target</Text>
-              {goalProjection.type === 'estimated' && (
-                <View style={[styles.estimatedBadge, { backgroundColor: '#F59E0B' + '20' }]}>
-                  <Text style={styles.estimatedBadgeText}>Estimasi</Text>
-                </View>
-              )}
-            </View>
             {(goalProjection.type === 'projected' || goalProjection.type === 'estimated') ? (
               <View style={styles.projectionContent}>
+                <Text style={[styles.projectionFriendlyText, { color: theme.text }]}>
+                  🎯 Kamu akan mencapai berat impianmu sekitar
+                </Text>
                 <Text style={[styles.projectionDate, { color: '#10B981' }]}>
                   {goalProjection.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </Text>
@@ -626,9 +667,15 @@ export default function AnalyticsScreen() {
                 </Text>
               </View>
             ) : (
-              <Text style={[styles.projectionMessage, { color: '#F59E0B' }]}>
-                {goalProjection.message}
-              </Text>
+              <View style={styles.projectionContent}>
+                <Text style={[styles.projectionFriendlyText, { color: '#F59E0B' }]}>
+                  {goalProjection.message === 'Belum ada perubahan' 
+                    ? '📊 Terus catat beratmu untuk melihat proyeksi'
+                    : goalProjection.message === 'Perlu penyesuaian pola'
+                    ? '💪 Ayo sesuaikan pola makanmu untuk mencapai target!'
+                    : '⏳ Proyeksi membutuhkan waktu lebih lama'}
+                </Text>
+              </View>
             )}
           </View>
         )}
@@ -689,17 +736,20 @@ export default function AnalyticsScreen() {
               />
             )}
             {points.map((point: { x: number; y: number; weight: number; date: string }, index: number) => (
-              <View
+              <TouchableOpacity
                 key={index}
                 style={[
-                  styles.graphDot,
+                  styles.graphDotTouchable,
                   {
-                    left: point.x - 6,
-                    top: point.y - 6,
-                    backgroundColor: '#3B82F6',
+                    left: point.x - 14,
+                    top: point.y - 14,
                   }
                 ]}
-              />
+                onPress={() => handleDotPress({ date: point.date, weight: point.weight })}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.graphDot, { backgroundColor: '#3B82F6' }]} />
+              </TouchableOpacity>
             ))}
             {points.length > 1 && points.map((point: { x: number; y: number; weight: number; date: string }, index: number) => {
               if (index === 0) return null;
@@ -1078,6 +1128,78 @@ export default function AnalyticsScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      <Modal
+        visible={showEditWeightModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEditWeightModal(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowEditWeightModal(false)}
+          />
+          
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Edit Berat Badan</Text>
+              <TouchableOpacity 
+                onPress={() => setShowEditWeightModal(false)}
+                style={[styles.modalCloseBtn, { backgroundColor: theme.background }]}
+              >
+                <X size={20} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              {selectedWeightEntry && (
+                <Text style={[styles.editDateLabel, { color: theme.textSecondary }]}>
+                  {new Date(selectedWeightEntry.date).toLocaleDateString('id-ID', { 
+                    weekday: 'long', 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                  })}
+                </Text>
+              )}
+              
+              <Text style={[styles.modalLabel, { color: theme.textSecondary, marginTop: 16 }]}>Berat badan (kg)</Text>
+              <TextInput
+                value={editWeightInput}
+                onChangeText={setEditWeightInput}
+                placeholder="70.0"
+                placeholderTextColor={theme.textTertiary}
+                keyboardType={Platform.OS === 'ios' ? 'decimal-pad' : 'numeric'}
+                style={[styles.weightInputLarge, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                autoFocus
+              />
+            </View>
+
+            <View style={styles.editModalFooter}>
+              <TouchableOpacity
+                style={[styles.deleteWeightBtn, { borderColor: '#EF4444' }]}
+                onPress={deleteWeight}
+                activeOpacity={0.7}
+              >
+                <Trash2 size={18} color="#EF4444" />
+                <Text style={styles.deleteWeightBtnText}>Hapus</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveButton, { backgroundColor: '#3B82F6', flex: 1 }]}
+                onPress={updateWeight}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.saveButtonText}>Simpan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </>
   );
 }
@@ -1235,11 +1357,18 @@ const styles = StyleSheet.create({
     position: 'relative',
     flex: 1,
   },
-  graphDot: {
+  graphDotTouchable: {
     position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  graphDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     borderWidth: 2,
     borderColor: '#FFFFFF',
     shadowColor: '#3B82F6',
@@ -1280,9 +1409,15 @@ const styles = StyleSheet.create({
   },
   projectionCard: {
     marginTop: 16,
-    padding: 14,
+    padding: 16,
     borderRadius: 14,
     borderWidth: 1,
+  },
+  projectionFriendlyText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    marginBottom: 4,
+    lineHeight: 22,
   },
   projectionHeader: {
     flexDirection: 'row',
@@ -1662,6 +1797,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: '#FFFFFF',
+  },
+  editDateLabel: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    textAlign: 'center',
+  },
+  editModalFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 20,
+    paddingTop: 8,
+  },
+  deleteWeightBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  deleteWeightBtnText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#EF4444',
   },
   calendarModalOverlay: {
     flex: 1,

@@ -458,6 +458,22 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     console.log('Weight entry saved:', { dateKey, weight, historyLength: updatedHistory.length });
   }, [weightHistory, mutateWeightHistory]);
 
+  const updateWeightEntry = useCallback((dateKey: string, newWeight: number) => {
+    const updatedHistory = weightHistory.map(entry =>
+      entry.date === dateKey
+        ? { ...entry, weight: newWeight, timestamp: Date.now() }
+        : entry
+    );
+    mutateWeightHistory(updatedHistory);
+    console.log('Weight entry updated:', { dateKey, newWeight });
+  }, [weightHistory, mutateWeightHistory]);
+
+  const deleteWeightEntry = useCallback((dateKey: string) => {
+    const updatedHistory = weightHistory.filter(entry => entry.date !== dateKey);
+    mutateWeightHistory(updatedHistory);
+    console.log('Weight entry deleted:', { dateKey, remainingEntries: updatedHistory.length });
+  }, [weightHistory, mutateWeightHistory]);
+
   const shouldSuggestFavorite = useCallback((mealName: string): boolean => {
     const normalizedName = mealName.toLowerCase().trim();
     if (favorites.some(f => f.name.toLowerCase().trim() === normalizedName)) {
@@ -647,6 +663,8 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     removeFromRecent,
     shouldSuggestFavorite,
     addWeightEntry,
+    updateWeightEntry,
+    deleteWeightEntry,
     isLoading: profileQuery.isLoading || foodLogQuery.isLoading || streakQuery.isLoading || weightHistoryQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading,
     isSaving: saveProfileMutation.isPending || saveFoodLogMutation.isPending || saveStreakMutation.isPending || saveWeightHistoryMutation.isPending || saveFavoritesMutation.isPending || saveRecentMealsMutation.isPending,
   };
