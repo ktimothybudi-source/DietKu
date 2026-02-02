@@ -33,6 +33,7 @@ import {
   Image as ImageIcon,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import * as Location from 'expo-location';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   StoryShareData,
@@ -86,6 +87,7 @@ export default function StoryShareScreen() {
   const [customLocationInput, setCustomLocationInput] = useState('');
   const [showWatermark, setShowWatermark] = useState(true);
   const [showShareSheet, setShowShareSheet] = useState(false);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -590,18 +592,89 @@ export default function StoryShareScreen() {
 
           <TouchableOpacity
             style={styles.locationOption}
-            onPress={() => {
-              if (Platform.OS !== 'web') {
-                Alert.alert('Location', 'Using current location feature coming soon');
+            onPress={async () => {
+              try {
+                setIsLoadingLocation(true);
+                
+                if (Platform.OS === 'web') {
+                  // Web geolocation
+                  if ('geolocation' in navigator) {
+                    navigator.geolocation.getCurrentPosition(
+                      async (position) => {
+                        const { latitude, longitude } = position.coords;
+                        try {
+                          const response = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+                          );
+                          const data = await response.json();
+                          const locationStr = data.address?.city || data.address?.town || data.address?.village || data.display_name?.split(',')[0] || 'Current Location';
+                          selectLocation(locationStr);
+                        } catch {
+                          selectLocation('Current Location');
+                        }
+                        setIsLoadingLocation(false);
+                      },
+                      (error) => {
+                        console.log('Web location error:', error);
+                        Alert.alert('Location Error', 'Unable to get your location. Please enable location access.');
+                        setIsLoadingLocation(false);
+                      }
+                    );
+                  } else {
+                    Alert.alert('Location Error', 'Location is not supported on this browser.');
+                    setIsLoadingLocation(false);
+                  }
+                } else {
+                  // Native location with expo-location
+                  const { status } = await Location.requestForegroundPermissionsAsync();
+                  
+                  if (status !== 'granted') {
+                    Alert.alert(
+                      'Location Permission Required',
+                      'Please allow location access to use this feature.',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Settings', onPress: () => Location.requestForegroundPermissionsAsync() }
+                      ]
+                    );
+                    setIsLoadingLocation(false);
+                    return;
+                  }
+                  
+                  const location = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Balanced,
+                  });
+                  
+                  const [address] = await Location.reverseGeocodeAsync({
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                  });
+                  
+                  if (address) {
+                    const locationStr = address.city || address.subregion || address.region || address.district || 'Current Location';
+                    selectLocation(locationStr);
+                  } else {
+                    selectLocation('Current Location');
+                  }
+                  setIsLoadingLocation(false);
+                }
+                
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } catch (error) {
+                console.log('Location error:', error);
+                Alert.alert('Location Error', 'Unable to get your location. Please try again.');
+                setIsLoadingLocation(false);
               }
-              selectLocation('Current Location');
             }}
             activeOpacity={0.7}
+            disabled={isLoadingLocation}
           >
             <View style={styles.locationOptionIcon}>
               <Navigation size={20} color="#10B981" />
             </View>
-            <Text style={styles.locationOptionText}>Use current location</Text>
+            <Text style={styles.locationOptionText}>
+              {isLoadingLocation ? 'Getting location...' : 'Use current location'}
+            </Text>
             <ChevronRight size={20} color="#666" />
           </TouchableOpacity>
 
