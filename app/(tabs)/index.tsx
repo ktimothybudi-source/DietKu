@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -55,6 +55,9 @@ export default function HomeScreen() {
   });
   const [shownPendingIds, setShownPendingIds] = useState<Set<string>>(new Set());
   const [motivationalMessage, setMotivationalMessage] = useState<MotivationalMessage | null>(null);
+  const [showMotivationalToast, setShowMotivationalToast] = useState(false);
+  const motivationalToastAnim = useRef(new Animated.Value(-100)).current;
+  const motivationalToastOpacity = useRef(new Animated.Value(0)).current;
   const [editedItems, setEditedItems] = useState<{
     name: string;
     portion: string;
@@ -82,28 +85,55 @@ export default function HomeScreen() {
   const proteinAnimValue = useRef(new Animated.Value(0)).current;
   const remainingAnimValue = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    const updateMessage = () => {
-      if (progress && streakData) {
-        const hasEntries = todayEntries.length > 0;
-        if (hasEntries) {
-          setMotivationalMessage(getProgressMessage(
-            progress.caloriesProgress,
-            progress.proteinProgress,
-            streakData.currentStreak
-          ));
-        } else {
-          setMotivationalMessage(getTimeBasedMessage());
-        }
-      } else {
-        setMotivationalMessage(getTimeBasedMessage());
-      }
-    };
+  const showMotivationalFeedback = useCallback((message: MotivationalMessage) => {
+    setMotivationalMessage(message);
+    setShowMotivationalToast(true);
     
-    updateMessage();
-    const interval = setInterval(updateMessage, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [progress, streakData, todayEntries.length]);
+    Animated.parallel([
+      Animated.spring(motivationalToastAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 10,
+      }),
+      Animated.timing(motivationalToastOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(motivationalToastAnim, {
+          toValue: -100,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(motivationalToastOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShowMotivationalToast(false);
+      });
+    }, 3000);
+  }, [motivationalToastAnim, motivationalToastOpacity]);
+
+  const prevEntriesCount = useRef(todayEntries.length);
+  
+  useEffect(() => {
+    if (todayEntries.length > prevEntriesCount.current && progress && streakData) {
+      const message = getProgressMessage(
+        progress.caloriesProgress,
+        progress.proteinProgress,
+        streakData.currentStreak
+      );
+      showMotivationalFeedback(message);
+    }
+    prevEntriesCount.current = todayEntries.length;
+  }, [todayEntries.length, progress, streakData, showMotivationalFeedback]);
 
   useEffect(() => {
     Animated.timing(caloriesAnimValue, {
@@ -732,14 +762,7 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {motivationalMessage && (
-            <View style={[styles.motivationalCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <Text style={styles.motivationalEmoji}>{motivationalMessage.emoji}</Text>
-              <Text style={[styles.motivationalText, { color: theme.text }]}>
-                {motivationalMessage.text}
-              </Text>
-            </View>
-          )}
+
           
           <View style={styles.dateNavigation}>
             <TouchableOpacity 
@@ -978,6 +1001,23 @@ export default function HomeScreen() {
         >
           <Plus size={28} color="#FFFFFF" />
         </TouchableOpacity>
+
+        {showMotivationalToast && motivationalMessage && (
+          <Animated.View 
+            style={[
+              styles.motivationalToast,
+              {
+                transform: [{ translateY: motivationalToastAnim }],
+                opacity: motivationalToastOpacity,
+              }
+            ]}
+          >
+            <View style={styles.motivationalToastContent}>
+              <Text style={styles.motivationalToastEmoji}>{motivationalMessage.emoji}</Text>
+              <Text style={styles.motivationalToastText}>{motivationalMessage.text}</Text>
+            </View>
+          </Animated.View>
+        )}
 
         <Modal
           visible={showCalendarPicker}
@@ -2046,24 +2086,36 @@ const styles = StyleSheet.create({
     fontWeight: '800' as const,
     color: '#FF6B35',
   },
-  motivationalCard: {
+  motivationalToast: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    right: 20,
+    zIndex: 1000,
+  },
+  motivationalToastContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
+    backgroundColor: 'rgba(16, 185, 129, 0.95)',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
     gap: 10,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  motivationalEmoji: {
-    fontSize: 18,
+  motivationalToastEmoji: {
+    fontSize: 20,
   },
-  motivationalText: {
+  motivationalToastText: {
     flex: 1,
-    fontSize: 13,
-    fontWeight: '500' as const,
-    lineHeight: 18,
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+    lineHeight: 20,
   },
   content: {
     flex: 1,
