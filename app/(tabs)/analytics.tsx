@@ -460,13 +460,31 @@ export default function AnalyticsScreen() {
     
     const targetWeight = profile.targetWeight;
     const initialWeight = profile.weight;
-    const currentWeight = stats.currentWeight;
+    const currentWeight = stats.currentWeight || initialWeight;
     const goal = profile.goal;
     
     if (targetWeight === initialWeight) return null;
     
-    // Calculate weight change rate from weight history
-    if (weightChartData.length < 2) return null;
+    // If no weight history yet, show estimated projection based on safe rate
+    if (weightChartData.length < 2) {
+      const remainingWeight = Math.abs(targetWeight - currentWeight);
+      const safeWeeklyRate = goal === 'lose' ? 0.5 : goal === 'gain' ? 0.3 : 0;
+      
+      if (safeWeeklyRate === 0 || remainingWeight === 0) return null;
+      
+      const weeksToGoal = remainingWeight / safeWeeklyRate;
+      const daysToGoal = Math.ceil(weeksToGoal * 7);
+      
+      const projectedDate = new Date();
+      projectedDate.setDate(projectedDate.getDate() + daysToGoal);
+      
+      return {
+        type: 'estimated' as const,
+        date: projectedDate,
+        daysRemaining: daysToGoal,
+        weeklyRate: safeWeeklyRate,
+      };
+    }
     
     const firstEntry = weightChartData[0];
     const lastEntry = weightChartData[weightChartData.length - 1];
@@ -477,7 +495,9 @@ export default function AnalyticsScreen() {
     const weightChangeTotal = lastEntry.weight - firstEntry.weight;
     const dailyRate = weightChangeTotal / daysPassed;
     
-    if (dailyRate === 0) return null;
+    if (dailyRate === 0) {
+      return { type: 'no_change' as const, message: 'Belum ada perubahan' };
+    }
     
     const remainingWeight = targetWeight - currentWeight;
     
@@ -588,10 +608,15 @@ export default function AnalyticsScreen() {
         {goalProjection && targetWeight > 0 && (
           <View style={[styles.projectionCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
             <View style={styles.projectionHeader}>
-              <Clock size={16} color={goalProjection.type === 'projected' ? '#10B981' : '#F59E0B'} />
+              <Clock size={16} color={goalProjection.type === 'projected' || goalProjection.type === 'estimated' ? '#10B981' : '#F59E0B'} />
               <Text style={[styles.projectionTitle, { color: theme.text }]}>Proyeksi Target</Text>
+              {goalProjection.type === 'estimated' && (
+                <View style={[styles.estimatedBadge, { backgroundColor: '#F59E0B' + '20' }]}>
+                  <Text style={styles.estimatedBadgeText}>Estimasi</Text>
+                </View>
+              )}
             </View>
-            {goalProjection.type === 'projected' ? (
+            {(goalProjection.type === 'projected' || goalProjection.type === 'estimated') ? (
               <View style={styles.projectionContent}>
                 <Text style={[styles.projectionDate, { color: '#10B981' }]}>
                   {goalProjection.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -731,23 +756,29 @@ export default function AnalyticsScreen() {
     const macros = [
       { 
         name: 'Protein', 
+        shortName: 'P',
         avg: stats.avgProtein, 
         target: targetProtein, 
         color: '#3B82F6',
+        bgColor: '#3B82F6' + '12',
         unit: 'g'
       },
       { 
-        name: 'Karbohidrat', 
+        name: 'Karbo', 
+        shortName: 'C',
         avg: stats.avgCarbs, 
         target: targetCarbs, 
         color: '#F59E0B',
+        bgColor: '#F59E0B' + '12',
         unit: 'g'
       },
       { 
         name: 'Lemak', 
+        shortName: 'F',
         avg: stats.avgFat, 
         target: targetFat, 
         color: '#EF4444',
+        bgColor: '#EF4444' + '12',
         unit: 'g'
       },
     ];
@@ -768,37 +799,52 @@ export default function AnalyticsScreen() {
           </View>
         </View>
         
-        <View style={styles.macroContainer}>
+        <View style={styles.macroGridContainer}>
           {macros.map((macro) => {
             const progress = macro.target > 0 ? Math.min((macro.avg / macro.target) * 100, 100) : 0;
             const isOver = macro.avg > macro.target && macro.target > 0;
+            const progressAngle = (progress / 100) * 360;
             
             return (
-              <View key={macro.name} style={styles.macroRow}>
-                <View style={styles.macroInfo}>
-                  <View style={[styles.macroDot, { backgroundColor: macro.color }]} />
-                  <Text style={[styles.macroName, { color: theme.text }]}>{macro.name}</Text>
+              <View key={macro.name} style={[styles.macroCard, { backgroundColor: macro.bgColor }]}>
+                <View style={styles.macroCardHeader}>
+                  <View style={[styles.macroIconCircle, { backgroundColor: macro.color + '20' }]}>
+                    <Text style={[styles.macroIconText, { color: macro.color }]}>{macro.shortName}</Text>
+                  </View>
+                  <Text style={[styles.macroCardName, { color: theme.text }]}>{macro.name}</Text>
                 </View>
-                <View style={styles.macroBarContainer}>
-                  <View style={[styles.macroBarBg, { backgroundColor: theme.border }]}>
+                
+                <View style={styles.macroCardContent}>
+                  <View style={styles.macroRingContainer}>
+                    <View style={[styles.macroRingBg, { borderColor: theme.border }]} />
                     <View 
                       style={[
-                        styles.macroBarFill, 
+                        styles.macroRingProgress, 
                         { 
-                          width: `${progress}%`, 
-                          backgroundColor: isOver ? '#EF4444' : macro.color 
+                          borderColor: isOver ? '#EF4444' : macro.color,
+                          borderTopColor: progressAngle > 180 ? (isOver ? '#EF4444' : macro.color) : 'transparent',
+                          borderRightColor: progressAngle > 90 ? (isOver ? '#EF4444' : macro.color) : 'transparent',
+                          borderBottomColor: progressAngle > 270 ? (isOver ? '#EF4444' : macro.color) : 'transparent',
+                          borderLeftColor: progressAngle > 0 ? (isOver ? '#EF4444' : macro.color) : 'transparent',
+                          transform: [{ rotate: `${Math.min(progressAngle, 360) - 90}deg` }],
                         }
                       ]} 
                     />
+                    <View style={styles.macroRingCenter}>
+                      <Text style={[styles.macroRingPercent, { color: isOver ? '#EF4444' : macro.color }]}>
+                        {Math.round(progress)}%
+                      </Text>
+                    </View>
                   </View>
-                </View>
-                <View style={styles.macroValues}>
-                  <Text style={[styles.macroAvg, { color: isOver ? '#EF4444' : theme.text }]}>
-                    {macro.avg}
-                  </Text>
-                  <Text style={[styles.macroTarget, { color: theme.textTertiary }]}>
-                    /{macro.target}{macro.unit}
-                  </Text>
+                  
+                  <View style={styles.macroCardValues}>
+                    <Text style={[styles.macroCardAvg, { color: isOver ? '#EF4444' : theme.text }]}>
+                      {macro.avg}<Text style={styles.macroCardUnit}>{macro.unit}</Text>
+                    </Text>
+                    <Text style={[styles.macroCardTarget, { color: theme.textTertiary }]}>
+                      Target: {macro.target}{macro.unit}
+                    </Text>
+                  </View>
                 </View>
               </View>
             );
@@ -841,7 +887,7 @@ export default function AnalyticsScreen() {
         >
           <View style={styles.header}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>Analitik</Text>
-            {stats.targetWeight > 0 && stats.initialWeight > 0 && stats.targetWeight !== stats.initialWeight && (
+            {profile?.targetWeight && profile?.weight && profile.targetWeight !== profile.weight && (
               <View style={[styles.progressBadge, { backgroundColor: stats.weightProgress >= 100 ? '#10B981' + '20' : '#3B82F6' + '15' }]}>
                 <Target size={16} color={stats.weightProgress >= 100 ? '#10B981' : '#3B82F6'} />
                 <Text style={[styles.progressBadgeText, { color: stats.weightProgress >= 100 ? '#10B981' : '#3B82F6' }]}>
@@ -1264,6 +1310,17 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
+  estimatedBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginLeft: 'auto',
+  },
+  estimatedBadgeText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: '#F59E0B',
+  },
   projectionTitle: {
     fontSize: 13,
     fontWeight: '600' as const,
@@ -1373,54 +1430,85 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500' as const,
   },
-  macroContainer: {
-    gap: 16,
-  },
-  macroRow: {
+  macroGridContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
-  macroInfo: {
+  macroCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 14,
+  },
+  macroCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    width: 100,
+    marginBottom: 12,
   },
-  macroDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  macroIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  macroName: {
-    fontSize: 13,
+  macroIconText: {
+    fontSize: 12,
+    fontWeight: '800' as const,
+  },
+  macroCardName: {
+    fontSize: 12,
     fontWeight: '600' as const,
   },
-  macroBarContainer: {
-    flex: 1,
+  macroCardContent: {
+    alignItems: 'center',
+    gap: 10,
   },
-  macroBarBg: {
-    height: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
+  macroRingContainer: {
+    width: 56,
+    height: 56,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  macroBarFill: {
-    height: '100%',
-    borderRadius: 5,
+  macroRingBg: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 5,
   },
-  macroValues: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    width: 70,
-    justifyContent: 'flex-end',
+  macroRingProgress: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 5,
   },
-  macroAvg: {
-    fontSize: 15,
+  macroRingCenter: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  macroRingPercent: {
+    fontSize: 13,
+    fontWeight: '800' as const,
+  },
+  macroCardValues: {
+    alignItems: 'center',
+  },
+  macroCardAvg: {
+    fontSize: 18,
     fontWeight: '700' as const,
   },
-  macroTarget: {
+  macroCardUnit: {
     fontSize: 12,
     fontWeight: '500' as const,
+  },
+  macroCardTarget: {
+    fontSize: 10,
+    fontWeight: '500' as const,
+    marginTop: 2,
   },
   statsGrid: {
     flexDirection: 'row',
