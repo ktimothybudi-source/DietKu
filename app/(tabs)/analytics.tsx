@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { Stack } from 'expo-router';
 import { 
-  Flame, 
   TrendingUp, 
   TrendingDown, 
   Scale, 
@@ -24,6 +23,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Target,
+  Flame,
+  CheckCircle,
 } from 'lucide-react-native';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -145,6 +146,15 @@ export default function AnalyticsScreen() {
       ? currentWeight - startWeight 
       : 0;
 
+    const targetWeight = profile?.targetWeight ?? 0;
+    const initialWeight = profile?.weight ?? 0;
+    let weightProgress = 0;
+    if (targetWeight > 0 && initialWeight > 0 && targetWeight !== initialWeight) {
+      const totalToLose = initialWeight - targetWeight;
+      const currentLost = initialWeight - currentWeight;
+      weightProgress = Math.min(100, Math.max(0, Math.round((currentLost / totalToLose) * 100)));
+    }
+
     return {
       avgCalories,
       daysLogged: daysWithData.length,
@@ -154,6 +164,7 @@ export default function AnalyticsScreen() {
       targetCalories,
       startWeight,
       currentWeight,
+      weightProgress,
     };
   }, [dayData, dailyTargets, profile, weightChartData]);
 
@@ -176,24 +187,22 @@ export default function AnalyticsScreen() {
     }
 
     try {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const dateKey = formatDateKey(selectedDate);
-
-      const addWeightEntry = nutrition?.addWeightEntry;
-      const addWeight = nutrition?.addWeight;
-      const updateProfileWeight = nutrition?.updateProfileWeight;
-
-      if (typeof addWeightEntry === 'function') {
-        await addWeightEntry({ date: dateKey, weight: value });
-      } else if (typeof addWeight === 'function') {
-        await addWeight(dateKey, value);
-      } else if (typeof updateProfileWeight === 'function') {
-        await updateProfileWeight(value);
+      
+      if (typeof nutrition.addWeightEntry === 'function') {
+        nutrition.addWeightEntry(dateKey, value);
+        console.log('Weight logged successfully:', { dateKey, value });
+      } else {
+        console.error('addWeightEntry function not available');
+        setWeightError('Fungsi tidak tersedia');
+        return;
       }
 
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setWeightInput('');
       setShowWeightModal(false);
-    } catch {
+    } catch (error) {
+      console.error('Failed to log weight:', error);
       setWeightError('Gagal menyimpan');
     }
   };
@@ -573,10 +582,12 @@ export default function AnalyticsScreen() {
         >
           <View style={styles.header}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>Analitik</Text>
-            {!!streakData?.currentStreak && streakData.currentStreak > 0 && (
-              <View style={styles.streakBadge}>
-                <Flame size={16} color="#FF6B35" fill="#FF6B35" />
-                <Text style={styles.streakBadgeText}>{streakData.currentStreak}</Text>
+            {profile?.targetWeight && profile.targetWeight > 0 && (
+              <View style={[styles.progressBadge, { backgroundColor: stats.weightProgress >= 100 ? '#10B981' + '20' : theme.primary + '15' }]}>
+                <CheckCircle size={16} color={stats.weightProgress >= 100 ? '#10B981' : theme.primary} />
+                <Text style={[styles.progressBadgeText, { color: stats.weightProgress >= 100 ? '#10B981' : theme.primary }]}>
+                  {stats.weightProgress}%
+                </Text>
               </View>
             )}
           </View>
@@ -757,19 +768,17 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     letterSpacing: -0.5,
   },
-  streakBadge: {
+  progressBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255, 107, 53, 0.15)',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
   },
-  streakBadgeText: {
+  progressBadgeText: {
     fontSize: 15,
     fontWeight: '700' as const,
-    color: '#FF6B35',
   },
   timeRangeContainer: {
     flexDirection: 'row',
