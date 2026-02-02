@@ -46,7 +46,21 @@ export default function SignInScreen() {
       router.replace('/(tabs)');
     } catch (error) {
       console.error('Sign in error:', error);
-      Alert.alert('Error', 'Gagal masuk. Silakan coba lagi.');
+      if (error instanceof Error && error.message === 'PROFILE_NOT_FOUND') {
+        Alert.alert(
+          'Akun Tidak Ditemukan',
+          'Email yang Anda masukkan tidak terdaftar. Silakan daftar terlebih dahulu.',
+          [
+            { text: 'Batal', style: 'cancel' },
+            { 
+              text: 'Daftar Sekarang', 
+              onPress: () => router.replace('/onboarding')
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Error', 'Gagal masuk. Silakan coba lagi.');
+      }
     } finally {
       setIsSigningIn(false);
     }

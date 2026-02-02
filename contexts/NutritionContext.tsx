@@ -553,8 +553,15 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
         }
         
         console.log('Data migration completed for:', email);
+      } else if (!existingProfile && !emailProfile) {
+        // No profile exists at all - user doesn't have an account
+        console.log('No profile found for email:', email);
+        throw new Error('PROFILE_NOT_FOUND');
       }
     } catch (error) {
+      if (error instanceof Error && error.message === 'PROFILE_NOT_FOUND') {
+        throw error;
+      }
       console.error('Error during data migration:', error);
     }
     
