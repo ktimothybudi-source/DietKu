@@ -866,10 +866,29 @@ export default function HomeScreen() {
                 backgroundColor={theme.border}
               >
                 <View style={styles.mainRingContent}>
-                  <Text style={[styles.mainCalorieValue, { color: theme.text }]}>
-                    {Math.max(0, progress?.caloriesRemaining || 0)}
-                  </Text>
-                  <Text style={[styles.mainCalorieLabel, { color: theme.textSecondary }]}>kcal left</Text>
+                  {progress?.isOver ? (
+                    <>
+                      <Text style={[styles.mainCalorieValue, { color: '#EF4444' }]}>
+                        +{Math.abs(progress?.caloriesRemaining || 0)}
+                      </Text>
+                      <Text style={[styles.mainCalorieLabel, { color: '#EF4444', opacity: 0.8 }]}>kcal over</Text>
+                      <View style={styles.overIndicator}>
+                        <Text style={styles.overIndicatorText}>Target: {dailyTargets.calories}</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={[styles.mainCalorieValue, { color: theme.text }]}>
+                        {Math.max(0, progress?.caloriesRemaining || 0)}
+                      </Text>
+                      <Text style={[styles.mainCalorieLabel, { color: theme.textSecondary }]}>kcal left</Text>
+                      <View style={styles.targetIndicator}>
+                        <Text style={[styles.targetIndicatorText, { color: theme.textTertiary }]}>
+                          {todayTotals.calories} / {dailyTargets.calories}
+                        </Text>
+                      </View>
+                    </>
+                  )}
                 </View>
               </ProgressRing>
             </View>
@@ -2208,6 +2227,26 @@ const styles = StyleSheet.create({
   mainCalorieLabel: {
     fontSize: 14,
     marginTop: 4,
+  },
+  overIndicator: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 12,
+  },
+  overIndicatorText: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    color: '#EF4444',
+    opacity: 0.8,
+  },
+  targetIndicator: {
+    marginTop: 8,
+  },
+  targetIndicatorText: {
+    fontSize: 12,
+    fontWeight: '500' as const,
   },
   macroRingsCard: {
     flexDirection: 'row',
