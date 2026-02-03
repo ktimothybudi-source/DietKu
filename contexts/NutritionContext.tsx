@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { UserProfile, FoodEntry, DailyTargets, MealAnalysis, FavoriteMeal, RecentMeal } from '@/types/nutrition';
 import { calculateDailyTargets, getTodayKey } from '@/utils/nutritionCalculations';
 import { analyzeMealPhoto } from '@/utils/photoAnalysis';
+import { saveImagePermanently } from '@/utils/imageStorage';
 import { supabase, SupabaseProfile, SupabaseFoodEntry, SupabaseWeightHistory } from '@/lib/supabase';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
@@ -46,6 +47,7 @@ const getStorageKey = (baseKey: string, email: string | null) => {
 export interface PendingFoodEntry {
   id: string;
   photoUri: string;
+  permanentPhotoUri?: string;
   base64: string;
   timestamp: number;
   status: 'analyzing' | 'done' | 'error';
@@ -85,6 +87,7 @@ const mapSupabaseFoodEntryToFoodEntry = (sfe: SupabaseFoodEntry): FoodEntry => (
   protein: sfe.protein,
   carbs: sfe.carbs,
   fat: sfe.fat,
+  photoUri: sfe.photo_uri || undefined,
 });
 
 export const [NutritionProvider, useNutrition] = createContextHook(() => {
@@ -344,6 +347,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
           protein: entry.protein,
           carbs: entry.carbs,
           fat: entry.fat,
+          photo_uri: entry.photoUri || null,
         })
         .select()
         .single();
@@ -394,6 +398,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
           protein: updates.protein,
           carbs: updates.carbs,
           fat: updates.fat,
+          photo_uri: updates.photoUri || null,
         })
         .eq('id', entryId)
         .eq('user_id', authState.userId);
@@ -877,6 +882,21 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     };
     setPendingEntries(prev => [...prev, newPending]);
 
+    saveImagePermanently(photoUri)
+      .then((permanentUri) => {
+        setPendingEntries(prev =>
+          prev.map(entry =>
+            entry.id === newPending.id
+              ? { ...entry, permanentPhotoUri: permanentUri }
+              : entry
+          )
+        );
+        console.log('Image saved permanently:', permanentUri);
+      })
+      .catch((error) => {
+        console.error('Error saving image:', error);
+      });
+
     analyzeMealPhoto(base64)
       .then((analysis) => {
         setPendingEntries(prev =>
@@ -920,6 +940,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       protein: Math.round(avgProtein),
       carbs: Math.round(avgCarbs),
       fat: Math.round(avgFat),
+      photoUri: pending.permanentPhotoUri || pending.photoUri,
     });
 
     setPendingEntries(prev => prev.filter(p => p.id !== pendingId));

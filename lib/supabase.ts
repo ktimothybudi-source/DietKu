@@ -42,6 +42,7 @@ export interface SupabaseFoodEntry {
   protein: number;
   carbs: number;
   fat: number;
+  photo_uri: string | null;
   created_at: string;
 }
 
