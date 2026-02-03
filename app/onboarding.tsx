@@ -24,6 +24,11 @@ import { Svg, Path, Circle, G } from 'react-native-svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ANIMATION_DURATION, SPRING_CONFIG } from '@/constants/animations';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+import { supabase } from '@/lib/supabase';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function OnboardingScreen() {
   const { saveProfile, profile, signUp } = useNutrition();
@@ -76,6 +81,7 @@ export default function OnboardingScreen() {
   const [signInEmail, setSignInEmail] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
   const [userName, setUserName] = useState('');
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
 
   const totalSteps = 16;
 
@@ -328,10 +334,77 @@ export default function OnboardingScreen() {
     }
   }, [signInEmail, signInPassword, signUp, birthDate, sex, height, weight, dreamWeight, activityLevel, weeklyWeightChange, openSubscription]);
 
-  const handleGoogleSignIn = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Coming Soon', 'Login dengan Google akan segera tersedia.');
-  }, []);
+  const handleGoogleSignIn = useCallback(async () => {
+    try {
+      setIsGoogleSigningIn(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      console.log('Starting Google OAuth flow');
+
+      const redirectUrl = makeRedirectUri({
+        scheme: 'com.anonymous.iuki0owl6pyn1ju0mwmyr',
+        path: 'auth/callback',
+      });
+      console.log('Redirect URL:', redirectUrl);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: false,
+        },
+      });
+
+      if (error) {
+        console.error('Google OAuth error:', error);
+        Alert.alert('Error', 'Gagal memulai login Google. Silakan coba lagi.');
+        setIsGoogleSigningIn(false);
+        return;
+      }
+
+      console.log('Opening OAuth URL:', data.url);
+      
+      if (data.url) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUrl
+        );
+
+        console.log('WebBrowser result:', result);
+
+        if (result.type === 'success' && result.url) {
+          const url = result.url;
+          if (url.includes('#access_token=')) {
+            const params = new URLSearchParams(url.split('#')[1]);
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            
+            if (accessToken && refreshToken) {
+              console.log('Setting Supabase session from OAuth callback');
+              const { error: sessionError } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              });
+              
+              if (sessionError) {
+                console.error('Error setting session:', sessionError);
+                Alert.alert('Error', 'Gagal masuk dengan Google');
+              } else {
+                console.log('Google sign in successful');
+                openSubscription();
+              }
+            }
+          }
+        } else if (result.type === 'cancel') {
+          console.log('User cancelled OAuth flow');
+        }
+      }
+    } catch (error) {
+      console.error('Google sign in error:', error);
+      Alert.alert('Error', 'Gagal masuk dengan Google. Silakan coba lagi.');
+    } finally {
+      setIsGoogleSigningIn(false);
+    }
+  }, [openSubscription]);
 
   const handleSkipSignIn = useCallback(() => {
     openSubscription();
