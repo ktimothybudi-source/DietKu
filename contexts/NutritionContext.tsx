@@ -53,16 +53,29 @@ export interface PendingFoodEntry {
   error?: string;
 }
 
-const mapSupabaseProfileToUserProfile = (sp: SupabaseProfile): UserProfile => ({
-  name: sp.name || undefined,
-  age: sp.birth_date ? Math.floor((Date.now() - new Date(sp.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 25,
-  sex: (sp.gender === 'male' || sp.gender === 'female') ? sp.gender : 'male',
-  height: sp.height || 170,
-  weight: sp.weight || 70,
-  goalWeight: sp.target_weight || sp.weight || 70,
-  goal: (sp.goal === 'fat_loss' || sp.goal === 'maintenance' || sp.goal === 'muscle_gain') ? sp.goal : 'maintenance',
-  activityLevel: (sp.activity_level === 'low' || sp.activity_level === 'moderate' || sp.activity_level === 'high') ? sp.activity_level : 'moderate',
-});
+const mapSupabaseProfileToUserProfile = (sp: SupabaseProfile): UserProfile => {
+  const goal = (sp.goal === 'fat_loss' || sp.goal === 'maintenance' || sp.goal === 'muscle_gain') ? sp.goal : 'maintenance';
+  
+  // Derive weeklyWeightChange from goal if not stored
+  let weeklyWeightChange = 0;
+  if (goal === 'fat_loss') {
+    weeklyWeightChange = 0.5; // Default 0.5kg/week loss
+  } else if (goal === 'muscle_gain') {
+    weeklyWeightChange = 0.3; // Default 0.3kg/week gain
+  }
+  
+  return {
+    name: sp.name || undefined,
+    age: sp.birth_date ? Math.floor((Date.now() - new Date(sp.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 25,
+    sex: (sp.gender === 'male' || sp.gender === 'female') ? sp.gender : 'male',
+    height: sp.height || 170,
+    weight: sp.weight || 70,
+    goalWeight: sp.target_weight || sp.weight || 70,
+    goal,
+    activityLevel: (sp.activity_level === 'low' || sp.activity_level === 'moderate' || sp.activity_level === 'high') ? sp.activity_level : 'moderate',
+    weeklyWeightChange,
+  };
+};
 
 const mapSupabaseFoodEntryToFoodEntry = (sfe: SupabaseFoodEntry): FoodEntry => ({
   id: sfe.id,
@@ -277,6 +290,11 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       const calculatedTargets = calculateDailyTargets(newProfile);
       console.log('Saving profile to Supabase with targets:', newProfile, calculatedTargets);
       
+      // Calculate birth_date from age
+      const birthDate = new Date();
+      birthDate.setFullYear(birthDate.getFullYear() - newProfile.age);
+      const birthDateStr = birthDate.toISOString().split('T')[0];
+      
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -284,6 +302,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
           email: authState.email,
           name: newProfile.name || null,
           gender: newProfile.sex,
+          birth_date: birthDateStr,
           height: newProfile.height,
           weight: newProfile.weight,
           target_weight: newProfile.goalWeight,
@@ -663,7 +682,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     return data;
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string, profileData?: Partial<UserProfile>) => {
+  const signUp = useCallback(async (email: string, password: string, profileData?: Partial<UserProfile> & { birthDate?: Date }) => {
     console.log('Signing up user:', email);
     
     const { data, error } = await supabase.auth.signUp({
@@ -698,6 +717,16 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       // User is immediately authenticated, create profile
       console.log('Session available, creating profile...');
       
+      // Calculate birth_date from birthDate or age
+      let birthDateStr: string | null = null;
+      if (profileData.birthDate) {
+        birthDateStr = profileData.birthDate.toISOString().split('T')[0];
+      } else if (profileData.age) {
+        const birthDate = new Date();
+        birthDate.setFullYear(birthDate.getFullYear() - profileData.age);
+        birthDateStr = birthDate.toISOString().split('T')[0];
+      }
+      
       // Calculate targets for the new profile
       const newProfileForCalc: UserProfile = {
         name: profileData.name,
@@ -708,9 +737,10 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
         goalWeight: profileData.goalWeight || profileData.weight || 70,
         goal: profileData.goal || 'maintenance',
         activityLevel: profileData.activityLevel || 'moderate',
+        weeklyWeightChange: profileData.weeklyWeightChange,
       };
       const calculatedTargets = calculateDailyTargets(newProfileForCalc);
-      console.log('Calculated targets for new user:', calculatedTargets);
+      console.log('Calculated targets for new user:', calculatedTargets, 'birthDate:', birthDateStr);
       
       const { error: profileError } = await supabase
         .from('profiles')
@@ -719,6 +749,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
           email: email,
           name: profileData.name || null,
           gender: profileData.sex || null,
+          birth_date: birthDateStr,
           height: profileData.height || null,
           weight: profileData.weight || null,
           target_weight: profileData.goalWeight || null,

@@ -295,6 +295,7 @@ export default function OnboardingScreen() {
 
       await signUp(signInEmail.trim(), signInPassword, {
         age,
+        birthDate,
         sex: sex || 'male',
         height,
         weight,
