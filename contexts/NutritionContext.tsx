@@ -709,6 +709,20 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
         // Don't throw here, user is created but profile failed - can retry later
       } else {
         console.log('Profile created successfully');
+        // Set the profile locally immediately so we don't wait for query
+        const newProfile: UserProfile = {
+          name: profileData.name,
+          age: profileData.age || 25,
+          sex: profileData.sex || 'male',
+          height: profileData.height || 170,
+          weight: profileData.weight || 70,
+          goalWeight: profileData.goalWeight || profileData.weight || 70,
+          goal: profileData.goal || 'maintenance',
+          activityLevel: profileData.activityLevel || 'moderate',
+        };
+        setProfile(newProfile);
+        // Also invalidate queries to refresh from server
+        queryClient.invalidateQueries({ queryKey: ['supabase_profile'] });
       }
     } else if (!data.session) {
       // Email confirmation is required - but user trigger should create empty profile
@@ -717,7 +731,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     
     console.log('Sign up successful:', data.user?.email);
     return data;
-  }, []);
+  }, [queryClient]);
 
   const signOut = useCallback(async () => {
     console.log('Signing out user');
