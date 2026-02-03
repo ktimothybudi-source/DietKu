@@ -1769,7 +1769,9 @@ export default function OnboardingScreen() {
     }
   };
 
-  const contentPaddingBottom = 40 + (Platform.OS === 'android' ? insets.bottom + 40 : insets.bottom);
+  const contentPaddingBottom = Platform.OS === 'android' 
+    ? Math.max(24, insets.bottom) + 16 
+    : Math.max(20, insets.bottom);
   const ScreenWrapper = Platform.OS === 'ios' ? KeyboardAvoidingView : View;
 
   // Step 14 (renderFinal) has its own ScrollView, so we use View to avoid nested scroll issues on iOS
@@ -1827,7 +1829,7 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
-  scrollContent: { flexGrow: 1, padding: 20, paddingTop: 20 },
+  scrollContent: { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'android' ? 24 : 20 },
   backButtonTop: { marginBottom: 12, alignSelf: 'flex-start' },
   progressBarContainer: { marginBottom: 24 },
   progressBar: {

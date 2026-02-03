@@ -1,10 +1,25 @@
 import { Tabs } from "expo-router";
 import { Flame, User, BarChart3 } from "lucide-react-native";
 import React from "react";
+import { Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/contexts/ThemeContext";
 
 export default function TabLayout() {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  
+  const tabBarHeight = Platform.select({
+    ios: 49 + insets.bottom,
+    android: 56 + Math.max(insets.bottom, 8),
+    default: 56,
+  });
+  
+  const tabBarPaddingBottom = Platform.select({
+    ios: insets.bottom > 0 ? insets.bottom : 8,
+    android: Math.max(insets.bottom, 8),
+    default: 8,
+  });
   
   return (
     <Tabs
@@ -21,9 +36,9 @@ export default function TabLayout() {
           backgroundColor: theme.tabBar,
           borderTopColor: theme.border,
           borderTopWidth: 1,
-          height: 88,
-          paddingBottom: 32,
-          paddingTop: 8,
+          height: tabBarHeight,
+          paddingBottom: tabBarPaddingBottom,
+          paddingTop: 6,
         },
         tabBarLabelStyle: {
           fontSize: 11,
