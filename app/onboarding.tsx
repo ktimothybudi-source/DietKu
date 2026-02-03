@@ -1772,6 +1772,7 @@ export default function OnboardingScreen() {
   const contentPaddingBottom = Platform.OS === 'android' 
     ? Math.max(24, insets.bottom) + 16 
     : Math.max(20, insets.bottom);
+  const contentPaddingTop = Platform.OS === 'android' ? 24 : insets.top + 8;
   const ScreenWrapper = Platform.OS === 'ios' ? KeyboardAvoidingView : View;
 
   // Step 14 (renderFinal) has its own ScrollView, so we use View to avoid nested scroll issues on iOS
@@ -1805,13 +1806,13 @@ export default function OnboardingScreen() {
       {...(Platform.OS === 'ios' ? { behavior: 'padding', keyboardVerticalOffset: 0 } : {})}
     >
       {useViewWrapper ? (
-        <View style={[styles.scrollContent, { paddingBottom: contentPaddingBottom, flex: 1 }]}>
+        <View style={[styles.scrollContent, { paddingBottom: contentPaddingBottom, paddingTop: contentPaddingTop, flex: 1 }]}>
           {renderContent()}
         </View>
       ) : (
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: contentPaddingBottom }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: contentPaddingBottom, paddingTop: contentPaddingTop }]}
           showsVerticalScrollIndicator={false}
           scrollEnabled={step === 15 && !showLoading}
           nestedScrollEnabled
@@ -1829,7 +1830,7 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
-  scrollContent: { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'android' ? 24 : 20 },
+  scrollContent: { flexGrow: 1, padding: 20 },
   backButtonTop: { marginBottom: 12, alignSelf: 'flex-start' },
   progressBarContainer: { marginBottom: 24 },
   progressBar: {
