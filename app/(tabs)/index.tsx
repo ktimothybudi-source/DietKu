@@ -15,7 +15,7 @@ import {
   Animated,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2, Edit3, PlusCircle } from 'lucide-react-native';
+import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2, Edit3, PlusCircle, Search as SearchIcon } from 'lucide-react-native';
 import { useNutrition, useTodayProgress, PendingFoodEntry } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FoodEntry, MealAnalysis } from '@/types/nutrition';
@@ -23,6 +23,7 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { analyzeMealPhoto } from '@/utils/photoAnalysis';
 import { getTodayKey } from '@/utils/nutritionCalculations';
+import { searchUSDAFoods, USDAFoodItem } from '@/utils/usdaApi';
 import ProgressRing from '@/components/ProgressRing';
 import { ANIMATION_DURATION } from '@/constants/animations';
 import { getTimeBasedMessage, getProgressMessage, getCalorieFeedback, MotivationalMessage } from '@/constants/motivationalMessages';
@@ -43,7 +44,12 @@ export default function HomeScreen() {
   const [selectedPending, setSelectedPending] = useState<PendingFoodEntry | null>(null);
   const [lastPendingCount, setLastPendingCount] = useState(0);
   const [addFoodModalVisible, setAddFoodModalVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<'recent' | 'favorit' | 'scan'>('recent');
+  const [activeTab, setActiveTab] = useState<'recent' | 'favorit' | 'scan' | 'search'>('recent');
+  const [usdaSearchQuery, setUsdaSearchQuery] = useState('');
+  const [usdaSearchResults, setUsdaSearchResults] = useState<USDAFoodItem[]>([]);
+  const [usdaSearching, setUsdaSearching] = useState(false);
+  const [usdaSearchError, setUsdaSearchError] = useState<string | null>(null);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showFavoriteToast, setShowFavoriteToast] = useState(false);
   const [favoriteToastMessage, setFavoriteToastMessage] = useState('');
   const [showSuggestFavorite, setShowSuggestFavorite] = useState(false);
@@ -344,6 +350,38 @@ export default function HomeScreen() {
     const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     return months[month];
   };
+
+  const handleUSDASearch = useCallback((query: string) => {
+    setUsdaSearchQuery(query);
+    setUsdaSearchError(null);
+    
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    if (!query.trim()) {
+      setUsdaSearchResults([]);
+      setUsdaSearching(false);
+      return;
+    }
+    
+    setUsdaSearching(true);
+    
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        console.log('Searching USDA for:', query);
+        const results = await searchUSDAFoods(query, 20);
+        setUsdaSearchResults(results);
+        setUsdaSearchError(null);
+      } catch (error) {
+        console.error('USDA search error:', error);
+        setUsdaSearchError('Gagal mencari makanan. Coba lagi.');
+        setUsdaSearchResults([]);
+      } finally {
+        setUsdaSearching(false);
+      }
+    }, 500);
+  }, []);
 
   React.useEffect(() => {
     if (!isLoading && !profile) {
@@ -773,6 +811,23 @@ export default function HomeScreen() {
     if (hours >= 11 && hours < 16) return { label: 'Makan Siang', time: timeStr };
     if (hours >= 16 && hours < 21) return { label: 'Makan Malam', time: timeStr };
     return { label: 'Camilan', time: timeStr };
+  };
+
+  const handleSelectUSDAFood = (food: USDAFoodItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    addFoodEntry({
+      name: food.brandName ? `${food.description} (${food.brandName})` : food.description,
+      calories: food.calories,
+      protein: food.protein,
+      carbs: food.carbs,
+      fat: food.fat,
+    });
+    
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setAddFoodModalVisible(false);
+    setUsdaSearchQuery('');
+    setUsdaSearchResults([]);
   };
 
   return (
@@ -1888,6 +1943,13 @@ export default function HomeScreen() {
                   <Text style={[styles.tabText, { color: activeTab === 'favorit' ? theme.primary : theme.textSecondary }]}>Favorit</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
+                  style={[styles.tab, activeTab === 'search' && styles.tabActive, activeTab === 'search' && { backgroundColor: theme.card }]}
+                  onPress={() => setActiveTab('search')}
+                >
+                  <SearchIcon size={16} color={activeTab === 'search' ? theme.primary : theme.textSecondary} />
+                  <Text style={[styles.tabText, { color: activeTab === 'search' ? theme.primary : theme.textSecondary }]}>Cari</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
                   style={[styles.tab, activeTab === 'scan' && styles.tabActive, activeTab === 'scan' && { backgroundColor: theme.card }]}
                   onPress={() => {
                     setAddFoodModalVisible(false);
@@ -1972,6 +2034,94 @@ export default function HomeScreen() {
                           <Plus size={20} color={theme.primary} />
                         </TouchableOpacity>
                       ))
+                    )}
+                  </View>
+                )}
+
+                {activeTab === 'search' && (
+                  <View style={styles.searchContainer}>
+                    <View style={[styles.searchInputContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                      <SearchIcon size={18} color={theme.textSecondary} />
+                      <TextInput
+                        style={[styles.searchInput, { color: theme.text }]}
+                        placeholder="Cari makanan (USDA Database)..."
+                        placeholderTextColor={theme.textSecondary}
+                        value={usdaSearchQuery}
+                        onChangeText={handleUSDASearch}
+                        autoFocus
+                      />
+                      {usdaSearchQuery.length > 0 && (
+                        <TouchableOpacity
+                          onPress={() => {
+                            setUsdaSearchQuery('');
+                            setUsdaSearchResults([]);
+                          }}
+                        >
+                          <X size={18} color={theme.textSecondary} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {usdaSearching && (
+                      <View style={styles.searchLoadingContainer}>
+                        <ActivityIndicator size="small" color={theme.primary} />
+                        <Text style={[styles.searchLoadingText, { color: theme.textSecondary }]}>Mencari...</Text>
+                      </View>
+                    )}
+
+                    {usdaSearchError && (
+                      <View style={styles.searchErrorContainer}>
+                        <Text style={styles.searchErrorText}>{usdaSearchError}</Text>
+                      </View>
+                    )}
+
+                    {!usdaSearching && !usdaSearchError && usdaSearchResults.length === 0 && usdaSearchQuery.length > 0 && (
+                      <View style={styles.emptyMealList}>
+                        <SearchIcon size={40} color={theme.textTertiary} />
+                        <Text style={[styles.emptyMealText, { color: theme.textSecondary }]}>Tidak ditemukan</Text>
+                        <Text style={[styles.emptyMealSubtext, { color: theme.textTertiary }]}>Coba kata kunci lain</Text>
+                      </View>
+                    )}
+
+                    {!usdaSearching && usdaSearchResults.length === 0 && usdaSearchQuery.length === 0 && (
+                      <View style={styles.emptyMealList}>
+                        <SearchIcon size={40} color={theme.textTertiary} />
+                        <Text style={[styles.emptyMealText, { color: theme.textSecondary }]}>Cari Makanan</Text>
+                        <Text style={[styles.emptyMealSubtext, { color: theme.textTertiary }]}>Ketik nama makanan untuk mencari di USDA Database</Text>
+                      </View>
+                    )}
+
+                    {usdaSearchResults.length > 0 && (
+                      <View style={styles.mealList}>
+                        {usdaSearchResults.map((food) => (
+                          <TouchableOpacity
+                            key={food.fdcId}
+                            style={[styles.mealItem, { backgroundColor: theme.background, borderColor: theme.border }]}
+                            onPress={() => handleSelectUSDAFood(food)}
+                            activeOpacity={0.7}
+                          >
+                            <View style={styles.mealItemInfo}>
+                              <Text style={[styles.mealItemName, { color: theme.text }]} numberOfLines={2}>
+                                {food.description}
+                              </Text>
+                              {food.brandName && (
+                                <Text style={[styles.usdaBrandName, { color: theme.textTertiary }]} numberOfLines={1}>
+                                  {food.brandName}
+                                </Text>
+                              )}
+                              <View style={styles.usdaNutrientRow}>
+                                <Text style={[styles.mealItemCalories, { color: theme.textSecondary }]}>
+                                  {food.calories} kcal
+                                </Text>
+                                <Text style={[styles.usdaMacros, { color: theme.textTertiary }]}>
+                                  P: {food.protein}g • C: {food.carbs}g • F: {food.fat}g
+                                </Text>
+                              </View>
+                            </View>
+                            <Plus size={20} color={theme.primary} />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
                     )}
                   </View>
                 )}
@@ -3361,5 +3511,54 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  searchContainer: {
+    flex: 1,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+    gap: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500' as const,
+  },
+  searchLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    gap: 8,
+  },
+  searchLoadingText: {
+    fontSize: 14,
+  },
+  searchErrorContainer: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  searchErrorText: {
+    fontSize: 14,
+    color: '#EF4444',
+  },
+  usdaBrandName: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  usdaNutrientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  usdaMacros: {
+    fontSize: 11,
   },
 });
