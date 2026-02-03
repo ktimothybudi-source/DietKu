@@ -58,10 +58,10 @@ export default function SignInScreen() {
       }
     };
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event) => {
       console.log('Auth state changed in sign-in screen:', event);
       if (event === 'SIGNED_IN') {
-        router.replace('/(tabs)');
+        await checkProfileAndNavigate();
       }
     });
 
@@ -162,8 +162,8 @@ export default function SignInScreen() {
                 console.error('Error setting session:', sessionError);
                 Alert.alert('Error', 'Gagal masuk dengan Google');
               } else {
-                console.log('Google sign in successful');
-                router.replace('/(tabs)');
+                console.log('Google sign in successful, checking profile completeness');
+                await checkProfileAndNavigate();
               }
             }
           }
@@ -176,6 +176,41 @@ export default function SignInScreen() {
       Alert.alert('Error', 'Gagal masuk dengan Google. Silakan coba lagi.');
     } finally {
       setIsGoogleSigningIn(false);
+    }
+  };
+
+  const checkProfileAndNavigate = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace('/(tabs)');
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      console.log('Profile data after OAuth:', profile);
+
+      const isProfileComplete = profile && 
+        profile.height && 
+        profile.weight && 
+        profile.goal && 
+        profile.activity_level;
+
+      if (isProfileComplete) {
+        console.log('Profile is complete, navigating to tabs');
+        router.replace('/(tabs)');
+      } else {
+        console.log('Profile incomplete, redirecting to onboarding');
+        router.replace('/onboarding?mode=complete');
+      }
+    } catch (error) {
+      console.error('Error checking profile:', error);
+      router.replace('/(tabs)');
     }
   };
 

@@ -13,7 +13,7 @@ import {
   Keyboard,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -31,12 +31,14 @@ import { supabase } from '@/lib/supabase';
 WebBrowser.maybeCompleteAuthSession();
 
 export default function OnboardingScreen() {
-  const { saveProfile, profile, signUp } = useNutrition();
+  const { saveProfile, profile, signUp, authState } = useNutrition();
   const { language, toggleLanguage, t } = useLanguage();
   const { enableNotifications } = useNotifications();
   const insets = useSafeAreaInsets();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const isCompleteMode = mode === 'complete';
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(mode === 'complete' ? 1 : 0);
   const [isInteracting] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -148,8 +150,35 @@ export default function OnboardingScreen() {
         timeouts.push(setTimeout(updateMessage, current.duration));
       } else {
         timeouts.push(
-          setTimeout(() => {
+          setTimeout(async () => {
             setShowLoading(false);
+            
+            // If completing profile for existing Google OAuth user
+            if (isCompleteMode && authState.isSignedIn) {
+              console.log('Complete mode: Saving profile for Google OAuth user');
+              const today = new Date();
+              const age = today.getFullYear() - birthDate.getFullYear() -
+                (today.getMonth() < birthDate.getMonth() ||
+                (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate()) ? 1 : 0);
+              const calculatedGoal = dreamWeight < weight ? 'fat_loss' : dreamWeight > weight ? 'muscle_gain' : 'maintenance';
+              
+              saveProfile({
+                name: userName || undefined,
+                age,
+                sex: sex || 'male',
+                height,
+                weight,
+                goalWeight: dreamWeight,
+                goal: calculatedGoal,
+                activityLevel: activityLevel || 'moderate',
+                weeklyWeightChange,
+              });
+              
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              router.replace('/(tabs)');
+              return;
+            }
+            
             setStep(prev => prev + 1);
           }, current.duration)
         );
@@ -161,7 +190,7 @@ export default function OnboardingScreen() {
     return () => {
       timeouts.forEach(t => clearTimeout(t));
     };
-  }, [showLoading, circularProgress]);
+  }, [showLoading, circularProgress, isCompleteMode, authState.isSignedIn, birthDate, dreamWeight, weight, sex, height, activityLevel, weeklyWeightChange, userName, saveProfile]);
 
   useEffect(() => {
     if (step !== 0) return;
