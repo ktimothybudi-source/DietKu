@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,11 @@ import { Svg, Path } from 'react-native-svg';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
+import { supabase } from '@/lib/supabase';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function SignInScreen() {
   const { t } = useLanguage();
@@ -25,6 +30,45 @@ export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
+
+  useEffect(() => {
+    const handleDeepLink = async (url: string) => {
+      console.log('Deep link received:', url);
+      if (url.includes('#access_token=')) {
+        const params = new URLSearchParams(url.split('#')[1]);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        
+        if (accessToken && refreshToken) {
+          console.log('Setting Supabase session from OAuth callback');
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          
+          if (error) {
+            console.error('Error setting session:', error);
+            Alert.alert('Error', 'Gagal masuk dengan Google');
+          } else {
+            console.log('Google sign in successful, navigating to main app');
+            router.replace('/(tabs)');
+          }
+        }
+      }
+    };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      console.log('Auth state changed in sign-in screen:', event);
+      if (event === 'SIGNED_IN') {
+        router.replace('/(tabs)');
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
@@ -64,12 +108,75 @@ export default function SignInScreen() {
   };
 
   const handleGoogleSignIn = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      'Coming Soon',
-      'Login dengan Google akan segera tersedia.',
-      [{ text: 'OK' }]
-    );
+    try {
+      setIsGoogleSigningIn(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      console.log('Starting Google OAuth flow');
+
+      const redirectUrl = makeRedirectUri({
+        scheme: 'com.anonymous.iuki0owl6pyn1ju0mwmyr',
+        path: 'auth/callback',
+      });
+      console.log('Redirect URL:', redirectUrl);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: false,
+        },
+      });
+
+      if (error) {
+        console.error('Google OAuth error:', error);
+        Alert.alert('Error', 'Gagal memulai login Google. Silakan coba lagi.');
+        setIsGoogleSigningIn(false);
+        return;
+      }
+
+      console.log('Opening OAuth URL:', data.url);
+      
+      if (data.url) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUrl
+        );
+
+        console.log('WebBrowser result:', result);
+
+        if (result.type === 'success' && result.url) {
+          const url = result.url;
+          if (url.includes('#access_token=')) {
+            const params = new URLSearchParams(url.split('#')[1]);
+            const accessToken = params.get('access_token');
+            const refreshToken = params.get('refresh_token');
+            
+            if (accessToken && refreshToken) {
+              console.log('Setting Supabase session from OAuth callback');
+              const { error: sessionError } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              });
+              
+              if (sessionError) {
+                console.error('Error setting session:', sessionError);
+                Alert.alert('Error', 'Gagal masuk dengan Google');
+              } else {
+                console.log('Google sign in successful');
+                router.replace('/(tabs)');
+              }
+            }
+          }
+        } else if (result.type === 'cancel') {
+          console.log('User cancelled OAuth flow');
+        }
+      }
+    } catch (error) {
+      console.error('Google sign in error:', error);
+      Alert.alert('Error', 'Gagal masuk dengan Google. Silakan coba lagi.');
+    } finally {
+      setIsGoogleSigningIn(false);
+    }
   };
 
   const handleBack = () => {
@@ -164,10 +271,10 @@ export default function SignInScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.googleButton, isSigningIn && styles.googleButtonDisabled]}
+              style={[styles.googleButton, (isSigningIn || isGoogleSigningIn) && styles.googleButtonDisabled]}
               onPress={handleGoogleSignIn}
               activeOpacity={0.7}
-              disabled={isSigningIn}
+              disabled={isSigningIn || isGoogleSigningIn}
             >
               <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <Path
@@ -187,7 +294,9 @@ export default function SignInScreen() {
                   fill="#EA4335"
                 />
               </Svg>
-              <Text style={styles.googleButtonText}>{t.signIn.googleSignIn}</Text>
+              <Text style={styles.googleButtonText}>
+                {isGoogleSigningIn ? 'Memproses...' : t.signIn.googleSignIn}
+              </Text>
             </TouchableOpacity>
 
             <View style={styles.footer}>
