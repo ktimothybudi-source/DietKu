@@ -273,7 +273,10 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     mutationFn: async (newProfile: UserProfile) => {
       if (!authState.userId) throw new Error('Not authenticated');
       
-      console.log('Saving profile to Supabase:', newProfile);
+      // Calculate daily targets based on profile
+      const calculatedTargets = calculateDailyTargets(newProfile);
+      console.log('Saving profile to Supabase with targets:', newProfile, calculatedTargets);
+      
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -286,6 +289,10 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
           target_weight: newProfile.goalWeight,
           activity_level: newProfile.activityLevel,
           goal: newProfile.goal,
+          daily_calories: calculatedTargets.calories,
+          protein_target: calculatedTargets.protein,
+          carbs_target: Math.round((calculatedTargets.carbsMin + calculatedTargets.carbsMax) / 2),
+          fat_target: Math.round((calculatedTargets.fatMin + calculatedTargets.fatMax) / 2),
           updated_at: new Date().toISOString(),
         });
       
@@ -690,6 +697,21 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     if (data.session && profileData) {
       // User is immediately authenticated, create profile
       console.log('Session available, creating profile...');
+      
+      // Calculate targets for the new profile
+      const newProfileForCalc: UserProfile = {
+        name: profileData.name,
+        age: profileData.age || 25,
+        sex: profileData.sex || 'male',
+        height: profileData.height || 170,
+        weight: profileData.weight || 70,
+        goalWeight: profileData.goalWeight || profileData.weight || 70,
+        goal: profileData.goal || 'maintenance',
+        activityLevel: profileData.activityLevel || 'moderate',
+      };
+      const calculatedTargets = calculateDailyTargets(newProfileForCalc);
+      console.log('Calculated targets for new user:', calculatedTargets);
+      
       const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
@@ -702,6 +724,10 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
           target_weight: profileData.goalWeight || null,
           activity_level: profileData.activityLevel || null,
           goal: profileData.goal || null,
+          daily_calories: calculatedTargets.calories,
+          protein_target: calculatedTargets.protein,
+          carbs_target: Math.round((calculatedTargets.carbsMin + calculatedTargets.carbsMax) / 2),
+          fat_target: Math.round((calculatedTargets.fatMin + calculatedTargets.fatMax) / 2),
         });
       
       if (profileError) {
