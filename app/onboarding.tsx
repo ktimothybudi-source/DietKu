@@ -309,11 +309,18 @@ export default function OnboardingScreen() {
     } catch (error) {
       console.error('Sign up error:', error);
       if (error instanceof Error) {
-        if (error.message.includes('already registered')) {
+        console.error('Error message:', error.message);
+        if (error.message.includes('already registered') || error.message.includes('already been registered')) {
           Alert.alert('Email Sudah Terdaftar', 'Email ini sudah digunakan. Silakan gunakan email lain atau masuk dengan akun yang ada.');
+        } else if (error.message.includes('Invalid email')) {
+          Alert.alert('Email Tidak Valid', 'Masukkan alamat email yang valid.');
+        } else if (error.message.includes('Password')) {
+          Alert.alert('Password Tidak Valid', error.message);
         } else {
-          Alert.alert('Error', 'Gagal membuat akun. Silakan coba lagi.');
+          Alert.alert('Error', `Gagal membuat akun: ${error.message}`);
         }
+      } else {
+        Alert.alert('Error', 'Gagal membuat akun. Silakan coba lagi.');
       }
     } finally {
       setIsCreatingAccount(false);
