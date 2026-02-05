@@ -114,7 +114,7 @@ export default function SignInScreen() {
       console.log('Starting Google OAuth flow');
 
       const redirectUrl = makeRedirectUri({
-        scheme: 'com.anonymous.iuki0owl6pyn1ju0mwmyr',
+        scheme: 'rork-app',
         path: 'auth/callback',
       });
       console.log('Redirect URL:', redirectUrl);
