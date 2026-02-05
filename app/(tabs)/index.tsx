@@ -3478,6 +3478,7 @@ const styles = StyleSheet.create({
   },
   mealItemInfo: {
     flex: 1,
+    flexShrink: 1,
     marginRight: 12,
   },
   mealItemContent: {
@@ -3498,11 +3499,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexWrap: 'wrap',
+    flex: 1,
   },
   mealItemName: {
     fontSize: 15,
     fontWeight: '600' as const,
     flex: 1,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   mealItemCalories: {
     fontSize: 13,
@@ -3615,6 +3620,7 @@ const styles = StyleSheet.create({
   usdaNutrientRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     marginTop: 4,
   },

@@ -868,6 +868,7 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+    flexWrap: 'wrap',
   },
   previewMealNameLarge: {
     fontSize: 32,
@@ -908,6 +909,7 @@ const styles = StyleSheet.create({
   },
   macroChips: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 10,
   },
@@ -942,6 +944,7 @@ const styles = StyleSheet.create({
   },
   toggleTextContainer: {
     flex: 1,
+    flexShrink: 1,
   },
   nameEditInput: {
     fontSize: 13,
@@ -1006,6 +1009,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666',
     marginTop: 2,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   toggleCheck: {
     width: 24,
