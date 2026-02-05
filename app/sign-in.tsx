@@ -161,9 +161,11 @@ export default function SignInScreen() {
               if (sessionError) {
                 console.error('Error setting session:', sessionError);
                 Alert.alert('Error', 'Gagal masuk dengan Google');
+                setIsGoogleSigningIn(false);
               } else {
                 console.log('Google sign in successful, checking profile completeness');
                 await checkProfileAndNavigate();
+                setIsGoogleSigningIn(false);
               }
             }
           }
