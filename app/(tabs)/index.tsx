@@ -24,7 +24,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { analyzeMealPhoto } from '@/utils/photoAnalysis';
 import { getTodayKey } from '@/utils/nutritionCalculations';
 import { searchUSDAFoods, USDAFoodItem } from '@/utils/usdaApi';
-import { searchSupabaseFoods, SupabaseFood } from '@/lib/supabase';
+import { searchFoods } from '@/lib/foodsApi';
+import { FoodSearchResult } from '@/types/food';
 import ProgressRing from '@/components/ProgressRing';
 import { ANIMATION_DURATION } from '@/constants/animations';
 import { getTimeBasedMessage, getProgressMessage, getCalorieFeedback, MotivationalMessage } from '@/constants/motivationalMessages';
@@ -48,7 +49,7 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'recent' | 'favorit' | 'scan' | 'search'>('recent');
   const [usdaSearchQuery, setUsdaSearchQuery] = useState('');
   const [usdaSearchResults, setUsdaSearchResults] = useState<USDAFoodItem[]>([]);
-  const [supabaseFoodResults, setSupabaseFoodResults] = useState<SupabaseFood[]>([]);
+  const [supabaseFoodResults, setSupabaseFoodResults] = useState<FoodSearchResult[]>([]);
   const [usdaSearching, setUsdaSearching] = useState(false);
   const [usdaSearchError, setUsdaSearchError] = useState<string | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -375,7 +376,7 @@ export default function HomeScreen() {
         console.log('Searching foods for:', query);
         
         const [supabaseResults, usdaResults] = await Promise.all([
-          searchSupabaseFoods(query, 15),
+          searchFoods(query, 15),
           searchUSDAFoods(query, 15),
         ]);
         
@@ -2112,8 +2113,8 @@ export default function HomeScreen() {
                               addFoodEntry({
                                 name: food.name,
                                 calories: food.calories,
-                                protein: food.proteins,
-                                carbs: food.carbohydrate,
+                                protein: food.protein,
+                                carbs: food.carbs,
                                 fat: food.fat,
                                 photoUri: food.image || undefined,
                               });
@@ -2137,7 +2138,7 @@ export default function HomeScreen() {
                                   {food.calories} kcal
                                 </Text>
                                 <Text style={[styles.usdaMacros, { color: theme.textTertiary }]}>
-                                  P: {food.proteins}g • C: {food.carbohydrate}g • F: {food.fat}g
+                                  P: {food.protein}g • C: {food.carbs}g • F: {food.fat}g
                                 </Text>
                               </View>
                             </View>
