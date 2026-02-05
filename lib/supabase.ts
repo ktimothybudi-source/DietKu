@@ -52,3 +52,40 @@ export interface SupabaseWeightHistory {
   weight: number;
   recorded_at: string;
 }
+
+export interface SupabaseFood {
+  id: number;
+  name: string;
+  calories: number;
+  proteins: number;
+  fat: number;
+  carbohydrate: number;
+  image: string | null;
+}
+
+export async function searchSupabaseFoods(query: string, limit: number = 25): Promise<SupabaseFood[]> {
+  if (!query.trim()) {
+    return [];
+  }
+
+  try {
+    console.log('Searching Supabase food database for:', query);
+    
+    const { data, error } = await supabase
+      .from('food')
+      .select('*')
+      .ilike('name', `%${query}%`)
+      .limit(limit);
+    
+    if (error) {
+      console.error('Supabase food search error:', error);
+      return [];
+    }
+    
+    console.log('Supabase food results:', data?.length || 0);
+    return (data || []) as SupabaseFood[];
+  } catch (error) {
+    console.error('Error searching Supabase foods:', error);
+    return [];
+  }
+}

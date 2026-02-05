@@ -24,6 +24,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { analyzeMealPhoto } from '@/utils/photoAnalysis';
 import { getTodayKey } from '@/utils/nutritionCalculations';
 import { searchUSDAFoods, USDAFoodItem } from '@/utils/usdaApi';
+import { searchSupabaseFoods, SupabaseFood } from '@/lib/supabase';
 import ProgressRing from '@/components/ProgressRing';
 import { ANIMATION_DURATION } from '@/constants/animations';
 import { getTimeBasedMessage, getProgressMessage, getCalorieFeedback, MotivationalMessage } from '@/constants/motivationalMessages';
@@ -47,6 +48,7 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<'recent' | 'favorit' | 'scan' | 'search'>('recent');
   const [usdaSearchQuery, setUsdaSearchQuery] = useState('');
   const [usdaSearchResults, setUsdaSearchResults] = useState<USDAFoodItem[]>([]);
+  const [supabaseFoodResults, setSupabaseFoodResults] = useState<SupabaseFood[]>([]);
   const [usdaSearching, setUsdaSearching] = useState(false);
   const [usdaSearchError, setUsdaSearchError] = useState<string | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -361,6 +363,7 @@ export default function HomeScreen() {
     
     if (!query.trim()) {
       setUsdaSearchResults([]);
+      setSupabaseFoodResults([]);
       setUsdaSearching(false);
       return;
     }
@@ -369,14 +372,21 @@ export default function HomeScreen() {
     
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        console.log('Searching USDA for:', query);
-        const results = await searchUSDAFoods(query, 20);
-        setUsdaSearchResults(results);
+        console.log('Searching foods for:', query);
+        
+        const [supabaseResults, usdaResults] = await Promise.all([
+          searchSupabaseFoods(query, 15),
+          searchUSDAFoods(query, 15),
+        ]);
+        
+        setSupabaseFoodResults(supabaseResults);
+        setUsdaSearchResults(usdaResults);
         setUsdaSearchError(null);
       } catch (error) {
-        console.error('USDA search error:', error);
+        console.error('Food search error:', error);
         setUsdaSearchError('Gagal mencari makanan. Coba lagi.');
         setUsdaSearchResults([]);
+        setSupabaseFoodResults([]);
       } finally {
         setUsdaSearching(false);
       }
@@ -2075,7 +2085,7 @@ export default function HomeScreen() {
                       </View>
                     )}
 
-                    {!usdaSearching && !usdaSearchError && usdaSearchResults.length === 0 && usdaSearchQuery.length > 0 && (
+                    {!usdaSearching && !usdaSearchError && usdaSearchResults.length === 0 && supabaseFoodResults.length === 0 && usdaSearchQuery.length > 0 && (
                       <View style={styles.emptyMealList}>
                         <SearchIcon size={40} color={theme.textTertiary} />
                         <Text style={[styles.emptyMealText, { color: theme.textSecondary }]}>Tidak ditemukan</Text>
@@ -2083,16 +2093,65 @@ export default function HomeScreen() {
                       </View>
                     )}
 
-                    {!usdaSearching && usdaSearchResults.length === 0 && usdaSearchQuery.length === 0 && (
+                    {!usdaSearching && usdaSearchResults.length === 0 && supabaseFoodResults.length === 0 && usdaSearchQuery.length === 0 && (
                       <View style={styles.emptyMealList}>
                         <SearchIcon size={40} color={theme.textTertiary} />
                         <Text style={[styles.emptyMealText, { color: theme.textSecondary }]}>Cari Makanan</Text>
-                        <Text style={[styles.emptyMealSubtext, { color: theme.textTertiary }]}>Ketik nama makanan untuk mencari di USDA Database</Text>
+                        <Text style={[styles.emptyMealSubtext, { color: theme.textTertiary }]}>Ketik nama makanan untuk mencari</Text>
+                      </View>
+                    )}
+
+                    {supabaseFoodResults.length > 0 && (
+                      <View style={styles.mealList}>
+                        <Text style={[styles.searchSectionTitle, { color: theme.textSecondary }]}>Database Lokal</Text>
+                        {supabaseFoodResults.map((food) => (
+                          <TouchableOpacity
+                            key={`sb-${food.id}`}
+                            style={[styles.mealItem, { backgroundColor: theme.background, borderColor: theme.border }]}
+                            onPress={() => {
+                              addFoodEntry({
+                                name: food.name,
+                                calories: food.calories,
+                                protein: food.proteins,
+                                carbs: food.carbohydrate,
+                                fat: food.fat,
+                                photoUri: food.image || undefined,
+                              });
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                              setAddFoodModalVisible(false);
+                              setUsdaSearchQuery('');
+                              setSupabaseFoodResults([]);
+                              setUsdaSearchResults([]);
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            {food.image && (
+                              <Image source={{ uri: food.image }} style={styles.supabaseFoodImage} />
+                            )}
+                            <View style={styles.mealItemInfo}>
+                              <Text style={[styles.mealItemName, { color: theme.text }]} numberOfLines={2}>
+                                {food.name}
+                              </Text>
+                              <View style={styles.usdaNutrientRow}>
+                                <Text style={[styles.mealItemCalories, { color: theme.textSecondary }]}>
+                                  {food.calories} kcal
+                                </Text>
+                                <Text style={[styles.usdaMacros, { color: theme.textTertiary }]}>
+                                  P: {food.proteins}g • C: {food.carbohydrate}g • F: {food.fat}g
+                                </Text>
+                              </View>
+                            </View>
+                            <Plus size={20} color={theme.primary} />
+                          </TouchableOpacity>
+                        ))}
                       </View>
                     )}
 
                     {usdaSearchResults.length > 0 && (
                       <View style={styles.mealList}>
+                        {supabaseFoodResults.length > 0 && (
+                          <Text style={[styles.searchSectionTitle, { color: theme.textSecondary, marginTop: 16 }]}>USDA Database</Text>
+                        )}
                         {usdaSearchResults.map((food) => (
                           <TouchableOpacity
                             key={food.fdcId}
@@ -3560,5 +3619,18 @@ const styles = StyleSheet.create({
   },
   usdaMacros: {
     fontSize: 11,
+  },
+  searchSectionTitle: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    marginBottom: 8,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  supabaseFoodImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 12,
   },
 });
