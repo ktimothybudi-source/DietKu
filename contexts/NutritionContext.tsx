@@ -333,34 +333,51 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
 
   const saveFoodEntryMutation = useMutation({
     mutationFn: async (entry: Omit<FoodEntry, 'id' | 'timestamp'>) => {
-      if (!authState.userId) throw new Error('Not authenticated');
+      if (!authState.userId) {
+        console.error('Save food entry failed: Not authenticated, userId:', authState.userId);
+        throw new Error('Not authenticated');
+      }
       
       const todayKey = getTodayKey();
-      console.log('Saving food entry to Supabase:', entry);
+      console.log('Saving food entry to Supabase:', {
+        userId: authState.userId,
+        date: todayKey,
+        entry: entry,
+      });
+      
+      const insertData = {
+        user_id: authState.userId,
+        date: todayKey,
+        food_name: entry.name,
+        calories: Math.round(entry.calories || 0),
+        protein: Math.round(entry.protein || 0),
+        carbs: Math.round(entry.carbs || 0),
+        fat: Math.round(entry.fat || 0),
+        photo_uri: entry.photoUri || null,
+      };
+      
+      console.log('Insert data:', insertData);
+      
       const { data, error } = await supabase
         .from('food_entries')
-        .insert({
-          user_id: authState.userId,
-          date: todayKey,
-          food_name: entry.name,
-          calories: entry.calories,
-          protein: entry.protein,
-          carbs: entry.carbs,
-          fat: entry.fat,
-          photo_uri: entry.photoUri || null,
-        })
+        .insert(insertData)
         .select()
         .single();
       
       if (error) {
-        console.error('Error saving food entry:', error);
-        throw error;
+        console.error('Error saving food entry:', error.message, error.code, error.details, error.hint);
+        throw new Error(`Failed to save food: ${error.message}`);
       }
+      
+      console.log('Food entry saved successfully:', data);
       return data as SupabaseFoodEntry;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['supabase_food_entries'] });
-      console.log('Food entry saved successfully');
+      console.log('Food entry mutation completed successfully');
+    },
+    onError: (error) => {
+      console.error('Food entry mutation error:', error);
     },
   });
 
@@ -559,11 +576,19 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   }, [profile, weightHistory, saveProfileMutation, saveWeightHistoryMutation]);
 
   const addFoodEntry = useCallback((entry: Omit<FoodEntry, 'id' | 'timestamp'>) => {
+    console.log('[addFoodEntry] Adding entry:', entry);
+    console.log('[addFoodEntry] Auth state:', authState);
+    
+    if (!authState.isSignedIn || !authState.userId) {
+      console.error('[addFoodEntry] Cannot add food: User not authenticated');
+      return;
+    }
+    
     const todayKey = getTodayKey();
     saveFoodEntryMutation.mutate(entry);
     updateStreak(todayKey);
     updateRecentMeals(entry);
-  }, [saveFoodEntryMutation]);
+  }, [saveFoodEntryMutation, authState]);
 
   const updateRecentMeals = (entry: Omit<FoodEntry, 'id' | 'timestamp'>) => {
     const normalizedName = entry.name.toLowerCase().trim();
