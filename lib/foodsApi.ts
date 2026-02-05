@@ -13,7 +13,6 @@ export async function searchFoods(
   console.log('[foodsApi] Searching foods for:', query, 'limit:', limit);
 
   try {
-    // Try 'food' table first (singular), fallback to 'foods' (plural)
     let data, error;
     
     // First try the 'food' table
@@ -47,15 +46,29 @@ export async function searchFoods(
     console.log('[foodsApi] Raw data:', JSON.stringify(data?.[0] || 'no data'));
     console.log('[foodsApi] Found', data?.length ?? 0, 'results');
 
-    // Map the data - handle different column name formats
+    // Map the data - handle range columns and legacy single value columns
     const foods = (data || []).map((item: Record<string, unknown>) => {
+      // Handle range columns (new format) with fallback to single value columns (legacy)
+      const energyMin = item.energy_kcal_min ?? item.calories_min ?? item.energy_kcal ?? item.calories ?? 0;
+      const energyMax = item.energy_kcal_max ?? item.calories_max ?? item.energy_kcal ?? item.calories ?? energyMin;
+      const proteinMin = item.protein_g_min ?? item.protein_min ?? item.protein_g ?? item.proteins ?? item.protein ?? 0;
+      const proteinMax = item.protein_g_max ?? item.protein_max ?? item.protein_g ?? item.proteins ?? item.protein ?? proteinMin;
+      const fatMin = item.fat_g_min ?? item.fat_min ?? item.fat_g ?? item.fat ?? 0;
+      const fatMax = item.fat_g_max ?? item.fat_max ?? item.fat_g ?? item.fat ?? fatMin;
+      const carbMin = item.carb_g_min ?? item.carbs_min ?? item.carb_g ?? item.carbohydrate ?? item.carbs ?? 0;
+      const carbMax = item.carb_g_max ?? item.carbs_max ?? item.carb_g ?? item.carbohydrate ?? item.carbs ?? carbMin;
+
       const mapped: SupabaseFoodItem = {
         id: item.id as number,
         name: item.name as string,
-        energy_kcal: (item.energy_kcal ?? item.calories ?? 0) as number,
-        protein_g: (item.protein_g ?? item.proteins ?? item.protein ?? 0) as number,
-        fat_g: (item.fat_g ?? item.fat ?? 0) as number,
-        carb_g: (item.carb_g ?? item.carbohydrate ?? item.carbs ?? 0) as number,
+        energy_kcal_min: energyMin as number,
+        energy_kcal_max: energyMax as number,
+        protein_g_min: proteinMin as number,
+        protein_g_max: proteinMax as number,
+        fat_g_min: fatMin as number,
+        fat_g_max: fatMax as number,
+        carb_g_min: carbMin as number,
+        carb_g_max: carbMax as number,
         image: (item.image ?? null) as string | null,
       };
       return mapped;
@@ -74,7 +87,7 @@ export async function getFoodById(id: number): Promise<FoodSearchResult | null> 
   try {
     const { data, error } = await supabase
       .from('foods')
-      .select('id, name, energy_kcal, protein_g, fat_g, carb_g, image')
+      .select('*')
       .eq('id', id)
       .single();
 
@@ -88,7 +101,31 @@ export async function getFoodById(id: number): Promise<FoodSearchResult | null> 
       return null;
     }
 
-    return mapSupabaseFoodToSearchResult(data as SupabaseFoodItem);
+    const item = data as Record<string, unknown>;
+    const energyMin = item.energy_kcal_min ?? item.energy_kcal ?? 0;
+    const energyMax = item.energy_kcal_max ?? item.energy_kcal ?? energyMin;
+    const proteinMin = item.protein_g_min ?? item.protein_g ?? 0;
+    const proteinMax = item.protein_g_max ?? item.protein_g ?? proteinMin;
+    const fatMin = item.fat_g_min ?? item.fat_g ?? 0;
+    const fatMax = item.fat_g_max ?? item.fat_g ?? fatMin;
+    const carbMin = item.carb_g_min ?? item.carb_g ?? 0;
+    const carbMax = item.carb_g_max ?? item.carb_g ?? carbMin;
+
+    const mapped: SupabaseFoodItem = {
+      id: item.id as number,
+      name: item.name as string,
+      energy_kcal_min: energyMin as number,
+      energy_kcal_max: energyMax as number,
+      protein_g_min: proteinMin as number,
+      protein_g_max: proteinMax as number,
+      fat_g_min: fatMin as number,
+      fat_g_max: fatMax as number,
+      carb_g_min: carbMin as number,
+      carb_g_max: carbMax as number,
+      image: (item.image ?? null) as string | null,
+    };
+
+    return mapSupabaseFoodToSearchResult(mapped);
   } catch (error) {
     console.error('[foodsApi] getFoodById error:', error);
     return null;

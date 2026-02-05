@@ -2110,12 +2110,16 @@ export default function HomeScreen() {
                             key={`sb-${food.id}`}
                             style={[styles.mealItem, { backgroundColor: theme.background, borderColor: theme.border }]}
                             onPress={() => {
+                              const avgCalories = Math.round((food.caloriesMin + food.caloriesMax) / 2);
+                              const avgProtein = Math.round((food.proteinMin + food.proteinMax) / 2);
+                              const avgCarbs = Math.round((food.carbsMin + food.carbsMax) / 2);
+                              const avgFat = Math.round((food.fatMin + food.fatMax) / 2);
                               addFoodEntry({
                                 name: food.name,
-                                calories: food.calories,
-                                protein: food.protein,
-                                carbs: food.carbs,
-                                fat: food.fat,
+                                calories: avgCalories,
+                                protein: avgProtein,
+                                carbs: avgCarbs,
+                                fat: avgFat,
                                 photoUri: food.image || undefined,
                               });
                               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -2135,10 +2139,10 @@ export default function HomeScreen() {
                               </Text>
                               <View style={styles.usdaNutrientRow}>
                                 <Text style={[styles.mealItemCalories, { color: theme.textSecondary }]}>
-                                  {food.calories} kcal
+                                  {food.caloriesMin === food.caloriesMax ? food.caloriesMin : `${food.caloriesMin}-${food.caloriesMax}`} kcal
                                 </Text>
                                 <Text style={[styles.usdaMacros, { color: theme.textTertiary }]}>
-                                  P: {food.protein}g • C: {food.carbs}g • F: {food.fat}g
+                                  P: {food.proteinMin === food.proteinMax ? food.proteinMin : `${food.proteinMin}-${food.proteinMax}`}g • C: {food.carbsMin === food.carbsMax ? food.carbsMin : `${food.carbsMin}-${food.carbsMax}`}g • F: {food.fatMin === food.fatMax ? food.fatMin : `${food.fatMin}-${food.fatMax}`}g
                                 </Text>
                               </View>
                             </View>

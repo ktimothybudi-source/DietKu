@@ -9,6 +9,7 @@ import {
   Image,
   ActivityIndicator,
   Keyboard,
+  Alert,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Search, X, ChevronLeft, Flame, Drumstick, Droplets, Wheat } from 'lucide-react-native';
@@ -17,7 +18,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { searchFoods } from '@/lib/foodsApi';
-import { FoodSearchResult } from '@/types/food';
+import { FoodSearchResult, formatNutrientRange, getAverageFromRange } from '@/types/food';
 
 const DEBOUNCE_DELAY = 300;
 
@@ -78,26 +79,67 @@ export default function FoodSearchScreen() {
   }, []);
 
   const handleSelectFood = useCallback((food: FoodSearchResult) => {
-    console.log('[FoodSearch] Selected food:', food.name, food.calories, 'kcal');
+    const avgCalories = getAverageFromRange(food.caloriesMin, food.caloriesMax);
+    const avgProtein = getAverageFromRange(food.proteinMin, food.proteinMax);
+    const avgCarbs = getAverageFromRange(food.carbsMin, food.carbsMax);
+    const avgFat = getAverageFromRange(food.fatMin, food.fatMax);
+    
+    console.log('[FoodSearch] Selected food:', food.name, 'calories:', food.caloriesMin, '-', food.caloriesMax);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    addFoodEntry({
-      name: food.name,
-      calories: food.calories,
-      protein: food.protein,
-      carbs: food.carbs,
-      fat: food.fat,
-      photoUri: food.image || undefined,
-    });
+    const hasRange = food.caloriesMin !== food.caloriesMax || 
+                     food.proteinMin !== food.proteinMax ||
+                     food.carbsMin !== food.carbsMax ||
+                     food.fatMin !== food.fatMax;
+    
+    const calRange = formatNutrientRange(food.caloriesMin, food.caloriesMax);
+    const proteinRange = formatNutrientRange(food.proteinMin, food.proteinMax);
+    const carbsRange = formatNutrientRange(food.carbsMin, food.carbsMax);
+    const fatRange = formatNutrientRange(food.fatMin, food.fatMax);
+    
+    const message = hasRange
+      ? `${food.name}\n\n📊 Rentang Nutrisi:\n• Kalori: ${calRange} kcal\n• Protein: ${proteinRange}g\n• Karbo: ${carbsRange}g\n• Lemak: ${fatRange}g\n\n✅ Nilai rata-rata akan ditambahkan:\n• ${avgCalories} kcal • ${avgProtein}g protein\n• ${avgCarbs}g karbo • ${avgFat}g lemak`
+      : `${food.name}\n\n• ${avgCalories} kcal\n• ${avgProtein}g protein\n• ${avgCarbs}g karbo\n• ${avgFat}g lemak`;
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
+    Alert.alert(
+      'Tambah Makanan',
+      message,
+      [
+        {
+          text: 'Batal',
+          style: 'cancel',
+        },
+        {
+          text: 'Tambah',
+          onPress: () => {
+            addFoodEntry({
+              name: food.name,
+              calories: avgCalories,
+              protein: avgProtein,
+              carbs: avgCarbs,
+              fat: avgFat,
+              photoUri: food.image || undefined,
+            });
+
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            router.back();
+          },
+        },
+      ]
+    );
   }, [addFoodEntry]);
 
   const handleGoBack = useCallback(() => {
     Keyboard.dismiss();
     router.back();
   }, []);
+
+  const renderNutrientValue = (min: number, max: number, unit: string = '') => {
+    if (min === max) {
+      return `${min}${unit}`;
+    }
+    return `${min}-${max}${unit}`;
+  };
 
   const renderFoodItem = useCallback(({ item }: { item: FoodSearchResult }) => (
     <TouchableOpacity
@@ -127,28 +169,28 @@ export default function FoodSearchScreen() {
           <View style={styles.macroItem}>
             <Flame size={12} color="#EF4444" />
             <Text style={[styles.macroText, { color: theme.textSecondary }]}>
-              {item.calories} kcal
+              {renderNutrientValue(item.caloriesMin, item.caloriesMax, ' kcal')}
             </Text>
           </View>
           
           <View style={styles.macroItem}>
             <Drumstick size={12} color="#10B981" />
             <Text style={[styles.macroText, { color: theme.textSecondary }]}>
-              {item.protein}g
+              {renderNutrientValue(item.proteinMin, item.proteinMax, 'g')}
             </Text>
           </View>
           
           <View style={styles.macroItem}>
             <Wheat size={12} color="#3B82F6" />
             <Text style={[styles.macroText, { color: theme.textSecondary }]}>
-              {item.carbs}g
+              {renderNutrientValue(item.carbsMin, item.carbsMax, 'g')}
             </Text>
           </View>
           
           <View style={styles.macroItem}>
             <Droplets size={12} color="#F59E0B" />
             <Text style={[styles.macroText, { color: theme.textSecondary }]}>
-              {item.fat}g
+              {renderNutrientValue(item.fatMin, item.fatMax, 'g')}
             </Text>
           </View>
         </View>
@@ -362,7 +404,7 @@ const styles = StyleSheet.create({
   },
   foodName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     lineHeight: 20,
   },
   macroRow: {
@@ -377,7 +419,7 @@ const styles = StyleSheet.create({
   },
   macroText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '500' as const,
   },
   emptyContainer: {
     flex: 1,
@@ -396,7 +438,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     marginBottom: 8,
     textAlign: 'center',
   },
