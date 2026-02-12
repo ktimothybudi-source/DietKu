@@ -14,8 +14,10 @@ import {
   Alert,
   Animated,
 } from 'react-native';
+const SCREEN_WIDTH = Dimensions.get('window').width;
 import { Stack, router } from 'expo-router';
-import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2, Edit3, PlusCircle, Search as SearchIcon } from 'lucide-react-native';
+import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2, Edit3, PlusCircle, Search as SearchIcon, Droplets, Minus } from 'lucide-react-native';
+import { Dimensions } from 'react-native';
 import { useNutrition, useTodayProgress, PendingFoodEntry } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FoodEntry, MealAnalysis } from '@/types/nutrition';
@@ -31,7 +33,7 @@ import { ANIMATION_DURATION } from '@/constants/animations';
 import { getTimeBasedMessage, getProgressMessage, getCalorieFeedback, MotivationalMessage } from '@/constants/motivationalMessages';
 
 export default function HomeScreen() {
-  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, removeFromRecent, shouldSuggestFavorite } = useNutrition();
+  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, removeFromRecent, shouldSuggestFavorite, addWaterCup, removeWaterCup, getTodayWaterCups } = useNutrition();
   const { theme } = useTheme();
   const progress = useTodayProgress();
   const [modalVisible, setModalVisible] = useState(false);
@@ -88,6 +90,8 @@ export default function HomeScreen() {
   const [editItemFat, setEditItemFat] = useState('');
   const [showAddItem, setShowAddItem] = useState(false);
   const [hasEdited, setHasEdited] = useState(false);
+  const [macroPage, setMacroPage] = useState(0);
+  const macroScrollRef = useRef<ScrollView>(null);
   const [viewingLoggedEntryId, setViewingLoggedEntryId] = useState<string | null>(null);
   
   const pendingModalScrollRef = useRef<ScrollView>(null);
@@ -960,53 +964,169 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <View style={styles.macroRingsCard}>
-            <View style={styles.macroRing}>
-              <ProgressRing
-                progress={Math.min((progress?.proteinProgress || 0), 100)}
-                size={100}
-                strokeWidth={8}
-                color="#10B981"
-                backgroundColor={theme.border}
-              >
-                <View style={styles.macroRingContent}>
-                  <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.protein}g</Text>
+          <View style={styles.macroScrollWrapper}>
+            <ScrollView
+              ref={macroScrollRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) => {
+                const page = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 48));
+                setMacroPage(page);
+              }}
+              style={styles.macroHorizontalScroll}
+            >
+              <View style={[styles.macroPage, { width: SCREEN_WIDTH - 48 }]}>
+                <View style={styles.macroRingsCard}>
+                  <View style={styles.macroRing}>
+                    <ProgressRing
+                      progress={Math.min((progress?.proteinProgress || 0), 100)}
+                      size={100}
+                      strokeWidth={8}
+                      color="#10B981"
+                      backgroundColor={theme.border}
+                    >
+                      <View style={styles.macroRingContent}>
+                        <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.protein}g</Text>
+                      </View>
+                    </ProgressRing>
+                    <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Protein</Text>
+                    <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.protein}g</Text>
+                  </View>
+                  
+                  <View style={styles.macroRing}>
+                    <ProgressRing
+                      progress={Math.min((todayTotals.carbs / (dailyTargets.carbsMax || 250)) * 100, 100)}
+                      size={100}
+                      strokeWidth={8}
+                      color="#3B82F6"
+                      backgroundColor={theme.border}
+                    >
+                      <View style={styles.macroRingContent}>
+                        <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.carbs}g</Text>
+                      </View>
+                    </ProgressRing>
+                    <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Carbs</Text>
+                    <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.carbsMax}g</Text>
+                  </View>
+                  
+                  <View style={styles.macroRing}>
+                    <ProgressRing
+                      progress={Math.min((todayTotals.fat / (dailyTargets.fatMax || 70)) * 100, 100)}
+                      size={100}
+                      strokeWidth={8}
+                      color="#F59E0B"
+                      backgroundColor={theme.border}
+                    >
+                      <View style={styles.macroRingContent}>
+                        <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.fat}g</Text>
+                      </View>
+                    </ProgressRing>
+                    <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Fat</Text>
+                    <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.fatMax}g</Text>
+                  </View>
                 </View>
-              </ProgressRing>
-              <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Protein</Text>
-              <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.protein}g</Text>
-            </View>
-            
-            <View style={styles.macroRing}>
-              <ProgressRing
-                progress={Math.min((todayTotals.carbs / (dailyTargets.carbsMax || 250)) * 100, 100)}
-                size={100}
-                strokeWidth={8}
-                color="#3B82F6"
-                backgroundColor={theme.border}
-              >
-                <View style={styles.macroRingContent}>
-                  <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.carbs}g</Text>
+              </View>
+
+              <View style={[styles.macroPage, { width: SCREEN_WIDTH - 48 }]}>
+                <View style={[styles.extraNutrientsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  {(() => {
+                    const estimatedSugar = Math.round(todayTotals.carbs * 0.35);
+                    const sugarTarget = 50;
+                    const estimatedFiber = Math.round(todayTotals.carbs * 0.1);
+                    const fiberTarget = 28;
+                    const estimatedSodium = Math.round(todayTotals.calories * 1.0);
+                    const sodiumTarget = 2300;
+                    const currentWater = getTodayWaterCups();
+                    const waterTarget = 8;
+
+                    return (
+                      <>
+                        <View style={styles.extraNutrientRow}>
+                          <View style={styles.extraNutrientInfo}>
+                            <View style={[styles.extraNutrientDot, { backgroundColor: '#EC4899' }]} />
+                            <Text style={[styles.extraNutrientName, { color: theme.text }]}>Gula</Text>
+                          </View>
+                          <View style={styles.extraNutrientBarContainer}>
+                            <View style={[styles.extraNutrientBarBg, { backgroundColor: theme.border }]}>
+                              <View style={[styles.extraNutrientBarFill, { backgroundColor: '#EC4899', width: `${Math.min((estimatedSugar / sugarTarget) * 100, 100)}%` }]} />
+                            </View>
+                          </View>
+                          <Text style={[styles.extraNutrientValue, { color: theme.textSecondary }]}>~{estimatedSugar}/{sugarTarget}g</Text>
+                        </View>
+
+                        <View style={styles.extraNutrientRow}>
+                          <View style={styles.extraNutrientInfo}>
+                            <View style={[styles.extraNutrientDot, { backgroundColor: '#8B5CF6' }]} />
+                            <Text style={[styles.extraNutrientName, { color: theme.text }]}>Serat</Text>
+                          </View>
+                          <View style={styles.extraNutrientBarContainer}>
+                            <View style={[styles.extraNutrientBarBg, { backgroundColor: theme.border }]}>
+                              <View style={[styles.extraNutrientBarFill, { backgroundColor: '#8B5CF6', width: `${Math.min((estimatedFiber / fiberTarget) * 100, 100)}%` }]} />
+                            </View>
+                          </View>
+                          <Text style={[styles.extraNutrientValue, { color: theme.textSecondary }]}>~{estimatedFiber}/{fiberTarget}g</Text>
+                        </View>
+
+                        <View style={styles.extraNutrientRow}>
+                          <View style={styles.extraNutrientInfo}>
+                            <View style={[styles.extraNutrientDot, { backgroundColor: '#F97316' }]} />
+                            <Text style={[styles.extraNutrientName, { color: theme.text }]}>Sodium</Text>
+                          </View>
+                          <View style={styles.extraNutrientBarContainer}>
+                            <View style={[styles.extraNutrientBarBg, { backgroundColor: theme.border }]}>
+                              <View style={[styles.extraNutrientBarFill, { backgroundColor: '#F97316', width: `${Math.min((estimatedSodium / sodiumTarget) * 100, 100)}%` }]} />
+                            </View>
+                          </View>
+                          <Text style={[styles.extraNutrientValue, { color: theme.textSecondary }]}>~{estimatedSodium}/{sodiumTarget}mg</Text>
+                        </View>
+
+                        <View style={[styles.waterSection, { borderTopColor: theme.border }]}>
+                          <View style={styles.waterHeader}>
+                            <Droplets size={18} color="#38BDF8" />
+                            <Text style={[styles.waterTitle, { color: theme.text }]}>Air</Text>
+                            <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentWater}/{waterTarget} gelas</Text>
+                          </View>
+                          <View style={styles.waterCupsRow}>
+                            <TouchableOpacity
+                              style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
+                              onPress={removeWaterCup}
+                              activeOpacity={0.7}
+                            >
+                              <Minus size={16} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                            <View style={styles.waterCupsDisplay}>
+                              {Array.from({ length: waterTarget }).map((_, i) => (
+                                <View
+                                  key={i}
+                                  style={[
+                                    styles.waterCupDot,
+                                    {
+                                      backgroundColor: i < currentWater ? '#38BDF8' : theme.border,
+                                    },
+                                  ]}
+                                />
+                              ))}
+                            </View>
+                            <TouchableOpacity
+                              style={[styles.waterBtn, { backgroundColor: '#38BDF8' }]}
+                              onPress={addWaterCup}
+                              activeOpacity={0.7}
+                            >
+                              <Plus size={16} color="#FFFFFF" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </>
+                    );
+                  })()}
                 </View>
-              </ProgressRing>
-              <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Carbs</Text>
-              <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.carbsMax}g</Text>
-            </View>
-            
-            <View style={styles.macroRing}>
-              <ProgressRing
-                progress={Math.min((todayTotals.fat / (dailyTargets.fatMax || 70)) * 100, 100)}
-                size={100}
-                strokeWidth={8}
-                color="#F59E0B"
-                backgroundColor={theme.border}
-              >
-                <View style={styles.macroRingContent}>
-                  <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.fat}g</Text>
-                </View>
-              </ProgressRing>
-              <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Fat</Text>
-              <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.fatMax}g</Text>
+              </View>
+            </ScrollView>
+
+            <View style={styles.macroPageDots}>
+              <View style={[styles.macroPageDot, { backgroundColor: macroPage === 0 ? '#10B981' : theme.border }]} />
+              <View style={[styles.macroPageDot, { backgroundColor: macroPage === 1 ? '#10B981' : theme.border }]} />
             </View>
           </View>
 
@@ -2467,12 +2587,118 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500' as const,
   },
+  macroScrollWrapper: {
+    marginBottom: 32,
+  },
+  macroHorizontalScroll: {
+    marginHorizontal: 24,
+  },
+  macroPage: {
+    justifyContent: 'center',
+  },
   macroRingsCard: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginHorizontal: 24,
-    marginBottom: 32,
     gap: 12,
+  },
+  macroPageDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+  },
+  macroPageDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  extraNutrientsCard: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    gap: 14,
+  },
+  extraNutrientRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  extraNutrientInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    width: 72,
+  },
+  extraNutrientDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  extraNutrientName: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  extraNutrientBarContainer: {
+    flex: 1,
+  },
+  extraNutrientBarBg: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  extraNutrientBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  extraNutrientValue: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+    minWidth: 72,
+    textAlign: 'right' as const,
+  },
+  waterSection: {
+    borderTopWidth: 1,
+    paddingTop: 14,
+    gap: 10,
+  },
+  waterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  waterTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  waterCount: {
+    fontSize: 13,
+    marginLeft: 'auto',
+  },
+  waterCupsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  waterBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  waterCupsDisplay: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  waterCupDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
   },
   macroRing: {
     flex: 1,

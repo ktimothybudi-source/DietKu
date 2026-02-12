@@ -37,6 +37,7 @@ interface AuthState {
 const BASE_STREAK_KEY = 'nutrition_streak';
 const BASE_FAVORITES_KEY = 'nutrition_favorites';
 const BASE_RECENT_MEALS_KEY = 'nutrition_recent_meals';
+const BASE_WATER_KEY = 'nutrition_water';
 
 const getStorageKey = (baseKey: string, email: string | null) => {
   if (!email) return baseKey;
@@ -107,6 +108,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   const [recentMeals, setRecentMeals] = useState<RecentMeal[]>([]);
   const [authState, setAuthState] = useState<AuthState>({ isSignedIn: false, email: null, userId: null });
   const [, setSession] = useState<Session | null>(null);
+  const [waterCups, setWaterCups] = useState<{ [date: string]: number }>({});
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -224,6 +226,16 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     enabled: authState.isSignedIn,
   });
 
+  const waterQuery = useQuery({
+    queryKey: ['nutrition_water', authState.email],
+    queryFn: async () => {
+      const key = getStorageKey(BASE_WATER_KEY, authState.email);
+      const stored = await AsyncStorage.getItem(key);
+      return stored ? JSON.parse(stored) : {};
+    },
+    enabled: authState.isSignedIn,
+  });
+
   const recentMealsQuery = useQuery({
     queryKey: ['nutrition_recent_meals', authState.email],
     queryFn: async () => {
@@ -284,6 +296,12 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       setRecentMeals(recentMealsQuery.data);
     }
   }, [recentMealsQuery.data]);
+
+  useEffect(() => {
+    if (waterQuery.data) {
+      setWaterCups(waterQuery.data);
+    }
+  }, [waterQuery.data]);
 
   const saveProfileMutation = useMutation({
     mutationFn: async (newProfile: UserProfile) => {
@@ -497,6 +515,18 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     onSuccess: (data) => {
       setFavorites(data);
       queryClient.setQueryData(['nutrition_favorites', authState.email], data);
+    },
+  });
+
+  const saveWaterMutation = useMutation({
+    mutationFn: async (newWater: { [date: string]: number }) => {
+      const key = getStorageKey(BASE_WATER_KEY, authState.email);
+      await AsyncStorage.setItem(key, JSON.stringify(newWater));
+      return newWater;
+    },
+    onSuccess: (data) => {
+      setWaterCups(data);
+      queryClient.setQueryData(['nutrition_water', authState.email], data);
     },
   });
 
@@ -840,6 +870,27 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     }, 100);
   }, [queryClient]);
 
+  const addWaterCup = useCallback(() => {
+    const todayKey = getTodayKey();
+    const current = waterCups[todayKey] || 0;
+    const updated = { ...waterCups, [todayKey]: current + 1 };
+    saveWaterMutation.mutate(updated);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [waterCups, saveWaterMutation]);
+
+  const removeWaterCup = useCallback(() => {
+    const todayKey = getTodayKey();
+    const current = waterCups[todayKey] || 0;
+    if (current <= 0) return;
+    const updated = { ...waterCups, [todayKey]: current - 1 };
+    saveWaterMutation.mutate(updated);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [waterCups, saveWaterMutation]);
+
+  const getTodayWaterCups = useCallback(() => {
+    return waterCups[selectedDate] || 0;
+  }, [waterCups, selectedDate]);
+
   const removeFromRecent = useCallback((recentId: string) => {
     const updatedRecent = recentMeals.filter(r => r.id !== recentId);
     mutateRecentMeals(updatedRecent);
@@ -1096,6 +1147,9 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     logFromRecent,
     removeFromRecent,
     shouldSuggestFavorite,
+    addWaterCup,
+    removeWaterCup,
+    getTodayWaterCups,
     addWeightEntry,
     authState,
     signIn,
@@ -1104,7 +1158,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     updateWeightEntry,
     deleteWeightEntry,
     clearAllData,
-    isLoading: profileQuery.isLoading || foodEntriesQuery.isLoading || weightHistoryQuery.isLoading || streakQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading,
+    isLoading: profileQuery.isLoading || foodEntriesQuery.isLoading || weightHistoryQuery.isLoading || streakQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading || waterQuery.isLoading,
     isSaving: saveProfileMutation.isPending || saveFoodEntryMutation.isPending || saveWeightHistoryMutation.isPending || saveFavoritesMutation.isPending || saveRecentMealsMutation.isPending,
   };
 });
