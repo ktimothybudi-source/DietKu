@@ -1020,125 +1020,91 @@ export default function HomeScreen() {
               </View>
 
               <View style={[styles.macroPage, { width: SCREEN_WIDTH - 48 }]}>
-                <View style={[styles.extraNutrientsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                  {(() => {
-                    const currentSugar = getTodaySugarUnits();
-                    const sugarTarget = 8;
-                    const currentFiber = getTodayFiberUnits();
-                    const fiberTarget = 8;
-                    const currentSodium = getTodaySodiumUnits();
-                    const sodiumTarget = 8;
-                    const currentWater = getTodayWaterCups();
-                    const waterTarget = 8;
+                {(() => {
+                  const currentSugar = getTodaySugarUnits();
+                  const sugarTarget = 8;
+                  const currentFiber = getTodayFiberUnits();
+                  const fiberTarget = 8;
+                  const currentSodium = getTodaySodiumUnits();
+                  const sodiumTarget = 8;
+                  const currentWater = getTodayWaterCups();
+                  const waterTarget = 8;
 
-                    return (
-                      <>
+                  return (
+                    <View style={{ gap: 14 }}>
+                      <View style={styles.macroRingsCard}>
+                        <View style={styles.miniMacroRing}>
+                          <ProgressRing
+                            progress={Math.min((currentSugar / sugarTarget) * 100, 100)}
+                            size={76}
+                            strokeWidth={6}
+                            color="#EC4899"
+                            backgroundColor={theme.border}
+                          >
+                            <View style={styles.macroRingContent}>
+                              <Text style={[styles.miniMacroRingValue, { color: theme.text }]}>{currentSugar}</Text>
+                            </View>
+                          </ProgressRing>
+                          <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Gula</Text>
+                          <View style={styles.miniMacroControls}>
+                            <TouchableOpacity onPress={removeSugarUnit} style={[styles.miniControlBtn, { borderColor: theme.border }]} activeOpacity={0.7}>
+                              <Minus size={12} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={addSugarUnit} style={[styles.miniControlBtn, { backgroundColor: '#EC4899', borderColor: '#EC4899' }]} activeOpacity={0.7}>
+                              <Plus size={12} color="#FFFFFF" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+
+                        <View style={styles.miniMacroRing}>
+                          <ProgressRing
+                            progress={Math.min((currentFiber / fiberTarget) * 100, 100)}
+                            size={76}
+                            strokeWidth={6}
+                            color="#8B5CF6"
+                            backgroundColor={theme.border}
+                          >
+                            <View style={styles.macroRingContent}>
+                              <Text style={[styles.miniMacroRingValue, { color: theme.text }]}>{currentFiber}</Text>
+                            </View>
+                          </ProgressRing>
+                          <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Serat</Text>
+                          <View style={styles.miniMacroControls}>
+                            <TouchableOpacity onPress={removeFiberUnit} style={[styles.miniControlBtn, { borderColor: theme.border }]} activeOpacity={0.7}>
+                              <Minus size={12} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={addFiberUnit} style={[styles.miniControlBtn, { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }]} activeOpacity={0.7}>
+                              <Plus size={12} color="#FFFFFF" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+
+                        <View style={styles.miniMacroRing}>
+                          <ProgressRing
+                            progress={Math.min((currentSodium / sodiumTarget) * 100, 100)}
+                            size={76}
+                            strokeWidth={6}
+                            color="#F97316"
+                            backgroundColor={theme.border}
+                          >
+                            <View style={styles.macroRingContent}>
+                              <Text style={[styles.miniMacroRingValue, { color: theme.text }]}>{currentSodium}</Text>
+                            </View>
+                          </ProgressRing>
+                          <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Sodium</Text>
+                          <View style={styles.miniMacroControls}>
+                            <TouchableOpacity onPress={removeSodiumUnit} style={[styles.miniControlBtn, { borderColor: theme.border }]} activeOpacity={0.7}>
+                              <Minus size={12} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={addSodiumUnit} style={[styles.miniControlBtn, { backgroundColor: '#F97316', borderColor: '#F97316' }]} activeOpacity={0.7}>
+                              <Plus size={12} color="#FFFFFF" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </View>
+
+                      <View style={[styles.extraNutrientsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                         <View style={styles.nutrientTrackerSection}>
-                          <View style={styles.waterHeader}>
-                            <View style={[styles.nutrientIconDot, { backgroundColor: '#EC4899' }]} />
-                            <Text style={[styles.waterTitle, { color: theme.text }]}>Gula</Text>
-                            <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentSugar}/{sugarTarget}</Text>
-                          </View>
-                          <View style={styles.waterCupsRow}>
-                            <TouchableOpacity
-                              style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
-                              onPress={removeSugarUnit}
-                              activeOpacity={0.7}
-                            >
-                              <Minus size={16} color={theme.textSecondary} />
-                            </TouchableOpacity>
-                            <View style={styles.waterCupsDisplay}>
-                              {Array.from({ length: sugarTarget }).map((_, i) => (
-                                <View
-                                  key={i}
-                                  style={[
-                                    styles.waterCupDot,
-                                    { backgroundColor: i < currentSugar ? '#EC4899' : theme.border },
-                                  ]}
-                                />
-                              ))}
-                            </View>
-                            <TouchableOpacity
-                              style={[styles.waterBtn, { backgroundColor: '#EC4899' }]}
-                              onPress={addSugarUnit}
-                              activeOpacity={0.7}
-                            >
-                              <Plus size={16} color="#FFFFFF" />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-
-                        <View style={[styles.nutrientTrackerSection, { borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 12 }]}>
-                          <View style={styles.waterHeader}>
-                            <View style={[styles.nutrientIconDot, { backgroundColor: '#8B5CF6' }]} />
-                            <Text style={[styles.waterTitle, { color: theme.text }]}>Serat</Text>
-                            <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentFiber}/{fiberTarget}</Text>
-                          </View>
-                          <View style={styles.waterCupsRow}>
-                            <TouchableOpacity
-                              style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
-                              onPress={removeFiberUnit}
-                              activeOpacity={0.7}
-                            >
-                              <Minus size={16} color={theme.textSecondary} />
-                            </TouchableOpacity>
-                            <View style={styles.waterCupsDisplay}>
-                              {Array.from({ length: fiberTarget }).map((_, i) => (
-                                <View
-                                  key={i}
-                                  style={[
-                                    styles.waterCupDot,
-                                    { backgroundColor: i < currentFiber ? '#8B5CF6' : theme.border },
-                                  ]}
-                                />
-                              ))}
-                            </View>
-                            <TouchableOpacity
-                              style={[styles.waterBtn, { backgroundColor: '#8B5CF6' }]}
-                              onPress={addFiberUnit}
-                              activeOpacity={0.7}
-                            >
-                              <Plus size={16} color="#FFFFFF" />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-
-                        <View style={[styles.nutrientTrackerSection, { borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 12 }]}>
-                          <View style={styles.waterHeader}>
-                            <View style={[styles.nutrientIconDot, { backgroundColor: '#F97316' }]} />
-                            <Text style={[styles.waterTitle, { color: theme.text }]}>Sodium</Text>
-                            <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentSodium}/{sodiumTarget}</Text>
-                          </View>
-                          <View style={styles.waterCupsRow}>
-                            <TouchableOpacity
-                              style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
-                              onPress={removeSodiumUnit}
-                              activeOpacity={0.7}
-                            >
-                              <Minus size={16} color={theme.textSecondary} />
-                            </TouchableOpacity>
-                            <View style={styles.waterCupsDisplay}>
-                              {Array.from({ length: sodiumTarget }).map((_, i) => (
-                                <View
-                                  key={i}
-                                  style={[
-                                    styles.waterCupDot,
-                                    { backgroundColor: i < currentSodium ? '#F97316' : theme.border },
-                                  ]}
-                                />
-                              ))}
-                            </View>
-                            <TouchableOpacity
-                              style={[styles.waterBtn, { backgroundColor: '#F97316' }]}
-                              onPress={addSodiumUnit}
-                              activeOpacity={0.7}
-                            >
-                              <Plus size={16} color="#FFFFFF" />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-
-                        <View style={[styles.nutrientTrackerSection, { borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 12 }]}>
                           <View style={styles.waterHeader}>
                             <Droplets size={18} color="#38BDF8" />
                             <Text style={[styles.waterTitle, { color: theme.text }]}>Air</Text>
@@ -1172,10 +1138,10 @@ export default function HomeScreen() {
                             </TouchableOpacity>
                           </View>
                         </View>
-                      </>
-                    );
-                  })()}
-                </View>
+                      </View>
+                    </View>
+                  );
+                })()}
               </View>
               <View style={[styles.macroPage, { width: SCREEN_WIDTH - 48 }]}>
                 <View style={[styles.activityCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -2900,6 +2866,29 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     gap: 8,
+  },
+  miniMacroRing: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  miniMacroRingValue: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+  },
+  miniMacroControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+  miniControlBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
   },
   macroRingContent: {
     alignItems: 'center',
