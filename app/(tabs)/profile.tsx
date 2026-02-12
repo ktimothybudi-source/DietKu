@@ -13,12 +13,14 @@ import { User, Settings as SettingsIcon, LogIn, LogOut, Globe, Moon, Sun, Chevro
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useCommunity } from '@/contexts/CommunityContext';
 import * as Haptics from 'expo-haptics';
 
 export default function ProfileScreen() {
   const { profile, dailyTargets, favorites, removeFromFavorites, authState, signOut } = useNutrition();
   const { theme, themeMode, toggleTheme } = useTheme();
   const { language } = useLanguage();
+  const { communityProfile, hasProfile } = useCommunity();
 
   if (!profile || !dailyTargets) {
     return null;
@@ -70,6 +72,11 @@ export default function ProfileScreen() {
   const handleEditProfile = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push('/edit-profile');
+  };
+
+  const handleCommunityProfile = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push('/setup-community-profile');
   };
 
   return (
@@ -333,6 +340,47 @@ export default function ProfileScreen() {
           >
             <Text style={styles.editButtonText}>Edit Profil</Text>
           </TouchableOpacity>
+
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardTitleRow}>
+                <User size={20} color={theme.primary} />
+                <Text style={[styles.cardTitle, { color: theme.text }]}>Profil Komunitas</Text>
+              </View>
+            </View>
+
+            {hasProfile && communityProfile ? (
+              <View style={styles.profileStats}>
+                <View style={[styles.statRow, { borderBottomColor: theme.border }]}>
+                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Username</Text>
+                  <Text style={[styles.statValue, { color: theme.text }]}>@{communityProfile.username}</Text>
+                </View>
+                <View style={[styles.statRow, { borderBottomColor: theme.border }]}>
+                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Nama Tampilan</Text>
+                  <Text style={[styles.statValue, { color: theme.text }]}>{communityProfile.displayName}</Text>
+                </View>
+                <View style={[styles.statRow, { borderBottomWidth: 0 }]}>
+                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Bio</Text>
+                  <Text style={[styles.statValue, { color: theme.text }]}>{communityProfile.bio || '-'}</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.emptyFavorites}>
+                <Text style={[styles.emptyFavoritesText, { color: theme.textSecondary }]}>Belum ada profil komunitas</Text>
+                <Text style={[styles.emptyFavoritesSubtext, { color: theme.textTertiary }]}>Buat profil untuk berinteraksi di komunitas</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[styles.editButton, { backgroundColor: theme.primary, marginTop: 12 }]}
+              onPress={handleCommunityProfile}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.editButtonText}>
+                {hasProfile ? 'Edit Profil Komunitas' : 'Buat Profil Komunitas'}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.cardHeader}>

@@ -6,6 +6,7 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NutritionProvider } from "@/contexts/NutritionContext";
 import { ExerciseProvider } from "@/contexts/ExerciseContext";
+import { CommunityProvider } from "@/contexts/CommunityContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
@@ -25,6 +26,9 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="food-search" options={{ headerShown: false, presentation: 'card' }} />
       <Stack.Screen name="log-exercise" options={{ headerShown: false, presentation: 'card' }} />
+      <Stack.Screen name="setup-community-profile" options={{ presentation: 'card' }} />
+      <Stack.Screen name="create-post" options={{ presentation: 'card' }} />
+      <Stack.Screen name="post-detail" options={{ presentation: 'card' }} />
     </Stack>
   );
 }
@@ -42,9 +46,11 @@ export default function RootLayout() {
             <NotificationProvider>
               <NutritionProvider>
                 <ExerciseProvider>
-                  <GestureHandlerRootView>
-                    <RootLayoutNav />
-                  </GestureHandlerRootView>
+                  <CommunityProvider>
+                    <GestureHandlerRootView>
+                      <RootLayoutNav />
+                    </GestureHandlerRootView>
+                  </CommunityProvider>
                 </ExerciseProvider>
               </NutritionProvider>
             </NotificationProvider>

@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Flame, User, BarChart3 } from "lucide-react-native";
+import { Flame, User, BarChart3, Users } from "lucide-react-native";
 import React from "react";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -55,6 +55,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <Flame size={21} color={color} fill={focused ? color : 'transparent'} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="community"
+        options={{
+          title: "Komunitas",
+          tabBarLabel: "Komunitas",
+          tabBarIcon: ({ color }) => <Users size={21} color={color} />,
         }}
       />
       <Tabs.Screen
