@@ -402,7 +402,17 @@ export default function HomeScreen() {
 
   React.useEffect(() => {
     if (!isLoading && !profile) {
-      router.replace('/onboarding');
+      const timer = setTimeout(() => {
+        try {
+          router.replace('/onboarding');
+        } catch (e) {
+          console.log('Navigation not ready yet, retrying...', e);
+          setTimeout(() => {
+            router.replace('/onboarding');
+          }, 500);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [profile, isLoading]);
 

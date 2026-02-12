@@ -1,12 +1,14 @@
 import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 
-type FileSystemDirectories = {
-  documentDirectory?: string;
-  cacheDirectory?: string;
+const getBaseDirectory = (): string => {
+  if (Platform.OS === 'web') return 'file:///';
+  const docDir = (FileSystem as Record<string, unknown>).documentDirectory as string | undefined;
+  const cacheDir = (FileSystem as Record<string, unknown>).cacheDirectory as string | undefined;
+  return docDir ?? cacheDir ?? 'file:///';
 };
 
-const fileSystemDirs = FileSystem as unknown as FileSystemDirectories;
-const baseDirectory = fileSystemDirs.documentDirectory ?? fileSystemDirs.cacheDirectory ?? 'file:///';
+const baseDirectory = getBaseDirectory();
 const IMAGES_DIR = `${baseDirectory}meal-photos/`;
 
 async function ensureDirectoryExists() {
