@@ -45,6 +45,12 @@ export interface FoodItemEstimate {
   carbsMax: number;
   fatMin: number;
   fatMax: number;
+  sugarMin?: number;
+  sugarMax?: number;
+  fiberMin?: number;
+  fiberMax?: number;
+  sodiumMin?: number;
+  sodiumMax?: number;
 }
 
 export interface MealAnalysis {

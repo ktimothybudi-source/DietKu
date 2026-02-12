@@ -13,6 +13,12 @@ const foodItemSchema = z.object({
   carbsMax: z.number().describe('Maximum estimated carbs in grams'),
   fatMin: z.number().describe('Minimum estimated fat in grams'),
   fatMax: z.number().describe('Maximum estimated fat in grams'),
+  sugarMin: z.number().describe('Minimum estimated sugar in grams'),
+  sugarMax: z.number().describe('Maximum estimated sugar in grams'),
+  fiberMin: z.number().describe('Minimum estimated dietary fiber in grams'),
+  fiberMax: z.number().describe('Maximum estimated dietary fiber in grams'),
+  sodiumMin: z.number().describe('Minimum estimated sodium in milligrams'),
+  sodiumMax: z.number().describe('Maximum estimated sodium in milligrams'),
 });
 
 const mealAnalysisSchema = z.object({
@@ -37,7 +43,7 @@ export async function analyzeMealPhoto(base64Image: string): Promise<MealAnalysi
               'Analyze this meal photo and identify all visible food items. For each item:\n' +
               '1. Identify the food\n' +
               '2. Estimate portion size using visual cues (plate size, comparisons)\n' +
-              '3. Provide calorie and macro ranges (not exact numbers)\n' +
+              '3. Provide calorie, macro ranges, and micronutrient estimates (sugar in grams, fiber in grams, sodium in milligrams)\n' +
               '4. Be conservative with estimates\n\n' +
               'Provide a confidence level based on:\n' +
               '- High: Clear view, standard portions, common foods\n' +

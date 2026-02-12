@@ -981,10 +981,10 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     return waterCups[selectedDate] || 0;
   }, [waterCups, selectedDate]);
 
-  const addSugarUnit = useCallback(() => {
+  const addSugarUnit = useCallback((amount: number = 1) => {
     const todayKey = getTodayKey();
     const current = sugarUnits[todayKey] || 0;
-    const updated = { ...sugarUnits, [todayKey]: current + 1 };
+    const updated = { ...sugarUnits, [todayKey]: Math.round((current + amount) * 10) / 10 };
     saveSugarMutation.mutate(updated);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [sugarUnits, saveSugarMutation]);
@@ -1002,10 +1002,10 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     return sugarUnits[selectedDate] || 0;
   }, [sugarUnits, selectedDate]);
 
-  const addFiberUnit = useCallback(() => {
+  const addFiberUnit = useCallback((amount: number = 1) => {
     const todayKey = getTodayKey();
     const current = fiberUnits[todayKey] || 0;
-    const updated = { ...fiberUnits, [todayKey]: current + 1 };
+    const updated = { ...fiberUnits, [todayKey]: Math.round((current + amount) * 10) / 10 };
     saveFiberMutation.mutate(updated);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [fiberUnits, saveFiberMutation]);
@@ -1023,10 +1023,10 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     return fiberUnits[selectedDate] || 0;
   }, [fiberUnits, selectedDate]);
 
-  const addSodiumUnit = useCallback(() => {
+  const addSodiumUnit = useCallback((amount: number = 1) => {
     const todayKey = getTodayKey();
     const current = sodiumUnits[todayKey] || 0;
-    const updated = { ...sodiumUnits, [todayKey]: current + 1 };
+    const updated = { ...sodiumUnits, [todayKey]: Math.round(current + amount) };
     saveSodiumMutation.mutate(updated);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [sodiumUnits, saveSodiumMutation]);

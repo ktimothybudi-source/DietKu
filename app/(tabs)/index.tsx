@@ -15,6 +15,11 @@ import {
   Animated,
 } from 'react-native';
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const CAROUSEL_CARD_WIDTH = SCREEN_WIDTH - 40;
+const CAROUSEL_GAP = 12;
+const SUGAR_TARGET_G = 25;
+const FIBER_TARGET_G = 25;
+const SODIUM_TARGET_MG = 2300;
 import { Stack, router } from 'expo-router';
 import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2, Edit3, PlusCircle, Search as SearchIcon, Droplets, Minus, Footprints, Dumbbell, ChevronRight as ChevronRightIcon } from 'lucide-react-native';
 import { Dimensions } from 'react-native';
@@ -94,6 +99,7 @@ export default function HomeScreen() {
   const [hasEdited, setHasEdited] = useState(false);
 
   const [viewingLoggedEntryId, setViewingLoggedEntryId] = useState<string | null>(null);
+  const [carouselPage, setCarouselPage] = useState(0);
   
   const pendingModalScrollRef = useRef<ScrollView>(null);
   
@@ -240,6 +246,13 @@ export default function HomeScreen() {
         fat: avgFat,
         photoUri: donePending.photoUri,
       });
+
+      const avgSugar = Math.round(analysis.items.reduce((sum, item) => sum + ((item.sugarMin ?? 0) + (item.sugarMax ?? 0)) / 2, 0));
+      const avgFiber = Math.round(analysis.items.reduce((sum, item) => sum + ((item.fiberMin ?? 0) + (item.fiberMax ?? 0)) / 2, 0));
+      const avgSodium = Math.round(analysis.items.reduce((sum, item) => sum + ((item.sodiumMin ?? 0) + (item.sodiumMax ?? 0)) / 2, 0));
+      if (avgSugar > 0) addSugarUnit(avgSugar);
+      if (avgFiber > 0) addFiberUnit(avgFiber);
+      if (avgSodium > 0) addSodiumUnit(avgSodium);
       
       const items = analysis.items.map(item => ({
         name: item.name,
@@ -964,7 +977,21 @@ export default function HomeScreen() {
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={[styles.combinedCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.carouselContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={CAROUSEL_CARD_WIDTH + CAROUSEL_GAP}
+              decelerationRate="fast"
+              contentContainerStyle={{ paddingHorizontal: 20 }}
+              onScroll={(e: any) => {
+                const offsetX = e.nativeEvent.contentOffset.x;
+                const page = Math.round(offsetX / (CAROUSEL_CARD_WIDTH + CAROUSEL_GAP));
+                setCarouselPage(Math.max(0, Math.min(2, page)));
+              }}
+              scrollEventThrottle={16}
+            >
+          <View style={[styles.carouselCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.mainRingContainer}>
               <ProgressRing
                 progress={Math.min((progress?.caloriesProgress || 0), 100)}
@@ -1054,133 +1081,67 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {(() => {
-            const currentSugar = getTodaySugarUnits();
-            const sugarTarget = 8;
-            const currentFiber = getTodayFiberUnits();
-            const fiberTarget = 8;
-            const currentSodium = getTodaySodiumUnits();
-            const sodiumTarget = 8;
-
-            return (
-              <View style={[styles.microsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <View style={styles.miniMacroRingsRow}>
-                  <View style={styles.miniMacroRing}>
+          <View style={[styles.carouselCard, { backgroundColor: theme.card, borderColor: theme.border, marginLeft: CAROUSEL_GAP }]}>
+            <Text style={[styles.microCardTitle, { color: theme.text }]}>Mikro Nutrisi</Text>
+            <Text style={[styles.microCardSubtitle, { color: theme.textSecondary }]}>Otomatis dari analisis AI</Text>
+            {(() => {
+              const currentSugar = getTodaySugarUnits();
+              const currentFiber = getTodayFiberUnits();
+              const currentSodium = getTodaySodiumUnits();
+              return (
+                <View style={[styles.macroRingsRow, { marginTop: 24 }]}>
+                  <View style={styles.macroRing}>
                     <ProgressRing
-                      progress={Math.min((currentSugar / sugarTarget) * 100, 100)}
-                      size={64}
-                      strokeWidth={5}
+                      progress={Math.min((currentSugar / SUGAR_TARGET_G) * 100, 100)}
+                      size={72}
+                      strokeWidth={6}
                       color="#EC4899"
                       backgroundColor={theme.border}
                     >
                       <View style={styles.macroRingContent}>
-                        <Text style={[styles.miniMacroRingValue, { color: theme.text }]}>{currentSugar}</Text>
+                        <Text style={[styles.macroRingValue, { color: theme.text }]}>{currentSugar}g</Text>
                       </View>
                     </ProgressRing>
-                    <Text style={[styles.microLabel, { color: theme.textSecondary }]}>Gula</Text>
-                    <View style={styles.miniMacroControls}>
-                      <TouchableOpacity onPress={removeSugarUnit} style={[styles.miniControlBtn, { borderColor: theme.border }]} activeOpacity={0.7}>
-                        <Minus size={11} color={theme.textSecondary} />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={addSugarUnit} style={[styles.miniControlBtn, { backgroundColor: '#EC4899', borderColor: '#EC4899' }]} activeOpacity={0.7}>
-                        <Plus size={11} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    </View>
+                    <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Gula</Text>
+                    <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{SUGAR_TARGET_G}g</Text>
                   </View>
-
-                  <View style={styles.miniMacroRing}>
+                  <View style={styles.macroRing}>
                     <ProgressRing
-                      progress={Math.min((currentFiber / fiberTarget) * 100, 100)}
-                      size={64}
-                      strokeWidth={5}
+                      progress={Math.min((currentFiber / FIBER_TARGET_G) * 100, 100)}
+                      size={72}
+                      strokeWidth={6}
                       color="#8B5CF6"
                       backgroundColor={theme.border}
                     >
                       <View style={styles.macroRingContent}>
-                        <Text style={[styles.miniMacroRingValue, { color: theme.text }]}>{currentFiber}</Text>
+                        <Text style={[styles.macroRingValue, { color: theme.text }]}>{currentFiber}g</Text>
                       </View>
                     </ProgressRing>
-                    <Text style={[styles.microLabel, { color: theme.textSecondary }]}>Serat</Text>
-                    <View style={styles.miniMacroControls}>
-                      <TouchableOpacity onPress={removeFiberUnit} style={[styles.miniControlBtn, { borderColor: theme.border }]} activeOpacity={0.7}>
-                        <Minus size={11} color={theme.textSecondary} />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={addFiberUnit} style={[styles.miniControlBtn, { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }]} activeOpacity={0.7}>
-                        <Plus size={11} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    </View>
+                    <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Serat</Text>
+                    <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{FIBER_TARGET_G}g</Text>
                   </View>
-
-                  <View style={styles.miniMacroRing}>
+                  <View style={styles.macroRing}>
                     <ProgressRing
-                      progress={Math.min((currentSodium / sodiumTarget) * 100, 100)}
-                      size={64}
-                      strokeWidth={5}
+                      progress={Math.min((currentSodium / SODIUM_TARGET_MG) * 100, 100)}
+                      size={72}
+                      strokeWidth={6}
                       color="#F97316"
                       backgroundColor={theme.border}
                     >
                       <View style={styles.macroRingContent}>
-                        <Text style={[styles.miniMacroRingValue, { color: theme.text }]}>{currentSodium}</Text>
+                        <Text style={[styles.macroRingValue, { color: theme.text }]}>{currentSodium < 1000 ? currentSodium + 'mg' : (currentSodium / 1000).toFixed(1) + 'g'}</Text>
                       </View>
                     </ProgressRing>
-                    <Text style={[styles.microLabel, { color: theme.textSecondary }]}>Sodium</Text>
-                    <View style={styles.miniMacroControls}>
-                      <TouchableOpacity onPress={removeSodiumUnit} style={[styles.miniControlBtn, { borderColor: theme.border }]} activeOpacity={0.7}>
-                        <Minus size={11} color={theme.textSecondary} />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={addSodiumUnit} style={[styles.miniControlBtn, { backgroundColor: '#F97316', borderColor: '#F97316' }]} activeOpacity={0.7}>
-                        <Plus size={11} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    </View>
+                    <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Sodium</Text>
+                    <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{(SODIUM_TARGET_MG / 1000).toFixed(1)}g</Text>
                   </View>
                 </View>
-              </View>
-            );
-          })()}
-
-          {(() => {
-            const currentWater = getTodayWaterCups();
-            const waterTarget = 8;
-            return (
-              <View style={[styles.waterCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <View style={styles.waterHeader}>
-                  <Droplets size={18} color="#38BDF8" />
-                  <Text style={[styles.waterTitle, { color: theme.text }]}>Air</Text>
-                  <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentWater}/{waterTarget} gelas</Text>
-                </View>
-                <View style={styles.waterCupsRow}>
-                  <TouchableOpacity
-                    style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
-                    onPress={removeWaterCup}
-                    activeOpacity={0.7}
-                  >
-                    <Minus size={16} color={theme.textSecondary} />
-                  </TouchableOpacity>
-                  <View style={styles.waterCupsDisplay}>
-                    {Array.from({ length: waterTarget }).map((_, i) => (
-                      <View
-                        key={i}
-                        style={[
-                          styles.waterCupDot,
-                          { backgroundColor: i < currentWater ? '#38BDF8' : theme.border },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.waterBtn, { backgroundColor: '#38BDF8' }]}
-                    onPress={addWaterCup}
-                    activeOpacity={0.7}
-                  >
-                    <Plus size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })()}
+              );
+            })()}
+          </View>
 
           <TouchableOpacity
-            style={[styles.exerciseCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            style={[styles.carouselCard, { backgroundColor: theme.card, borderColor: theme.border, marginLeft: CAROUSEL_GAP }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               router.push('/log-exercise');
@@ -1229,18 +1190,74 @@ export default function HomeScreen() {
                 )}
               </View>
             )}
-          </TouchableOpacity>
 
-          <View style={[styles.healthScoreCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.healthScoreHeader}>
-              <Text style={[styles.healthScoreTitle, { color: theme.text }]}>Health Score</Text>
-              <Text style={[styles.healthScoreValue, { color: healthScore.color }]}>{healthScore.score}/10</Text>
+            <View style={[styles.combinedDivider, { backgroundColor: theme.border }]} />
+
+            <View>
+              <View style={styles.healthScoreHeader}>
+                <Text style={[styles.healthScoreTitle, { color: theme.text }]}>Health Score</Text>
+                <Text style={[styles.healthScoreValue, { color: healthScore.color }]}>{healthScore.score}/10</Text>
+              </View>
+              <View style={[styles.healthScoreBarBg, { backgroundColor: theme.border }]}>
+                <View style={[styles.healthScoreBarFill, { width: `${healthScore.score * 10}%`, backgroundColor: healthScore.color }]} />
+              </View>
+              <Text style={[styles.healthScoreMessage, { color: theme.textSecondary }]}>{healthScore.message}</Text>
             </View>
-            <View style={[styles.healthScoreBarBg, { backgroundColor: theme.border }]}>
-              <View style={[styles.healthScoreBarFill, { width: `${healthScore.score * 10}%`, backgroundColor: healthScore.color }]} />
+          </TouchableOpacity>
+            </ScrollView>
+            <View style={styles.carouselDots}>
+              {[0, 1, 2].map((i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.carouselDot,
+                    { backgroundColor: carouselPage === i ? theme.primary : theme.border },
+                  ]}
+                />
+              ))}
             </View>
-            <Text style={[styles.healthScoreMessage, { color: theme.textSecondary }]}>{healthScore.message}</Text>
           </View>
+
+          {(() => {
+            const currentWater = getTodayWaterCups();
+            const waterTarget = 8;
+            return (
+              <View style={[styles.waterCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <View style={styles.waterHeader}>
+                  <Droplets size={18} color="#38BDF8" />
+                  <Text style={[styles.waterTitle, { color: theme.text }]}>Air</Text>
+                  <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentWater}/{waterTarget} gelas</Text>
+                </View>
+                <View style={styles.waterCupsRow}>
+                  <TouchableOpacity
+                    style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
+                    onPress={removeWaterCup}
+                    activeOpacity={0.7}
+                  >
+                    <Minus size={16} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                  <View style={styles.waterCupsDisplay}>
+                    {Array.from({ length: waterTarget }).map((_, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.waterCupDot,
+                          { backgroundColor: i < currentWater ? '#38BDF8' : theme.border },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.waterBtn, { backgroundColor: '#38BDF8' }]}
+                    onPress={addWaterCup}
+                    activeOpacity={0.7}
+                  >
+                    <Plus size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })()}
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -2638,6 +2655,41 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  carouselContainer: {
+    marginBottom: 14,
+  },
+  carouselCard: {
+    width: CAROUSEL_CARD_WIDTH,
+    borderRadius: 14,
+    padding: 24,
+    borderWidth: 1,
+    alignItems: 'center' as const,
+    gap: 0,
+  },
+  carouselDots: {
+    flexDirection: 'row' as const,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    marginTop: 12,
+  },
+  carouselDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  microCardTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    letterSpacing: -0.3,
+    alignSelf: 'flex-start' as const,
+  },
+  microCardSubtitle: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    alignSelf: 'flex-start' as const,
+    marginTop: 4,
   },
   combinedCard: {
     marginHorizontal: 20,
