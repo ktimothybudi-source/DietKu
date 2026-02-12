@@ -63,19 +63,19 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="analytics"
+        options={{
+          title: "Kemajuan",
+          tabBarLabel: "Kemajuan",
+          tabBarIcon: ({ color }) => <BarChart3 size={21} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="community"
         options={{
           title: "Komunitas",
           tabBarLabel: "Komunitas",
           tabBarIcon: ({ color }) => <Users size={21} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: "Analitik",
-          tabBarLabel: "Analitik",
-          tabBarIcon: ({ color }) => <BarChart3 size={21} color={color} />,
         }}
       />
       <Tabs.Screen

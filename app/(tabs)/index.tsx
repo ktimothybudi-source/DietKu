@@ -1244,20 +1244,35 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.catatButton}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setActiveTab('recent');
-              setAddFoodModalVisible(true);
-            }}
-            activeOpacity={0.8}
-          >
-            <View style={styles.catatButtonInner}>
-              <Plus size={22} color="#FFFFFF" />
-              <Text style={styles.catatButtonText}>Catat Makanan</Text>
-            </View>
-          </TouchableOpacity>
+          <View style={styles.catatButtonRow}>
+            <TouchableOpacity
+              style={styles.catatButtonFlex}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setActiveTab('recent');
+                setAddFoodModalVisible(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.catatButtonInner}>
+                <Plus size={20} color="#FFFFFF" />
+                <Text style={styles.catatButtonText}>Catat Makanan</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.catatAktivitasFlex}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.push('/log-exercise');
+              }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.catatAktivitasInner}>
+                <Dumbbell size={20} color="#FFFFFF" />
+                <Text style={styles.catatButtonText}>Catat Aktivitas</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -3076,17 +3091,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 4,
   },
-  catatButton: {
+  catatButtonRow: {
+    flexDirection: 'row',
     marginHorizontal: 20,
     marginBottom: 14,
+    gap: 10,
+  },
+  catatButtonFlex: {
+    flex: 1,
+  },
+  catatAktivitasFlex: {
+    flex: 1,
   },
   catatButtonInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
     backgroundColor: '#6C63FF',
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderRadius: 14,
     shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 4 },
@@ -3094,8 +3117,22 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
+  catatAktivitasInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#F59E0B',
+    paddingVertical: 14,
+    borderRadius: 14,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
   catatButtonText: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '700' as const,
     color: '#FFFFFF',
     letterSpacing: -0.3,
