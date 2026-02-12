@@ -1052,73 +1052,73 @@ export default function HomeScreen() {
                 const fatPct = fatTarget > 0 ? Math.round((todayTotals.fat / fatTarget) * 100) : 0;
                 return (
                   <>
-                    <View style={[styles.macroMiniCard, { backgroundColor: theme.background }]}>
-                      <ProgressRing
-                        progress={Math.min(proteinPct, 100)}
-                        size={52}
-                        strokeWidth={5}
-                        color="#FF8A80"
-                        backgroundColor={theme.border}
-                      >
-                        <Text style={{ fontSize: 16 }}>🍗</Text>
-                      </ProgressRing>
-                      <View style={styles.macroMiniInfo}>
-                        <Text style={[styles.macroMiniValues, { color: theme.text }]}>
-                          <Text style={styles.macroMiniCurrent}>{todayTotals.protein}</Text>
-                          <Text style={[styles.macroMiniTarget, { color: theme.textTertiary }]}> /{dailyTargets.protein}g</Text>
-                        </Text>
-                        <View style={styles.macroMiniBottom}>
+                    <View style={styles.macroMiniCard}>
+                      <View style={styles.macroMiniRingRow}>
+                        <ProgressRing
+                          progress={Math.min(proteinPct, 100)}
+                          size={40}
+                          strokeWidth={4}
+                          color="#FF8A80"
+                          backgroundColor={theme.border}
+                        >
+                          <Text style={{ fontSize: 13 }}>🍗</Text>
+                        </ProgressRing>
+                        <View style={styles.macroMiniInfo}>
                           <Text style={[styles.macroMiniName, { color: theme.textSecondary }]}>Protein</Text>
-                          <View style={[styles.macroPctBadge, { backgroundColor: 'rgba(255,138,128,0.15)' }]}>
-                            <Text style={[styles.macroPctText, { color: '#FF8A80' }]}>{proteinPct}%</Text>
-                          </View>
+                          <Text style={[styles.macroMiniValues, { color: theme.text }]}>
+                            <Text style={styles.macroMiniCurrent}>{todayTotals.protein}</Text>
+                            <Text style={[styles.macroMiniTarget, { color: theme.textTertiary }]}>/{dailyTargets.protein}g</Text>
+                          </Text>
                         </View>
                       </View>
+                      <View style={[styles.macroMiniBar, { backgroundColor: theme.border }]}>
+                        <View style={[styles.macroMiniBarFill, { width: `${Math.min(proteinPct, 100)}%`, backgroundColor: '#FF8A80' }]} />
+                      </View>
                     </View>
-                    <View style={[styles.macroMiniCard, { backgroundColor: theme.background }]}>
-                      <ProgressRing
-                        progress={Math.min(carbsPct, 100)}
-                        size={52}
-                        strokeWidth={5}
-                        color="#FFD54F"
-                        backgroundColor={theme.border}
-                      >
-                        <Text style={{ fontSize: 16 }}>🌾</Text>
-                      </ProgressRing>
-                      <View style={styles.macroMiniInfo}>
-                        <Text style={[styles.macroMiniValues, { color: theme.text }]}>
-                          <Text style={styles.macroMiniCurrent}>{todayTotals.carbs}</Text>
-                          <Text style={[styles.macroMiniTarget, { color: theme.textTertiary }]}> /{carbsTarget}g</Text>
-                        </Text>
-                        <View style={styles.macroMiniBottom}>
+                    <View style={styles.macroMiniCard}>
+                      <View style={styles.macroMiniRingRow}>
+                        <ProgressRing
+                          progress={Math.min(carbsPct, 100)}
+                          size={40}
+                          strokeWidth={4}
+                          color="#FFD54F"
+                          backgroundColor={theme.border}
+                        >
+                          <Text style={{ fontSize: 13 }}>🌾</Text>
+                        </ProgressRing>
+                        <View style={styles.macroMiniInfo}>
                           <Text style={[styles.macroMiniName, { color: theme.textSecondary }]}>Karbo</Text>
-                          <View style={[styles.macroPctBadge, { backgroundColor: 'rgba(255,213,79,0.15)' }]}>
-                            <Text style={[styles.macroPctText, { color: '#F9A825' }]}>{carbsPct}%</Text>
-                          </View>
+                          <Text style={[styles.macroMiniValues, { color: theme.text }]}>
+                          <Text style={styles.macroMiniCurrent}>{todayTotals.carbs}</Text>
+                          <Text style={[styles.macroMiniTarget, { color: theme.textTertiary }]}>/{carbsTarget}g</Text>
+                        </Text>
                         </View>
                       </View>
+                      <View style={[styles.macroMiniBar, { backgroundColor: theme.border }]}>
+                        <View style={[styles.macroMiniBarFill, { width: `${Math.min(carbsPct, 100)}%`, backgroundColor: '#FFD54F' }]} />
+                      </View>
                     </View>
-                    <View style={[styles.macroMiniCard, { backgroundColor: theme.background }]}>
-                      <ProgressRing
-                        progress={Math.min(fatPct, 100)}
-                        size={52}
-                        strokeWidth={5}
-                        color="#80DEEA"
-                        backgroundColor={theme.border}
-                      >
-                        <Text style={{ fontSize: 16 }}>🥑</Text>
-                      </ProgressRing>
-                      <View style={styles.macroMiniInfo}>
-                        <Text style={[styles.macroMiniValues, { color: theme.text }]}>
-                          <Text style={styles.macroMiniCurrent}>{todayTotals.fat}</Text>
-                          <Text style={[styles.macroMiniTarget, { color: theme.textTertiary }]}> /{fatTarget}g</Text>
-                        </Text>
-                        <View style={styles.macroMiniBottom}>
+                    <View style={styles.macroMiniCard}>
+                      <View style={styles.macroMiniRingRow}>
+                        <ProgressRing
+                          progress={Math.min(fatPct, 100)}
+                          size={40}
+                          strokeWidth={4}
+                          color="#80DEEA"
+                          backgroundColor={theme.border}
+                        >
+                          <Text style={{ fontSize: 13 }}>🥑</Text>
+                        </ProgressRing>
+                        <View style={styles.macroMiniInfo}>
                           <Text style={[styles.macroMiniName, { color: theme.textSecondary }]}>Lemak</Text>
-                          <View style={[styles.macroPctBadge, { backgroundColor: 'rgba(128,222,234,0.15)' }]}>
-                            <Text style={[styles.macroPctText, { color: '#00ACC1' }]}>{fatPct}%</Text>
-                          </View>
+                          <Text style={[styles.macroMiniValues, { color: theme.text }]}>
+                            <Text style={styles.macroMiniCurrent}>{todayTotals.fat}</Text>
+                            <Text style={[styles.macroMiniTarget, { color: theme.textTertiary }]}>/{fatTarget}g</Text>
+                          </Text>
                         </View>
+                      </View>
+                      <View style={[styles.macroMiniBar, { backgroundColor: theme.border }]}>
+                        <View style={[styles.macroMiniBarFill, { width: `${Math.min(fatPct, 100)}%`, backgroundColor: '#80DEEA' }]} />
                       </View>
                     </View>
                   </>
@@ -2659,24 +2659,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 20,
+    paddingBottom: 16,
   },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   dateNavigation: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   dateNavButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
@@ -2784,7 +2784,7 @@ const styles = StyleSheet.create({
     height: 32,
   },
   appName: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700' as const,
     letterSpacing: -0.5,
   },
@@ -2848,12 +2848,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   carouselContainer: {
-    marginBottom: 14,
+    marginBottom: 8,
   },
   carouselCard: {
     width: CAROUSEL_CARD_WIDTH,
-    borderRadius: 14,
-    padding: 18,
+    borderRadius: 18,
+    padding: 20,
     borderWidth: 1,
     alignItems: 'center' as const,
     gap: 0,
@@ -2862,7 +2862,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     alignSelf: 'stretch' as const,
-    gap: 20,
+    gap: 18,
   },
   heroRingWrap: {
     alignItems: 'center' as const,
@@ -2873,10 +2873,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center' as const,
   },
   heroCalValue: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800' as const,
     letterSpacing: -1.5,
-    lineHeight: 32,
+    lineHeight: 30,
     marginTop: 2,
   },
   heroCalLabel: {
@@ -2886,7 +2886,7 @@ const styles = StyleSheet.create({
   },
   heroDetailsCol: {
     flex: 1,
-    gap: 6,
+    gap: 8,
   },
   heroStatRow: {
     flexDirection: 'row' as const,
@@ -2899,14 +2899,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   heroStatValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700' as const,
     letterSpacing: -0.3,
   },
   heroRemainingDivider: {
     height: 1,
     alignSelf: 'stretch' as const,
-    marginVertical: 4,
+    marginVertical: 2,
   },
   heroRemainingLabel: {
     fontSize: 10,
@@ -2916,72 +2916,68 @@ const styles = StyleSheet.create({
     textAlign: 'right' as const,
   },
   heroRemainingValue: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800' as const,
     letterSpacing: -1.5,
     textAlign: 'right' as const,
-    lineHeight: 36,
+    lineHeight: 32,
   },
   macroCardsRow: {
     flexDirection: 'row' as const,
     alignSelf: 'stretch' as const,
-    gap: 8,
-    marginTop: 16,
+    gap: 12,
+    marginTop: 18,
   },
   macroMiniCard: {
     flex: 1,
-    borderRadius: 12,
-    padding: 10,
+    gap: 8,
+  },
+  macroMiniRingRow: {
+    flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 8,
   },
   macroMiniInfo: {
-    alignItems: 'center' as const,
-    gap: 4,
+    flex: 1,
+    gap: 1,
   },
   macroMiniValues: {
     fontSize: 14,
     fontWeight: '700' as const,
-    textAlign: 'center' as const,
   },
   macroMiniCurrent: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800' as const,
     letterSpacing: -0.5,
   },
   macroMiniTarget: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500' as const,
   },
-  macroMiniBottom: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 6,
+  macroMiniBar: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden' as const,
+  },
+  macroMiniBarFill: {
+    height: '100%' as const,
+    borderRadius: 2,
   },
   macroMiniName: {
     fontSize: 11,
     fontWeight: '600' as const,
   },
-  macroPctBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  macroPctText: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-  },
   carouselDots: {
     flexDirection: 'row' as const,
     justifyContent: 'center' as const,
     alignItems: 'center' as const,
-    gap: 8,
-    marginTop: 12,
+    gap: 6,
+    marginTop: 10,
   },
   carouselDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   microCardTitle: {
     fontSize: 18,
@@ -3007,7 +3003,7 @@ const styles = StyleSheet.create({
   combinedDivider: {
     height: 1,
     alignSelf: 'stretch',
-    marginVertical: 18,
+    marginVertical: 16,
   },
   macroRingsRow: {
     flexDirection: 'row',
@@ -3234,7 +3230,7 @@ const styles = StyleSheet.create({
   waterCupsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   waterBtn: {
     width: 32,
@@ -3252,14 +3248,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   waterCupDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
   },
   macroRing: {
     flex: 1,
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   miniMacroRing: {
     flex: 1,
@@ -3289,18 +3285,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   macroRingValue: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '700' as const,
     letterSpacing: -0.5,
   },
   macroRingLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600' as const,
     letterSpacing: 0.3,
     textTransform: 'uppercase' as const,
   },
   macroRingTarget: {
-    fontSize: 12,
+    fontSize: 11,
   },
   mealTimeLabel: {
     fontSize: 16,
@@ -3317,14 +3313,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   section: {
-    marginHorizontal: 24,
-    marginBottom: 28,
+    marginHorizontal: 20,
+    marginBottom: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 18,
@@ -3353,10 +3349,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   foodList: {
-    gap: 12,
+    gap: 10,
   },
   foodItem: {
-    borderRadius: 10,
+    borderRadius: 14,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -3429,8 +3425,8 @@ const styles = StyleSheet.create({
   },
   activityMiniStats: {
     flexDirection: 'row' as const,
-    gap: 8,
-    marginTop: 10,
+    gap: 10,
+    marginTop: 14,
     alignSelf: 'stretch' as const,
   },
   activityMiniStat: {
@@ -3438,9 +3434,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    gap: 5,
-    paddingVertical: 8,
-    borderRadius: 8,
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
   activityMiniStatVal: {
     fontSize: 12,
@@ -3454,7 +3450,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     borderRadius: 10,
     padding: 3,
-    marginTop: 12,
+    marginTop: 14,
     alignSelf: 'stretch' as const,
   },
   exModeTab: {
@@ -3463,7 +3459,7 @@ const styles = StyleSheet.create({
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     gap: 4,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 8,
   },
   exModeTabText: {
@@ -3472,7 +3468,7 @@ const styles = StyleSheet.create({
   },
   exQuickContent: {
     alignSelf: 'stretch' as const,
-    marginTop: 10,
+    marginTop: 12,
     gap: 10,
   },
   exQuickChips: {
@@ -3562,7 +3558,7 @@ const styles = StyleSheet.create({
   },
   waterInCarousel: {
     alignSelf: 'stretch',
-    gap: 12,
+    gap: 10,
   },
   modalContainer: {
     flex: 1,
@@ -3636,7 +3632,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   bottomPadding: {
-    height: 120,
+    height: 100,
   },
   analyzingContainer: {
     paddingVertical: 60,
