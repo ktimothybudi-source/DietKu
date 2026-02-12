@@ -42,17 +42,19 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: "600" as const,
-          letterSpacing: 0.2,
+          fontWeight: "500" as const,
+          letterSpacing: 0.3,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Dietku",
-          tabBarLabel: "Dietku",
-          tabBarIcon: ({ color }) => <Flame size={22} color={color} fill={color} />,
+          title: "DietKu",
+          tabBarLabel: "Dashboard",
+          tabBarIcon: ({ color, focused }) => (
+            <Flame size={21} color={color} fill={focused ? color : 'transparent'} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -60,7 +62,7 @@ export default function TabLayout() {
         options={{
           title: "Analitik",
           tabBarLabel: "Analitik",
-          tabBarIcon: ({ color }) => <BarChart3 size={22} color={color} />,
+          tabBarIcon: ({ color }) => <BarChart3 size={21} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -68,7 +70,7 @@ export default function TabLayout() {
         options={{
           title: "Profil",
           tabBarLabel: "Profil",
-          tabBarIcon: ({ color }) => <User size={22} color={color} />,
+          tabBarIcon: ({ color }) => <User size={21} color={color} />,
         }}
       />
     </Tabs>

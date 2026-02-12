@@ -311,14 +311,14 @@ export default function ProfileScreen() {
                       </Text>
                     </View>
                     <TouchableOpacity
-                      style={[styles.deleteButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
+                      style={[styles.deleteButton, { backgroundColor: 'rgba(197, 48, 48, 0.08)' }]}
                       onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                         removeFromFavorites(favorite.id);
                       }}
                       activeOpacity={0.7}
                     >
-                      <Trash2 size={16} color="#EF4444" />
+                      <Trash2 size={16} color="#C53030" />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -402,9 +402,10 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   greeting: {
-    fontSize: 30,
-    fontWeight: '900' as const,
+    fontSize: 26,
+    fontWeight: '800' as const,
     marginBottom: 4,
+    letterSpacing: -0.5,
   },
   scrollContent: {
     flex: 1,
@@ -418,15 +419,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   card: {
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
+    borderRadius: 12,
+    padding: 18,
+    marginBottom: 16,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 2,
   },
   cardHeader: {
     marginBottom: 16,
@@ -437,12 +433,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cardTitle: {
-    fontSize: 17,
-    fontWeight: '600' as const,
+    fontSize: 15,
+    fontWeight: '700' as const,
+    letterSpacing: -0.2,
   },
   statusRow: {
-    padding: 12,
-    borderRadius: 12,
+    padding: 10,
+    borderRadius: 8,
     marginBottom: 12,
   },
   statusText: {
@@ -491,20 +488,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   statValue: {
-    fontSize: 16,
-    fontWeight: '600' as const,
+    fontSize: 15,
+    fontWeight: '700' as const,
   },
   editButton: {
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: 10,
+    padding: 14,
     alignItems: 'center',
     marginTop: 8,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   editButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600' as const,
     color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
   bottomPadding: {
     height: 40,
@@ -550,9 +548,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   deleteButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },

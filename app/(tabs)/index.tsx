@@ -923,16 +923,16 @@ export default function HomeScreen() {
                 progress={Math.min((progress?.caloriesProgress || 0), 100)}
                 size={240}
                 strokeWidth={18}
-                color={(progress?.isOver || false) ? '#EF4444' : '#10B981'}
+                color={(progress?.isOver || false) ? '#C53030' : theme.primary}
                 backgroundColor={theme.border}
               >
                 <View style={styles.mainRingContent}>
                   {progress?.isOver ? (
                     <>
-                      <Text style={[styles.mainCalorieValue, { color: '#EF4444' }]}>
+                      <Text style={[styles.mainCalorieValue, { color: theme.destructive }]}>
                         +{Math.abs(progress?.caloriesRemaining || 0)}
                       </Text>
-                      <Text style={[styles.mainCalorieLabel, { color: '#EF4444', opacity: 0.8 }]}>kcal over</Text>
+                      <Text style={[styles.mainCalorieLabel, { color: theme.destructive, opacity: 0.8 }]}>kcal over</Text>
                       <View style={styles.overIndicator}>
                         <Text style={styles.overIndicatorText}>Target: {dailyTargets.calories}</Text>
                       </View>
@@ -974,7 +974,7 @@ export default function HomeScreen() {
                       progress={Math.min((progress?.proteinProgress || 0), 100)}
                       size={100}
                       strokeWidth={8}
-                      color="#10B981"
+                      color={theme.primary}
                       backgroundColor={theme.border}
                     >
                       <View style={styles.macroRingContent}>
@@ -1147,7 +1147,7 @@ export default function HomeScreen() {
                 <View style={[styles.activityCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                   <View style={styles.activityHeader}>
                     <View style={styles.activityTitleRow}>
-                      <Dumbbell size={18} color="#EF4444" />
+                      <Dumbbell size={18} color="#9B2C2C" />
                       <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas & Langkah</Text>
                     </View>
                   </View>
@@ -1160,7 +1160,7 @@ export default function HomeScreen() {
                     </View>
                     <View style={[styles.activityStatDivider, { backgroundColor: theme.border }]} />
                     <View style={styles.activityStatItem}>
-                      <Flame size={20} color="#EF4444" />
+                      <Flame size={20} color="#9B2C2C" />
                       <Text style={[styles.activityStatValue, { color: theme.text }]}>{totalCaloriesBurned}</Text>
                       <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>kcal terbakar</Text>
                     </View>
@@ -1203,9 +1203,9 @@ export default function HomeScreen() {
             </ScrollView>
 
             <View style={styles.macroPageDots}>
-              <View style={[styles.macroPageDot, { backgroundColor: macroPage === 0 ? '#10B981' : theme.border }]} />
-              <View style={[styles.macroPageDot, { backgroundColor: macroPage === 1 ? '#10B981' : theme.border }]} />
-              <View style={[styles.macroPageDot, { backgroundColor: macroPage === 2 ? '#10B981' : theme.border }]} />
+              <View style={[styles.macroPageDot, { backgroundColor: macroPage === 0 ? theme.primary : theme.border }]} />
+              <View style={[styles.macroPageDot, { backgroundColor: macroPage === 1 ? theme.primary : theme.border }]} />
+              <View style={[styles.macroPageDot, { backgroundColor: macroPage === 2 ? theme.primary : theme.border }]} />
             </View>
           </View>
 
@@ -1242,12 +1242,12 @@ export default function HomeScreen() {
                         <Image source={{ uri: pending.photoUri }} style={styles.pendingThumbnail} />
                         {isAnalyzing && (
                           <View style={styles.pendingOverlay}>
-                            <ActivityIndicator size="small" color="#10B981" />
+                            <ActivityIndicator size="small" color={theme.primary} />
                           </View>
                         )}
                         {hasError && (
                           <View style={[styles.pendingOverlay, styles.pendingErrorOverlay]}>
-                            <X size={18} color="#EF4444" />
+                            <X size={18} color="#C53030" />
                           </View>
                         )}
 
@@ -1259,7 +1259,7 @@ export default function HomeScreen() {
                           </Text>
                           <Text style={[styles.mealTime, { color: theme.textSecondary }]}>{time}</Text>
                         </View>
-                        <Text style={[styles.foodCalories, { color: isAnalyzing ? '#10B981' : hasError ? '#EF4444' : theme.textTertiary }]}>
+                        <Text style={[styles.foodCalories, { color: isAnalyzing ? theme.primary : hasError ? theme.destructive : theme.textTertiary }]}>
                           {isAnalyzing ? 'Sedang diproses...' : hasError ? 'Ketuk untuk coba lagi' : isDone && pending.analysis ? `${Math.round((pending.analysis.totalCaloriesMin + pending.analysis.totalCaloriesMax) / 2)} kcal` : ''}
                         </Text>
                       </View>
@@ -1446,7 +1446,7 @@ export default function HomeScreen() {
 
                 {analyzing && (
                   <View style={styles.analyzingContainer}>
-                    <ActivityIndicator size="large" color="#10B981" />
+                    <ActivityIndicator size="large" color={theme.primary} />
                     <Text style={[styles.analyzingText, { color: theme.textSecondary }]}>Menganalisis makanan Anda...</Text>
                   </View>
                 )}
@@ -1733,8 +1733,8 @@ export default function HomeScreen() {
                       >
                         <Bookmark
                           size={22}
-                          color={isFavorite(selectedPending.analysis.items.map(i => i.name).join(', ')) ? '#10B981' : theme.textSecondary}
-                          fill={isFavorite(selectedPending.analysis.items.map(i => i.name).join(', ')) ? '#10B981' : 'transparent'}
+                          color={isFavorite(selectedPending.analysis.items.map(i => i.name).join(', ')) ? theme.primary : theme.textSecondary}
+                          fill={isFavorite(selectedPending.analysis.items.map(i => i.name).join(', ')) ? theme.primary : 'transparent'}
                         />
                       </TouchableOpacity>
                     </>
@@ -1765,7 +1765,7 @@ export default function HomeScreen() {
 
                 {selectedPending?.status === 'analyzing' && (
                   <View style={styles.pendingAnalyzingState}>
-                    <ActivityIndicator size="large" color="#10B981" />
+                    <ActivityIndicator size="large" color={theme.primary} />
                     <Text style={[styles.pendingAnalyzingText, { color: theme.text }]}>Menganalisis makanan Anda...</Text>
                     <Text style={[styles.pendingAnalyzingSubtext, { color: theme.textSecondary }]}>Mohon tunggu sebentar</Text>
                   </View>
@@ -1785,11 +1785,11 @@ export default function HomeScreen() {
                         <Text style={[styles.pendingRetryText, { color: theme.text }]}>Coba Lagi</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.pendingDeleteButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
+                        style={[styles.pendingDeleteButton, { backgroundColor: 'rgba(197, 48, 48, 0.08)' }]}
                         onPress={handleRemovePending}
                         activeOpacity={0.7}
                       >
-                        <Trash2 size={18} color="#EF4444" />
+                        <Trash2 size={18} color="#C53030" />
                         <Text style={styles.pendingDeleteText}>Hapus</Text>
                       </TouchableOpacity>
                     </View>
@@ -1843,13 +1843,13 @@ export default function HomeScreen() {
                         onPress={handleAddNewItem}
                         activeOpacity={0.7}
                       >
-                        <PlusCircle size={16} color="#10B981" />
+                        <PlusCircle size={16} color={theme.primary} />
                         <Text style={styles.addItemButtonText}>Tambah</Text>
                       </TouchableOpacity>
                     </View>
 
                     {showAddItem && (
-                      <View style={[styles.editItemCard, { backgroundColor: theme.background, borderColor: '#10B981' }]}>
+                      <View style={[styles.editItemCard, { backgroundColor: theme.background, borderColor: theme.primary }]}>
                         <Text style={[styles.editItemTitle, { color: theme.text }]}>Tambah Item Baru</Text>
                         <View style={styles.editItemRow}>
                           <View style={styles.editItemField}>
@@ -1942,7 +1942,7 @@ export default function HomeScreen() {
 
                     {editedItems.map((item, index) => (
                       editingItemIndex === index ? (
-                        <View key={index} style={[styles.editItemCard, { backgroundColor: theme.background, borderColor: '#10B981' }]}>
+                        <View key={index} style={[styles.editItemCard, { backgroundColor: theme.background, borderColor: theme.primary }]}>
                           <Text style={[styles.editItemTitle, { color: theme.text }]}>Edit Item</Text>
                           <View style={styles.editItemRow}>
                             <View style={styles.editItemField}>
@@ -2018,10 +2018,10 @@ export default function HomeScreen() {
                           </View>
                           <View style={styles.editItemActions}>
                             <TouchableOpacity
-                              style={[styles.editItemDeleteBtn, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}
+                              style={[styles.editItemDeleteBtn, { backgroundColor: 'rgba(197, 48, 48, 0.08)' }]}
                               onPress={() => handleDeleteItem(index)}
                             >
-                              <Trash2 size={16} color="#EF4444" />
+                              <Trash2 size={16} color="#C53030" />
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={[styles.editItemCancelBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
@@ -2107,7 +2107,7 @@ export default function HomeScreen() {
                 <Text style={[styles.suggestFavoriteBtnText, { color: theme.textSecondary }]}>Nanti</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.suggestFavoriteBtn, { backgroundColor: '#10B981' }]}
+                style={[styles.suggestFavoriteBtn, { backgroundColor: theme.primary }]}
                 onPress={handleSaveSuggestedFavorite}
               >
                 <Text style={[styles.suggestFavoriteBtnText, { color: '#FFFFFF' }]}>Simpan</Text>
@@ -2434,9 +2434,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dateNavButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2458,15 +2458,15 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   calendarModalContent: {
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 20,
     width: '100%',
     maxWidth: 360,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -2507,7 +2507,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   calendarDaySelected: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#1B4332',
   },
   calendarDayToday: {
     borderWidth: 2,
@@ -2524,9 +2524,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
   },
   todayButtonText: {
     fontSize: 12,
@@ -2543,8 +2543,9 @@ const styles = StyleSheet.create({
     height: 32,
   },
   appName: {
-    fontSize: 30,
-    fontWeight: '900' as const,
+    fontSize: 26,
+    fontWeight: '700' as const,
+    letterSpacing: -0.5,
   },
 
   dateText: {
@@ -2554,16 +2555,16 @@ const styles = StyleSheet.create({
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 107, 53, 0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
+    gap: 5,
+    backgroundColor: 'rgba(180, 83, 9, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   streakText: {
     fontSize: 14,
-    fontWeight: '800' as const,
-    color: '#FF6B35',
+    fontWeight: '700' as const,
+    color: '#B45309',
   },
   motivationalToast: {
     position: 'absolute',
@@ -2575,24 +2576,22 @@ const styles = StyleSheet.create({
   motivationalToastContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.95)',
+    backgroundColor: '#1B4332',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: 10,
     gap: 10,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   motivationalToastWarning: {
-    backgroundColor: 'rgba(239, 147, 107, 0.95)',
-    shadowColor: '#EF936B',
+    backgroundColor: '#92400E',
   },
   motivationalToastCelebration: {
-    backgroundColor: 'rgba(16, 185, 129, 0.95)',
-    shadowColor: '#10B981',
+    backgroundColor: '#1B4332',
   },
   motivationalToastEmoji: {
     fontSize: 20,
@@ -2608,17 +2607,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   mainCalorieCard: {
-    marginHorizontal: 24,
-    marginBottom: 20,
-    borderRadius: 24,
-    padding: 32,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 14,
+    padding: 28,
     borderWidth: 1,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
   },
   mainRingContainer: {
     alignItems: 'center',
@@ -2629,9 +2623,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mainCalorieValue: {
-    fontSize: 52,
-    fontWeight: '700' as const,
-    lineHeight: 60,
+    fontSize: 48,
+    fontWeight: '800' as const,
+    lineHeight: 54,
+    letterSpacing: -2,
   },
   mainCalorieTarget: {
     fontSize: 20,
@@ -2646,13 +2641,13 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(197, 48, 48, 0.08)',
     borderRadius: 12,
   },
   overIndicatorText: {
     fontSize: 12,
     fontWeight: '500' as const,
-    color: '#EF4444',
+    color: '#C53030',
     opacity: 0.8,
   },
   targetIndicator: {
@@ -2689,7 +2684,7 @@ const styles = StyleSheet.create({
     borderRadius: 3.5,
   },
   activityCard: {
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
     borderWidth: 1,
     gap: 14,
@@ -2759,7 +2754,7 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
   },
   extraNutrientsCard: {
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
     borderWidth: 1,
     gap: 14,
@@ -2895,12 +2890,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   macroRingValue: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700' as const,
+    letterSpacing: -0.5,
   },
   macroRingLabel: {
-    fontSize: 13,
-    fontWeight: '500' as const,
+    fontSize: 12,
+    fontWeight: '600' as const,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase' as const,
   },
   macroRingTarget: {
     fontSize: 12,
@@ -2930,8 +2928,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600' as const,
+    fontSize: 18,
+    fontWeight: '700' as const,
+    letterSpacing: -0.3,
   },
   foodCount: {
     fontSize: 14,
@@ -2958,22 +2957,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   foodItem: {
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 10,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
   },
   foodThumbnail: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -2998,19 +2992,19 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 32,
-    right: 24,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#10B981',
+    bottom: 28,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: '#1B4332',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
   modalContainer: {
     flex: 1,
@@ -3025,8 +3019,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   modalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     paddingBottom: 40,
   },
   modalHeader: {
@@ -3066,9 +3060,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   addButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 12,
-    padding: 18,
+    backgroundColor: '#1B4332',
+    borderRadius: 10,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -3193,8 +3187,8 @@ const styles = StyleSheet.create({
   },
   confirmButton: {
     flex: 2,
-    backgroundColor: '#10B981',
-    borderRadius: 12,
+    backgroundColor: '#1B4332',
+    borderRadius: 10,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -3225,9 +3219,9 @@ const styles = StyleSheet.create({
     height: 1,
   },
   pendingThumbnailContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 10,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -3246,7 +3240,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pendingErrorOverlay: {
-    backgroundColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(197, 48, 48, 0.2)',
   },
 
   foodDetailModalContainer: {
@@ -3325,8 +3319,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   foodDetailShareButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 12,
+    backgroundColor: '#1B4332',
+    borderRadius: 10,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -3352,8 +3346,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   pendingModalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     maxHeight: '90%',
   },
   pendingModalHeader: {
@@ -3383,7 +3377,7 @@ const styles = StyleSheet.create({
   pendingModalImage: {
     width: '100%',
     height: 200,
-    borderRadius: 16,
+    borderRadius: 12,
     marginBottom: 20,
   },
   pendingAnalyzingState: {
@@ -3442,15 +3436,15 @@ const styles = StyleSheet.create({
   pendingDeleteText: {
     fontSize: 15,
     fontWeight: '600' as const,
-    color: '#EF4444',
+    color: '#C53030',
   },
   pendingResultState: {
     gap: 16,
     paddingBottom: 40,
   },
   pendingTotalCard: {
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 12,
+    padding: 18,
     borderWidth: 1,
   },
   pendingTotalHeader: {
@@ -3497,8 +3491,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   pendingCaloriesValue: {
-    fontSize: 36,
-    fontWeight: '700' as const,
+    fontSize: 34,
+    fontWeight: '800' as const,
+    letterSpacing: -1,
   },
   pendingCaloriesUnit: {
     fontSize: 16,
@@ -3568,7 +3563,7 @@ const styles = StyleSheet.create({
   addItemButtonText: {
     fontSize: 13,
     fontWeight: '600' as const,
-    color: '#10B981',
+    color: '#1B4332',
   },
   editItemCard: {
     borderRadius: 12,
@@ -3632,8 +3627,8 @@ const styles = StyleSheet.create({
   editItemSaveBtn: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 10,
-    backgroundColor: '#10B981',
+    borderRadius: 8,
+    backgroundColor: '#1B4332',
     alignItems: 'center',
   },
   editItemSaveText: {
@@ -3646,9 +3641,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#10B981',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#1B4332',
+    paddingVertical: 14,
+    borderRadius: 10,
     marginTop: 16,
   },
   confirmEditedText: {
@@ -3681,9 +3676,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#10B981',
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: '#1B4332',
   },
   pendingConfirmText: {
     fontSize: 16,
@@ -3754,24 +3749,19 @@ const styles = StyleSheet.create({
   shareHeaderButton: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: '#10B981',
+    borderRadius: 10,
+    backgroundColor: '#1B4332',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 4,
   },
   favoriteToast: {
     position: 'absolute',
     bottom: 120,
-    left: 24,
-    right: 24,
-    backgroundColor: '#10B981',
-    borderRadius: 12,
-    padding: 16,
+    left: 20,
+    right: 20,
+    backgroundColor: '#1B4332',
+    borderRadius: 10,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -3834,8 +3824,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   addFoodModalContent: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     maxHeight: '80%',
   },
   addFoodModalHeader: {
@@ -3887,8 +3877,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 14,
+    padding: 14,
+    borderRadius: 10,
     borderWidth: 1,
   },
   mealItemInfo: {
@@ -4026,7 +4016,7 @@ const styles = StyleSheet.create({
   },
   searchErrorText: {
     fontSize: 14,
-    color: '#EF4444',
+    color: '#C53030',
   },
   usdaBrandName: {
     fontSize: 12,

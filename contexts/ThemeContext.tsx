@@ -15,32 +15,50 @@ export interface Theme {
   textTertiary: string;
   border: string;
   primary: string;
+  primaryMuted: string;
+  accent: string;
   tabBar: string;
   tabBarInactive: string;
+  surfaceElevated: string;
+  destructive: string;
+  success: string;
+  warning: string;
 }
 
 const lightTheme: Theme = {
-  background: '#FFFFFF',
-  card: '#F5F5F5',
-  text: '#000000',
-  textSecondary: '#666666',
-  textTertiary: '#999999',
-  border: '#E5E5E5',
-  primary: '#10B981',
+  background: '#F6F5F0',
+  card: '#FFFFFF',
+  text: '#1A1A1A',
+  textSecondary: '#5C5C5C',
+  textTertiary: '#9A9A9A',
+  border: '#E4E2DB',
+  primary: '#1B4332',
+  primaryMuted: '#2D6A4F',
+  accent: '#3A7D5C',
   tabBar: '#FFFFFF',
-  tabBarInactive: '#999999',
+  tabBarInactive: '#9A9A9A',
+  surfaceElevated: '#F0EEE8',
+  destructive: '#C53030',
+  success: '#276749',
+  warning: '#B7791F',
 };
 
 const darkTheme: Theme = {
-  background: '#0A0A0A',
-  card: '#111111',
-  text: '#FFFFFF',
-  textSecondary: '#888888',
+  background: '#0D0D0D',
+  card: '#171717',
+  text: '#F5F5F3',
+  textSecondary: '#A0A0A0',
   textTertiary: '#666666',
-  border: '#1F1F1F',
-  primary: '#10B981',
-  tabBar: '#0A0A0A',
+  border: '#262626',
+  primary: '#4ADE80',
+  primaryMuted: '#22C55E',
+  accent: '#86EFAC',
+  tabBar: '#0D0D0D',
   tabBarInactive: '#666666',
+  surfaceElevated: '#1F1F1F',
+  destructive: '#FC8181',
+  success: '#68D391',
+  warning: '#F6E05E',
 };
 
 export const [ThemeProvider, useTheme] = createContextHook(() => {

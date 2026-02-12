@@ -447,7 +447,7 @@ export default function AnalyticsScreen() {
               return (
                 <View key={day.dateKey} style={styles.barColumn}>
                   {hasData && timeRange === '7h' && (
-                    <Text style={[styles.barValue, { color: isOverTarget ? '#EF4444' : '#10B981' }]}>
+                    <Text style={[styles.barValue, { color: isOverTarget ? theme.destructive : theme.primary }]}>
                       {day.calories}
                     </Text>
                   )}
@@ -462,8 +462,8 @@ export default function AnalyticsScreen() {
                         backgroundColor: !hasData 
                           ? theme.border 
                           : isOverTarget 
-                            ? '#EF4444' 
-                            : '#10B981',
+                            ? theme.destructive 
+                            : theme.primary,
                         borderRadius: 8,
                       },
                       isToday && { 
@@ -490,11 +490,11 @@ export default function AnalyticsScreen() {
 
         <View style={[styles.chartLegend, { borderTopColor: theme.border }]}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+            <View style={[styles.legendDot, { backgroundColor: theme.primary }]} />
             <Text style={[styles.legendText, { color: theme.textSecondary }]}>Sesuai target</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+            <View style={[styles.legendDot, { backgroundColor: theme.destructive }]} />
             <Text style={[styles.legendText, { color: theme.textSecondary }]}>Melebihi target</Text>
           </View>
         </View>
@@ -582,12 +582,12 @@ export default function AnalyticsScreen() {
     const getWeightChangeColor = () => {
       if (stats.weightChange === 0) return theme.textSecondary;
       if (goal === 'lose') {
-        return stats.weightChange < 0 ? '#10B981' : '#EF4444';
+        return stats.weightChange < 0 ? theme.primary : theme.destructive;
       }
       if (goal === 'gain') {
-        return stats.weightChange > 0 ? '#10B981' : '#EF4444';
+        return stats.weightChange > 0 ? theme.primary : theme.destructive;
       }
-      return Math.abs(stats.weightChange) < 1 ? '#10B981' : '#F59E0B';
+      return Math.abs(stats.weightChange) < 1 ? theme.primary : '#F59E0B';
     };
 
     return (
@@ -659,7 +659,7 @@ export default function AnalyticsScreen() {
                 <Text style={[styles.projectionFriendlyText, { color: theme.text }]}>
                   🎯 Kamu akan mencapai berat impianmu sekitar
                 </Text>
-                <Text style={[styles.projectionDate, { color: '#10B981' }]}>
+                <Text style={[styles.projectionDate, { color: theme.primary }]}>
                   {goalProjection.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </Text>
                 <Text style={[styles.projectionSubtext, { color: theme.textSecondary }]}>
@@ -822,7 +822,7 @@ export default function AnalyticsScreen() {
         name: 'Lemak', 
         avg: stats.avgFat, 
         target: targetFat, 
-        color: '#EF4444',
+        color: theme.destructive,
         unit: 'g'
       },
     ];
@@ -857,7 +857,7 @@ export default function AnalyticsScreen() {
                     <Text style={[styles.macroListName, { color: theme.text }]}>{macro.name}</Text>
                   </View>
                   <View style={styles.macroListRight}>
-                    <Text style={[styles.macroListValue, { color: isOver ? '#EF4444' : theme.text }]}>
+                    <Text style={[styles.macroListValue, { color: isOver ? theme.destructive : theme.text }]}>
                       {macro.avg}
                     </Text>
                     <Text style={[styles.macroListTarget, { color: theme.textTertiary }]}>
@@ -871,7 +871,7 @@ export default function AnalyticsScreen() {
                       styles.macroProgressFill, 
                       { 
                         width: `${clampedProgress}%`,
-                        backgroundColor: isOver ? '#EF4444' : macro.color,
+                        backgroundColor: isOver ? theme.destructive : macro.color,
                       }
                     ]} 
                   />
@@ -918,9 +918,9 @@ export default function AnalyticsScreen() {
           <View style={styles.header}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>Analitik</Text>
             {profile?.goalWeight && profile?.weight && profile.goalWeight !== profile.weight && (
-              <View style={[styles.progressBadge, { backgroundColor: stats.weightProgress >= 100 ? '#10B981' + '20' : '#3B82F6' + '15' }]}>
-                <Target size={16} color={stats.weightProgress >= 100 ? '#10B981' : '#3B82F6'} />
-                <Text style={[styles.progressBadgeText, { color: stats.weightProgress >= 100 ? '#10B981' : '#3B82F6' }]}>
+              <View style={[styles.progressBadge, { backgroundColor: stats.weightProgress >= 100 ? theme.primary + '20' : '#3B82F6' + '15' }]}>
+                <Target size={16} color={stats.weightProgress >= 100 ? theme.primary : '#3B82F6'} />
+                <Text style={[styles.progressBadgeText, { color: stats.weightProgress >= 100 ? theme.primary : '#3B82F6' }]}>
                   {stats.weightProgress}% tercapai
                 </Text>
               </View>
@@ -973,8 +973,8 @@ export default function AnalyticsScreen() {
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Rekor</Text>
             </View>
             <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <View style={[styles.statIconWrap, { backgroundColor: '#10B981' + '15' }]}>
-                <Calendar size={18} color="#10B981" />
+              <View style={[styles.statIconWrap, { backgroundColor: theme.primary + '15' }]}>
+                <Calendar size={18} color={theme.primary} />
               </View>
               <Text style={[styles.statValue, { color: theme.text }]}>{stats.daysLogged}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Hari</Text>
@@ -1182,11 +1182,11 @@ export default function AnalyticsScreen() {
 
             <View style={styles.editModalFooter}>
               <TouchableOpacity
-                style={[styles.deleteWeightBtn, { borderColor: '#EF4444' }]}
+                style={[styles.deleteWeightBtn, { borderColor: theme.destructive }]}
                 onPress={deleteWeight}
                 activeOpacity={0.7}
               >
-                <Trash2 size={18} color="#EF4444" />
+                <Trash2 size={18} color="#C53030" />
                 <Text style={styles.deleteWeightBtnText}>Hapus</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -1221,17 +1221,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: '700' as const,
+    fontSize: 26,
+    fontWeight: '800' as const,
     letterSpacing: -0.5,
   },
   progressBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   progressBadgeText: {
     fontSize: 15,
@@ -1244,8 +1244,8 @@ const styles = StyleSheet.create({
   },
   timeRangePill: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
   },
@@ -1254,8 +1254,8 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
   },
   weightSection: {
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 12,
+    padding: 18,
     marginBottom: 16,
     borderWidth: 1,
   },
@@ -1271,15 +1271,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   chartIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   chartTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700' as const,
+    letterSpacing: -0.2,
   },
   chartSubtitle: {
     fontSize: 13,
@@ -1290,9 +1291,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   recordBtnText: {
     fontSize: 14,
@@ -1314,8 +1315,9 @@ const styles = StyleSheet.create({
     height: 40,
   },
   weightStatValue: {
-    fontSize: 26,
-    fontWeight: '700' as const,
+    fontSize: 24,
+    fontWeight: '800' as const,
+    letterSpacing: -0.5,
   },
   weightStatLabel: {
     fontSize: 12,
@@ -1409,8 +1411,8 @@ const styles = StyleSheet.create({
   },
   projectionCard: {
     marginTop: 16,
-    padding: 16,
-    borderRadius: 14,
+    padding: 14,
+    borderRadius: 10,
     borderWidth: 1,
   },
   projectionFriendlyText: {
@@ -1456,8 +1458,8 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
   },
   chartCard: {
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 12,
+    padding: 18,
     marginBottom: 16,
     borderWidth: 1,
   },
@@ -1472,8 +1474,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
   },
   targetBadgeText: {
     fontSize: 13,
@@ -1509,9 +1511,9 @@ const styles = StyleSheet.create({
     maxWidth: 50,
   },
   bar: {
-    width: '70%',
-    minHeight: 6,
-    maxWidth: 28,
+    width: '65%',
+    minHeight: 4,
+    maxWidth: 24,
   },
   barLabel: {
     fontSize: 10,
@@ -1584,13 +1586,13 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
   },
   macroProgressBg: {
-    height: 8,
-    borderRadius: 4,
+    height: 6,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   macroProgressFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 3,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -1599,22 +1601,23 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    padding: 16,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 10,
     alignItems: 'center',
     borderWidth: 1,
   },
   statIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   statValue: {
     fontSize: 22,
-    fontWeight: '700' as const,
+    fontWeight: '800' as const,
+    letterSpacing: -0.5,
   },
   statLabel: {
     fontSize: 11,
@@ -1661,7 +1664,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: SCREEN_WIDTH - 48,
-    borderRadius: 24,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   modalHeader: {
@@ -1724,13 +1727,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   weightInputLarge: {
-    height: 64,
-    borderRadius: 16,
+    height: 60,
+    borderRadius: 10,
     borderWidth: 1,
     paddingHorizontal: 20,
-    fontSize: 32,
-    fontWeight: '700' as const,
+    fontSize: 30,
+    fontWeight: '800' as const,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   weightUnitBox: {
     width: 60,
@@ -1759,7 +1763,7 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
   },
   weightError: {
-    color: '#EF4444',
+    color: '#C53030',
     fontSize: 13,
     fontWeight: '600' as const,
     marginTop: 10,
@@ -1778,8 +1782,8 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 16,
-    borderRadius: 14,
+    paddingVertical: 14,
+    borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
   },
@@ -1789,8 +1793,8 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
-    paddingVertical: 16,
-    borderRadius: 14,
+    paddingVertical: 14,
+    borderRadius: 10,
     alignItems: 'center',
   },
   saveButtonText: {
@@ -1814,15 +1818,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 10,
     borderWidth: 1,
   },
   deleteWeightBtnText: {
     fontSize: 15,
     fontWeight: '600' as const,
-    color: '#EF4444',
+    color: '#C53030',
   },
   calendarModalOverlay: {
     flex: 1,
@@ -1832,7 +1836,7 @@ const styles = StyleSheet.create({
   },
   calendarModalContent: {
     width: SCREEN_WIDTH - 48,
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 20,
   },
   calendarHeader: {
@@ -1870,7 +1874,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   calendarDaySelected: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#1B4332',
   },
   calendarDayToday: {
     borderWidth: 2,
