@@ -399,6 +399,44 @@ export default function HomeScreen() {
     }, 500);
   }, []);
 
+  const healthScore = useMemo(() => {
+    if (!progress || !dailyTargets || todayEntries.length === 0) {
+      return { score: 0, message: 'Mulai catat makananmu untuk melihat Health Score.', color: '#9A9A9A' };
+    }
+    let score = 0;
+    const calPct = todayTotals.calories / dailyTargets.calories;
+    if (calPct >= 0.85 && calPct <= 1.05) score += 3;
+    else if (calPct >= 0.7 && calPct <= 1.15) score += 2;
+    else if (calPct > 0.3) score += 1;
+    const protPct = dailyTargets.protein > 0 ? todayTotals.protein / dailyTargets.protein : 0;
+    if (protPct >= 0.85) score += 2;
+    else if (protPct >= 0.5) score += 1;
+    const carbTarget = (dailyTargets.carbsMin + dailyTargets.carbsMax) / 2;
+    const fatTarget = (dailyTargets.fatMin + dailyTargets.fatMax) / 2;
+    if (carbTarget > 0 && fatTarget > 0) {
+      const carbPct = todayTotals.carbs / carbTarget;
+      const fatPct = todayTotals.fat / fatTarget;
+      if (carbPct >= 0.7 && carbPct <= 1.3 && fatPct >= 0.7 && fatPct <= 1.3) score += 2;
+      else if (carbPct > 0.4 || fatPct > 0.4) score += 1;
+    }
+    const water = getTodayWaterCups();
+    if (water >= 6) score += 2;
+    else if (water >= 3) score += 1;
+    if (totalCaloriesBurned > 100 || todaySteps > 5000) score += 1;
+    score = Math.min(score, 10);
+    let message = '';
+    if (score >= 9) message = 'Luar biasa! Semua target nutrisimu tercapai dengan sempurna.';
+    else if (score >= 7) message = 'Progres bagus! Pertahankan keseimbangan makro dan tetap terhidrasi.';
+    else if (score >= 5) {
+      if (protPct < 0.7) message = 'Awal yang baik. Fokus tingkatkan asupan proteinmu.';
+      else if (calPct > 1.15) message = 'Kalorimu sedikit berlebih, kurangi porsi makan berikutnya.';
+      else message = 'Terus lanjutkan! Jaga pola makanmu tetap seimbang.';
+    } else if (score >= 3) message = 'Usaha yang bagus! Coba lebih dekatkan ke target kalorimu.';
+    else message = 'Catat lebih banyak makanan untuk meningkatkan Health Score-mu.';
+    const color = score >= 8 ? '#22C55E' : score >= 6 ? '#EAB308' : score >= 4 ? '#F97316' : '#EF4444';
+    return { score, message, color };
+  }, [progress, dailyTargets, todayTotals, todayEntries.length, getTodayWaterCups, totalCaloriesBurned, todaySteps]);
+
   React.useEffect(() => {
     if (!isLoading && !profile) {
       const timer = setTimeout(() => {
@@ -849,44 +887,6 @@ export default function HomeScreen() {
     setUsdaSearchQuery('');
     setUsdaSearchResults([]);
   };
-
-  const healthScore = useMemo(() => {
-    if (!progress || !dailyTargets || todayEntries.length === 0) {
-      return { score: 0, message: 'Mulai catat makananmu untuk melihat Health Score.', color: '#9A9A9A' };
-    }
-    let score = 0;
-    const calPct = todayTotals.calories / dailyTargets.calories;
-    if (calPct >= 0.85 && calPct <= 1.05) score += 3;
-    else if (calPct >= 0.7 && calPct <= 1.15) score += 2;
-    else if (calPct > 0.3) score += 1;
-    const protPct = dailyTargets.protein > 0 ? todayTotals.protein / dailyTargets.protein : 0;
-    if (protPct >= 0.85) score += 2;
-    else if (protPct >= 0.5) score += 1;
-    const carbTarget = (dailyTargets.carbsMin + dailyTargets.carbsMax) / 2;
-    const fatTarget = (dailyTargets.fatMin + dailyTargets.fatMax) / 2;
-    if (carbTarget > 0 && fatTarget > 0) {
-      const carbPct = todayTotals.carbs / carbTarget;
-      const fatPct = todayTotals.fat / fatTarget;
-      if (carbPct >= 0.7 && carbPct <= 1.3 && fatPct >= 0.7 && fatPct <= 1.3) score += 2;
-      else if (carbPct > 0.4 || fatPct > 0.4) score += 1;
-    }
-    const water = getTodayWaterCups();
-    if (water >= 6) score += 2;
-    else if (water >= 3) score += 1;
-    if (totalCaloriesBurned > 100 || todaySteps > 5000) score += 1;
-    score = Math.min(score, 10);
-    let message = '';
-    if (score >= 9) message = 'Luar biasa! Semua target nutrisimu tercapai dengan sempurna.';
-    else if (score >= 7) message = 'Progres bagus! Pertahankan keseimbangan makro dan tetap terhidrasi.';
-    else if (score >= 5) {
-      if (protPct < 0.7) message = 'Awal yang baik. Fokus tingkatkan asupan proteinmu.';
-      else if (calPct > 1.15) message = 'Kalorimu sedikit berlebih, kurangi porsi makan berikutnya.';
-      else message = 'Terus lanjutkan! Jaga pola makanmu tetap seimbang.';
-    } else if (score >= 3) message = 'Usaha yang bagus! Coba lebih dekatkan ke target kalorimu.';
-    else message = 'Catat lebih banyak makanan untuk meningkatkan Health Score-mu.';
-    const color = score >= 8 ? '#22C55E' : score >= 6 ? '#EAB308' : score >= 4 ? '#F97316' : '#EF4444';
-    return { score, message, color };
-  }, [progress, dailyTargets, todayTotals, todayEntries.length, getTodayWaterCups, totalCaloriesBurned, todaySteps]);
 
   return (
     <>
