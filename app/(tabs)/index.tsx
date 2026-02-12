@@ -34,7 +34,7 @@ import { ANIMATION_DURATION } from '@/constants/animations';
 import { getTimeBasedMessage, getProgressMessage, getCalorieFeedback, MotivationalMessage } from '@/constants/motivationalMessages';
 
 export default function HomeScreen() {
-  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, removeFromRecent, shouldSuggestFavorite, addWaterCup, removeWaterCup, getTodayWaterCups } = useNutrition();
+  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, removeFromRecent, shouldSuggestFavorite, addWaterCup, removeWaterCup, getTodayWaterCups, addSugarUnit, removeSugarUnit, getTodaySugarUnits, addFiberUnit, removeFiberUnit, getTodayFiberUnits, addSodiumUnit, removeSodiumUnit, getTodaySodiumUnits } = useNutrition();
   const { todaySteps, stepsCaloriesBurned, exerciseCaloriesBurned, totalCaloriesBurned, todayExercises } = useExercise();
   const { theme } = useTheme();
   const progress = useTodayProgress();
@@ -410,13 +410,7 @@ export default function HomeScreen() {
     return null;
   }
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 11) return 'Selamat pagi';
-    if (hour >= 11 && hour < 15) return 'Selamat siang';
-    if (hour >= 15 && hour < 18) return 'Selamat sore';
-    return 'Selamat malam';
-  };
+
 
   if (!profile || !dailyTargets) {
     return null;
@@ -866,11 +860,6 @@ export default function HomeScreen() {
               />
               <View>
                 <Text style={[styles.appName, { color: theme.text }]}>DietKu</Text>
-                {profile.name && (
-                  <Text style={[styles.greetingText, { color: theme.textSecondary }]}>
-                    {getGreeting()}, {profile.name}! 👋
-                  </Text>
-                )}
               </View>
             </View>
             {streakData.currentStreak > 0 && (
@@ -1033,57 +1022,123 @@ export default function HomeScreen() {
               <View style={[styles.macroPage, { width: SCREEN_WIDTH - 48 }]}>
                 <View style={[styles.extraNutrientsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                   {(() => {
-                    const estimatedSugar = Math.round(todayTotals.carbs * 0.35);
-                    const sugarTarget = 50;
-                    const estimatedFiber = Math.round(todayTotals.carbs * 0.1);
-                    const fiberTarget = 28;
-                    const estimatedSodium = Math.round(todayTotals.calories * 1.0);
-                    const sodiumTarget = 2300;
+                    const currentSugar = getTodaySugarUnits();
+                    const sugarTarget = 8;
+                    const currentFiber = getTodayFiberUnits();
+                    const fiberTarget = 8;
+                    const currentSodium = getTodaySodiumUnits();
+                    const sodiumTarget = 8;
                     const currentWater = getTodayWaterCups();
                     const waterTarget = 8;
 
                     return (
                       <>
-                        <View style={styles.extraNutrientRow}>
-                          <View style={styles.extraNutrientInfo}>
-                            <View style={[styles.extraNutrientDot, { backgroundColor: '#EC4899' }]} />
-                            <Text style={[styles.extraNutrientName, { color: theme.text }]}>Gula</Text>
+                        <View style={styles.nutrientTrackerSection}>
+                          <View style={styles.waterHeader}>
+                            <View style={[styles.nutrientIconDot, { backgroundColor: '#EC4899' }]} />
+                            <Text style={[styles.waterTitle, { color: theme.text }]}>Gula</Text>
+                            <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentSugar}/{sugarTarget}</Text>
                           </View>
-                          <View style={styles.extraNutrientBarContainer}>
-                            <View style={[styles.extraNutrientBarBg, { backgroundColor: theme.border }]}>
-                              <View style={[styles.extraNutrientBarFill, { backgroundColor: '#EC4899', width: `${Math.min((estimatedSugar / sugarTarget) * 100, 100)}%` }]} />
+                          <View style={styles.waterCupsRow}>
+                            <TouchableOpacity
+                              style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
+                              onPress={removeSugarUnit}
+                              activeOpacity={0.7}
+                            >
+                              <Minus size={16} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                            <View style={styles.waterCupsDisplay}>
+                              {Array.from({ length: sugarTarget }).map((_, i) => (
+                                <View
+                                  key={i}
+                                  style={[
+                                    styles.waterCupDot,
+                                    { backgroundColor: i < currentSugar ? '#EC4899' : theme.border },
+                                  ]}
+                                />
+                              ))}
                             </View>
+                            <TouchableOpacity
+                              style={[styles.waterBtn, { backgroundColor: '#EC4899' }]}
+                              onPress={addSugarUnit}
+                              activeOpacity={0.7}
+                            >
+                              <Plus size={16} color="#FFFFFF" />
+                            </TouchableOpacity>
                           </View>
-                          <Text style={[styles.extraNutrientValue, { color: theme.textSecondary }]}>~{estimatedSugar}/{sugarTarget}g</Text>
                         </View>
 
-                        <View style={styles.extraNutrientRow}>
-                          <View style={styles.extraNutrientInfo}>
-                            <View style={[styles.extraNutrientDot, { backgroundColor: '#8B5CF6' }]} />
-                            <Text style={[styles.extraNutrientName, { color: theme.text }]}>Serat</Text>
+                        <View style={[styles.nutrientTrackerSection, { borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 12 }]}>
+                          <View style={styles.waterHeader}>
+                            <View style={[styles.nutrientIconDot, { backgroundColor: '#8B5CF6' }]} />
+                            <Text style={[styles.waterTitle, { color: theme.text }]}>Serat</Text>
+                            <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentFiber}/{fiberTarget}</Text>
                           </View>
-                          <View style={styles.extraNutrientBarContainer}>
-                            <View style={[styles.extraNutrientBarBg, { backgroundColor: theme.border }]}>
-                              <View style={[styles.extraNutrientBarFill, { backgroundColor: '#8B5CF6', width: `${Math.min((estimatedFiber / fiberTarget) * 100, 100)}%` }]} />
+                          <View style={styles.waterCupsRow}>
+                            <TouchableOpacity
+                              style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
+                              onPress={removeFiberUnit}
+                              activeOpacity={0.7}
+                            >
+                              <Minus size={16} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                            <View style={styles.waterCupsDisplay}>
+                              {Array.from({ length: fiberTarget }).map((_, i) => (
+                                <View
+                                  key={i}
+                                  style={[
+                                    styles.waterCupDot,
+                                    { backgroundColor: i < currentFiber ? '#8B5CF6' : theme.border },
+                                  ]}
+                                />
+                              ))}
                             </View>
+                            <TouchableOpacity
+                              style={[styles.waterBtn, { backgroundColor: '#8B5CF6' }]}
+                              onPress={addFiberUnit}
+                              activeOpacity={0.7}
+                            >
+                              <Plus size={16} color="#FFFFFF" />
+                            </TouchableOpacity>
                           </View>
-                          <Text style={[styles.extraNutrientValue, { color: theme.textSecondary }]}>~{estimatedFiber}/{fiberTarget}g</Text>
                         </View>
 
-                        <View style={styles.extraNutrientRow}>
-                          <View style={styles.extraNutrientInfo}>
-                            <View style={[styles.extraNutrientDot, { backgroundColor: '#F97316' }]} />
-                            <Text style={[styles.extraNutrientName, { color: theme.text }]}>Sodium</Text>
+                        <View style={[styles.nutrientTrackerSection, { borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 12 }]}>
+                          <View style={styles.waterHeader}>
+                            <View style={[styles.nutrientIconDot, { backgroundColor: '#F97316' }]} />
+                            <Text style={[styles.waterTitle, { color: theme.text }]}>Sodium</Text>
+                            <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentSodium}/{sodiumTarget}</Text>
                           </View>
-                          <View style={styles.extraNutrientBarContainer}>
-                            <View style={[styles.extraNutrientBarBg, { backgroundColor: theme.border }]}>
-                              <View style={[styles.extraNutrientBarFill, { backgroundColor: '#F97316', width: `${Math.min((estimatedSodium / sodiumTarget) * 100, 100)}%` }]} />
+                          <View style={styles.waterCupsRow}>
+                            <TouchableOpacity
+                              style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
+                              onPress={removeSodiumUnit}
+                              activeOpacity={0.7}
+                            >
+                              <Minus size={16} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                            <View style={styles.waterCupsDisplay}>
+                              {Array.from({ length: sodiumTarget }).map((_, i) => (
+                                <View
+                                  key={i}
+                                  style={[
+                                    styles.waterCupDot,
+                                    { backgroundColor: i < currentSodium ? '#F97316' : theme.border },
+                                  ]}
+                                />
+                              ))}
                             </View>
+                            <TouchableOpacity
+                              style={[styles.waterBtn, { backgroundColor: '#F97316' }]}
+                              onPress={addSodiumUnit}
+                              activeOpacity={0.7}
+                            >
+                              <Plus size={16} color="#FFFFFF" />
+                            </TouchableOpacity>
                           </View>
-                          <Text style={[styles.extraNutrientValue, { color: theme.textSecondary }]}>~{estimatedSodium}/{sodiumTarget}mg</Text>
                         </View>
 
-                        <View style={[styles.waterSection, { borderTopColor: theme.border }]}>
+                        <View style={[styles.nutrientTrackerSection, { borderTopWidth: 1, borderTopColor: theme.border, paddingTop: 12 }]}>
                           <View style={styles.waterHeader}>
                             <Droplets size={18} color="#38BDF8" />
                             <Text style={[styles.waterTitle, { color: theme.text }]}>Air</Text>
@@ -1103,9 +1158,7 @@ export default function HomeScreen() {
                                   key={i}
                                   style={[
                                     styles.waterCupDot,
-                                    {
-                                      backgroundColor: i < currentWater ? '#38BDF8' : theme.border,
-                                    },
+                                    { backgroundColor: i < currentWater ? '#38BDF8' : theme.border },
                                   ]}
                                 />
                               ))}
@@ -1131,17 +1184,6 @@ export default function HomeScreen() {
                       <Dumbbell size={18} color="#EF4444" />
                       <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas & Langkah</Text>
                     </View>
-                    <TouchableOpacity
-                      style={[styles.activityLogBtn, { backgroundColor: theme.primary }]}
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        router.push('/log-exercise');
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Plus size={14} color="#FFFFFF" />
-                      <Text style={styles.activityLogBtnText}>Catat</Text>
-                    </TouchableOpacity>
                   </View>
 
                   <View style={styles.activityStatsRow}>
@@ -1178,6 +1220,18 @@ export default function HomeScreen() {
                       )}
                     </View>
                   )}
+
+                  <TouchableOpacity
+                    style={[styles.activityLogBtnBottom, { backgroundColor: theme.primary }]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      router.push('/log-exercise');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Plus size={16} color="#FFFFFF" />
+                    <Text style={styles.activityLogBtnText}>Catat Aktivitas</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </ScrollView>
@@ -2234,7 +2288,7 @@ export default function HomeScreen() {
                       <SearchIcon size={18} color={theme.textSecondary} />
                       <TextInput
                         style={[styles.searchInput, { color: theme.text }]}
-                        placeholder="Cari makanan (USDA Database)..."
+                        placeholder="Cari makanan..."
                         placeholderTextColor={theme.textSecondary}
                         value={usdaSearchQuery}
                         onChangeText={handleUSDASearch}
@@ -2283,7 +2337,7 @@ export default function HomeScreen() {
 
                     {supabaseFoodResults.length > 0 && (
                       <View style={styles.mealList}>
-                        <Text style={[styles.searchSectionTitle, { color: theme.textSecondary }]}>Database Lokal</Text>
+                        <Text style={[styles.searchSectionTitle, { color: theme.textSecondary }]}>Database</Text>
                         {supabaseFoodResults.map((food) => (
                           <TouchableOpacity
                             key={`sb-${food.id}`}
@@ -2334,7 +2388,7 @@ export default function HomeScreen() {
                     {usdaSearchResults.length > 0 && (
                       <View style={styles.mealList}>
                         {supabaseFoodResults.length > 0 && (
-                          <Text style={[styles.searchSectionTitle, { color: theme.textSecondary, marginTop: 16 }]}>USDA Database</Text>
+                          <Text style={[styles.searchSectionTitle, { color: theme.textSecondary, marginTop: 16 }]}>Database</Text>
                         )}
                         {usdaSearchResults.map((food) => (
                           <TouchableOpacity
@@ -2526,11 +2580,7 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '900' as const,
   },
-  greetingText: {
-    fontSize: 13,
-    fontWeight: '500' as const,
-    marginTop: 2,
-  },
+
   dateText: {
     fontSize: 16,
     fontWeight: '600' as const,
@@ -2790,6 +2840,23 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingTop: 14,
     gap: 10,
+  },
+  nutrientTrackerSection: {
+    gap: 10,
+  },
+  nutrientIconDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  activityLogBtnBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 4,
   },
   waterHeader: {
     flexDirection: 'row',

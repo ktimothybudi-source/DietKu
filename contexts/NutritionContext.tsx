@@ -38,6 +38,9 @@ const BASE_STREAK_KEY = 'nutrition_streak';
 const BASE_FAVORITES_KEY = 'nutrition_favorites';
 const BASE_RECENT_MEALS_KEY = 'nutrition_recent_meals';
 const BASE_WATER_KEY = 'nutrition_water';
+const BASE_SUGAR_KEY = 'nutrition_sugar';
+const BASE_FIBER_KEY = 'nutrition_fiber';
+const BASE_SODIUM_KEY = 'nutrition_sodium';
 
 const getStorageKey = (baseKey: string, email: string | null) => {
   if (!email) return baseKey;
@@ -109,6 +112,9 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   const [authState, setAuthState] = useState<AuthState>({ isSignedIn: false, email: null, userId: null });
   const [, setSession] = useState<Session | null>(null);
   const [waterCups, setWaterCups] = useState<{ [date: string]: number }>({});
+  const [sugarUnits, setSugarUnits] = useState<{ [date: string]: number }>({});
+  const [fiberUnits, setFiberUnits] = useState<{ [date: string]: number }>({});
+  const [sodiumUnits, setSodiumUnits] = useState<{ [date: string]: number }>({});
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -236,6 +242,36 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     enabled: authState.isSignedIn,
   });
 
+  const sugarQuery = useQuery({
+    queryKey: ['nutrition_sugar', authState.email],
+    queryFn: async () => {
+      const key = getStorageKey(BASE_SUGAR_KEY, authState.email);
+      const stored = await AsyncStorage.getItem(key);
+      return stored ? JSON.parse(stored) : {};
+    },
+    enabled: authState.isSignedIn,
+  });
+
+  const fiberQuery = useQuery({
+    queryKey: ['nutrition_fiber', authState.email],
+    queryFn: async () => {
+      const key = getStorageKey(BASE_FIBER_KEY, authState.email);
+      const stored = await AsyncStorage.getItem(key);
+      return stored ? JSON.parse(stored) : {};
+    },
+    enabled: authState.isSignedIn,
+  });
+
+  const sodiumQuery = useQuery({
+    queryKey: ['nutrition_sodium', authState.email],
+    queryFn: async () => {
+      const key = getStorageKey(BASE_SODIUM_KEY, authState.email);
+      const stored = await AsyncStorage.getItem(key);
+      return stored ? JSON.parse(stored) : {};
+    },
+    enabled: authState.isSignedIn,
+  });
+
   const recentMealsQuery = useQuery({
     queryKey: ['nutrition_recent_meals', authState.email],
     queryFn: async () => {
@@ -302,6 +338,24 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       setWaterCups(waterQuery.data);
     }
   }, [waterQuery.data]);
+
+  useEffect(() => {
+    if (sugarQuery.data) {
+      setSugarUnits(sugarQuery.data);
+    }
+  }, [sugarQuery.data]);
+
+  useEffect(() => {
+    if (fiberQuery.data) {
+      setFiberUnits(fiberQuery.data);
+    }
+  }, [fiberQuery.data]);
+
+  useEffect(() => {
+    if (sodiumQuery.data) {
+      setSodiumUnits(sodiumQuery.data);
+    }
+  }, [sodiumQuery.data]);
 
   const saveProfileMutation = useMutation({
     mutationFn: async (newProfile: UserProfile) => {
@@ -527,6 +581,42 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     onSuccess: (data) => {
       setWaterCups(data);
       queryClient.setQueryData(['nutrition_water', authState.email], data);
+    },
+  });
+
+  const saveSugarMutation = useMutation({
+    mutationFn: async (newData: { [date: string]: number }) => {
+      const key = getStorageKey(BASE_SUGAR_KEY, authState.email);
+      await AsyncStorage.setItem(key, JSON.stringify(newData));
+      return newData;
+    },
+    onSuccess: (data) => {
+      setSugarUnits(data);
+      queryClient.setQueryData(['nutrition_sugar', authState.email], data);
+    },
+  });
+
+  const saveFiberMutation = useMutation({
+    mutationFn: async (newData: { [date: string]: number }) => {
+      const key = getStorageKey(BASE_FIBER_KEY, authState.email);
+      await AsyncStorage.setItem(key, JSON.stringify(newData));
+      return newData;
+    },
+    onSuccess: (data) => {
+      setFiberUnits(data);
+      queryClient.setQueryData(['nutrition_fiber', authState.email], data);
+    },
+  });
+
+  const saveSodiumMutation = useMutation({
+    mutationFn: async (newData: { [date: string]: number }) => {
+      const key = getStorageKey(BASE_SODIUM_KEY, authState.email);
+      await AsyncStorage.setItem(key, JSON.stringify(newData));
+      return newData;
+    },
+    onSuccess: (data) => {
+      setSodiumUnits(data);
+      queryClient.setQueryData(['nutrition_sodium', authState.email], data);
     },
   });
 
@@ -891,6 +981,69 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     return waterCups[selectedDate] || 0;
   }, [waterCups, selectedDate]);
 
+  const addSugarUnit = useCallback(() => {
+    const todayKey = getTodayKey();
+    const current = sugarUnits[todayKey] || 0;
+    const updated = { ...sugarUnits, [todayKey]: current + 1 };
+    saveSugarMutation.mutate(updated);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [sugarUnits, saveSugarMutation]);
+
+  const removeSugarUnit = useCallback(() => {
+    const todayKey = getTodayKey();
+    const current = sugarUnits[todayKey] || 0;
+    if (current <= 0) return;
+    const updated = { ...sugarUnits, [todayKey]: current - 1 };
+    saveSugarMutation.mutate(updated);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [sugarUnits, saveSugarMutation]);
+
+  const getTodaySugarUnits = useCallback(() => {
+    return sugarUnits[selectedDate] || 0;
+  }, [sugarUnits, selectedDate]);
+
+  const addFiberUnit = useCallback(() => {
+    const todayKey = getTodayKey();
+    const current = fiberUnits[todayKey] || 0;
+    const updated = { ...fiberUnits, [todayKey]: current + 1 };
+    saveFiberMutation.mutate(updated);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [fiberUnits, saveFiberMutation]);
+
+  const removeFiberUnit = useCallback(() => {
+    const todayKey = getTodayKey();
+    const current = fiberUnits[todayKey] || 0;
+    if (current <= 0) return;
+    const updated = { ...fiberUnits, [todayKey]: current - 1 };
+    saveFiberMutation.mutate(updated);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [fiberUnits, saveFiberMutation]);
+
+  const getTodayFiberUnits = useCallback(() => {
+    return fiberUnits[selectedDate] || 0;
+  }, [fiberUnits, selectedDate]);
+
+  const addSodiumUnit = useCallback(() => {
+    const todayKey = getTodayKey();
+    const current = sodiumUnits[todayKey] || 0;
+    const updated = { ...sodiumUnits, [todayKey]: current + 1 };
+    saveSodiumMutation.mutate(updated);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [sodiumUnits, saveSodiumMutation]);
+
+  const removeSodiumUnit = useCallback(() => {
+    const todayKey = getTodayKey();
+    const current = sodiumUnits[todayKey] || 0;
+    if (current <= 0) return;
+    const updated = { ...sodiumUnits, [todayKey]: current - 1 };
+    saveSodiumMutation.mutate(updated);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [sodiumUnits, saveSodiumMutation]);
+
+  const getTodaySodiumUnits = useCallback(() => {
+    return sodiumUnits[selectedDate] || 0;
+  }, [sodiumUnits, selectedDate]);
+
   const removeFromRecent = useCallback((recentId: string) => {
     const updatedRecent = recentMeals.filter(r => r.id !== recentId);
     mutateRecentMeals(updatedRecent);
@@ -1150,6 +1303,15 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     addWaterCup,
     removeWaterCup,
     getTodayWaterCups,
+    addSugarUnit,
+    removeSugarUnit,
+    getTodaySugarUnits,
+    addFiberUnit,
+    removeFiberUnit,
+    getTodayFiberUnits,
+    addSodiumUnit,
+    removeSodiumUnit,
+    getTodaySodiumUnits,
     addWeightEntry,
     authState,
     signIn,
@@ -1158,7 +1320,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     updateWeightEntry,
     deleteWeightEntry,
     clearAllData,
-    isLoading: profileQuery.isLoading || foodEntriesQuery.isLoading || weightHistoryQuery.isLoading || streakQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading || waterQuery.isLoading,
+    isLoading: profileQuery.isLoading || foodEntriesQuery.isLoading || weightHistoryQuery.isLoading || streakQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading || waterQuery.isLoading || sugarQuery.isLoading || fiberQuery.isLoading || sodiumQuery.isLoading,
     isSaving: saveProfileMutation.isPending || saveFoodEntryMutation.isPending || saveWeightHistoryMutation.isPending || saveFavoritesMutation.isPending || saveRecentMealsMutation.isPending,
   };
 });

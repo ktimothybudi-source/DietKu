@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LogExerciseScreen() {
   const { theme } = useTheme();
-  const { addExercise, addSteps, todaySteps, todayExercises, deleteExercise, totalCaloriesBurned, stepsCaloriesBurned, exerciseCaloriesBurned } = useExercise();
+  const { addExercise, todaySteps, todayExercises, deleteExercise, totalCaloriesBurned, stepsCaloriesBurned, exerciseCaloriesBurned, healthConnectEnabled, enableHealthConnect, disableHealthConnect, pedometerAvailable } = useExercise();
   const insets = useSafeAreaInsets();
 
   const [activeMode, setActiveMode] = useState<'quick' | 'describe' | 'manual' | 'steps'>('quick');
@@ -32,7 +32,7 @@ export default function LogExerciseScreen() {
   const [manualName, setManualName] = useState('');
   const [manualCalories, setManualCalories] = useState('');
   const [manualDuration, setManualDuration] = useState('');
-  const [stepsToAdd, setStepsToAdd] = useState('');
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -161,12 +161,6 @@ export default function LogExerciseScreen() {
     setManualDuration('');
   };
 
-  const handleAddSteps = () => {
-    const steps = parseInt(stepsToAdd);
-    if (isNaN(steps) || steps <= 0) return;
-    addSteps(steps);
-    setStepsToAdd('');
-  };
 
   const handleDeleteExercise = (id: string, date: string) => {
     Alert.alert(
@@ -418,7 +412,7 @@ export default function LogExerciseScreen() {
 
             {activeMode === 'steps' && (
               <View style={styles.modeContent}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>Tambah Langkah</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Langkah</Text>
                 <View style={[styles.stepsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                   <View style={styles.stepsDisplay}>
                     <Footprints size={32} color="#3B82F6" />
@@ -428,42 +422,44 @@ export default function LogExerciseScreen() {
                       ~{stepsCaloriesBurned} kcal terbakar
                     </Text>
                   </View>
-                  <View style={styles.stepsInputSection}>
-                    <View style={[styles.stepsInputWrapper, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                      <TextInput
-                        style={[styles.stepsInput, { color: theme.text }]}
-                        placeholder="1000"
-                        placeholderTextColor={theme.textTertiary}
-                        keyboardType="number-pad"
-                        value={stepsToAdd}
-                        onChangeText={setStepsToAdd}
-                      />
-                      <Text style={[styles.stepsUnit, { color: theme.textSecondary }]}>langkah</Text>
-                    </View>
+
+                  <View style={[styles.healthConnectSection, { borderTopColor: theme.border }]}>
+                    <Text style={[styles.healthConnectTitle, { color: theme.text }]}>
+                      {Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect'}
+                    </Text>
+                    <Text style={[styles.healthConnectDesc, { color: theme.textSecondary }]}>
+                      {healthConnectEnabled
+                        ? `Terhubung ke ${Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect'}. Langkah diambil otomatis dari perangkat Anda.`
+                        : `Hubungkan ke ${Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect'} untuk melacak langkah secara otomatis.`
+                      }
+                    </Text>
+                    {!pedometerAvailable && Platform.OS !== 'web' && (
+                      <Text style={[styles.healthConnectWarning, { color: '#F59E0B' }]}>
+                        Pedometer tidak tersedia di perangkat ini.
+                      </Text>
+                    )}
                     <TouchableOpacity
-                      style={[styles.logButton, styles.fullWidth, (!stepsToAdd || parseInt(stepsToAdd) <= 0) && styles.logButtonDisabled]}
-                      onPress={handleAddSteps}
-                      disabled={!stepsToAdd || parseInt(stepsToAdd) <= 0}
-                      activeOpacity={0.8}
+                      style={[
+                        styles.healthConnectBtn,
+                        { backgroundColor: healthConnectEnabled ? 'rgba(239, 68, 68, 0.1)' : theme.primary },
+                      ]}
+                      onPress={() => {
+                        if (healthConnectEnabled) {
+                          disableHealthConnect();
+                        } else {
+                          enableHealthConnect();
+                        }
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      }}
+                      activeOpacity={0.7}
                     >
-                      <Footprints size={18} color="#FFFFFF" />
-                      <Text style={styles.logButtonText}>Tambah Langkah</Text>
+                      <Text style={[
+                        styles.healthConnectBtnText,
+                        { color: healthConnectEnabled ? '#EF4444' : '#FFFFFF' },
+                      ]}>
+                        {healthConnectEnabled ? 'Putuskan Koneksi' : 'Hubungkan'}
+                      </Text>
                     </TouchableOpacity>
-                  </View>
-                  <View style={styles.quickSteps}>
-                    {[1000, 2000, 5000, 10000].map((s) => (
-                      <TouchableOpacity
-                        key={s}
-                        style={[styles.quickStepChip, { backgroundColor: theme.background, borderColor: theme.border }]}
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          addSteps(s);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[styles.quickStepText, { color: theme.primary }]}>+{(s / 1000).toFixed(0)}k</Text>
-                      </TouchableOpacity>
-                    ))}
                   </View>
                 </View>
               </View>
@@ -738,40 +734,33 @@ const styles = StyleSheet.create({
   stepsCal: {
     fontSize: 13,
   },
-  stepsInputSection: {
+  healthConnectSection: {
+    borderTopWidth: 1,
+    paddingTop: 16,
     gap: 10,
   },
-  stepsInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
+  healthConnectTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
   },
-  stepsInput: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600' as const,
-    paddingVertical: 12,
-  },
-  stepsUnit: {
+  healthConnectDesc: {
     fontSize: 14,
+    lineHeight: 20,
+  },
+  healthConnectWarning: {
+    fontSize: 13,
     fontWeight: '500' as const,
   },
-  quickSteps: {
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
+  healthConnectBtn: {
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    marginTop: 4,
   },
-  quickStepChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  quickStepText: {
-    fontSize: 14,
-    fontWeight: '700' as const,
+  healthConnectBtnText: {
+    fontSize: 15,
+    fontWeight: '600' as const,
   },
   historySection: {
     marginTop: 24,
