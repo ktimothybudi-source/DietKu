@@ -92,8 +92,7 @@ export default function HomeScreen() {
   const [editItemFat, setEditItemFat] = useState('');
   const [showAddItem, setShowAddItem] = useState(false);
   const [hasEdited, setHasEdited] = useState(false);
-  const [macroPage, setMacroPage] = useState(0);
-  const macroScrollRef = useRef<ScrollView>(null);
+
   const [viewingLoggedEntryId, setViewingLoggedEntryId] = useState<string | null>(null);
   
   const pendingModalScrollRef = useRef<ScrollView>(null);
@@ -965,12 +964,12 @@ export default function HomeScreen() {
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={[styles.mainCalorieCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.combinedCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.mainRingContainer}>
               <ProgressRing
                 progress={Math.min((progress?.caloriesProgress || 0), 100)}
-                size={240}
-                strokeWidth={18}
+                size={200}
+                strokeWidth={16}
                 color={(progress?.isOver || false) ? '#C53030' : theme.primary}
                 backgroundColor={theme.border}
               >
@@ -1001,261 +1000,236 @@ export default function HomeScreen() {
                 </View>
               </ProgressRing>
             </View>
+
+            <View style={[styles.combinedDivider, { backgroundColor: theme.border }]} />
+
+            <View style={styles.macroRingsRow}>
+              <View style={styles.macroRing}>
+                <ProgressRing
+                  progress={Math.min((progress?.proteinProgress || 0), 100)}
+                  size={72}
+                  strokeWidth={6}
+                  color={theme.primary}
+                  backgroundColor={theme.border}
+                >
+                  <View style={styles.macroRingContent}>
+                    <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.protein}g</Text>
+                  </View>
+                </ProgressRing>
+                <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Protein</Text>
+                <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.protein}g</Text>
+              </View>
+              
+              <View style={styles.macroRing}>
+                <ProgressRing
+                  progress={Math.min((todayTotals.carbs / (dailyTargets.carbsMax || 250)) * 100, 100)}
+                  size={72}
+                  strokeWidth={6}
+                  color="#3B82F6"
+                  backgroundColor={theme.border}
+                >
+                  <View style={styles.macroRingContent}>
+                    <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.carbs}g</Text>
+                  </View>
+                </ProgressRing>
+                <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Carbs</Text>
+                <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.carbsMax}g</Text>
+              </View>
+              
+              <View style={styles.macroRing}>
+                <ProgressRing
+                  progress={Math.min((todayTotals.fat / (dailyTargets.fatMax || 70)) * 100, 100)}
+                  size={72}
+                  strokeWidth={6}
+                  color="#F59E0B"
+                  backgroundColor={theme.border}
+                >
+                  <View style={styles.macroRingContent}>
+                    <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.fat}g</Text>
+                  </View>
+                </ProgressRing>
+                <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Fat</Text>
+                <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.fatMax}g</Text>
+              </View>
+            </View>
           </View>
 
-          <View style={styles.macroScrollWrapper}>
-            <ScrollView
-              ref={macroScrollRef}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(e) => {
-                const page = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 48));
-                setMacroPage(page);
-              }}
-              style={styles.macroHorizontalScroll}
-            >
-              <View style={[styles.macroPage, { width: SCREEN_WIDTH - 48 }]}>
-                <View style={styles.macroRingsCard}>
-                  <View style={styles.macroRing}>
+          {(() => {
+            const currentSugar = getTodaySugarUnits();
+            const sugarTarget = 8;
+            const currentFiber = getTodayFiberUnits();
+            const fiberTarget = 8;
+            const currentSodium = getTodaySodiumUnits();
+            const sodiumTarget = 8;
+
+            return (
+              <View style={[styles.microsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <View style={styles.miniMacroRingsRow}>
+                  <View style={styles.miniMacroRing}>
                     <ProgressRing
-                      progress={Math.min((progress?.proteinProgress || 0), 100)}
-                      size={100}
-                      strokeWidth={8}
-                      color={theme.primary}
+                      progress={Math.min((currentSugar / sugarTarget) * 100, 100)}
+                      size={64}
+                      strokeWidth={5}
+                      color="#EC4899"
                       backgroundColor={theme.border}
                     >
                       <View style={styles.macroRingContent}>
-                        <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.protein}g</Text>
+                        <Text style={[styles.miniMacroRingValue, { color: theme.text }]}>{currentSugar}</Text>
                       </View>
                     </ProgressRing>
-                    <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Protein</Text>
-                    <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.protein}g</Text>
+                    <Text style={[styles.microLabel, { color: theme.textSecondary }]}>Gula</Text>
+                    <View style={styles.miniMacroControls}>
+                      <TouchableOpacity onPress={removeSugarUnit} style={[styles.miniControlBtn, { borderColor: theme.border }]} activeOpacity={0.7}>
+                        <Minus size={11} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={addSugarUnit} style={[styles.miniControlBtn, { backgroundColor: '#EC4899', borderColor: '#EC4899' }]} activeOpacity={0.7}>
+                        <Plus size={11} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  
-                  <View style={styles.macroRing}>
+
+                  <View style={styles.miniMacroRing}>
                     <ProgressRing
-                      progress={Math.min((todayTotals.carbs / (dailyTargets.carbsMax || 250)) * 100, 100)}
-                      size={100}
-                      strokeWidth={8}
-                      color="#3B82F6"
+                      progress={Math.min((currentFiber / fiberTarget) * 100, 100)}
+                      size={64}
+                      strokeWidth={5}
+                      color="#8B5CF6"
                       backgroundColor={theme.border}
                     >
                       <View style={styles.macroRingContent}>
-                        <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.carbs}g</Text>
+                        <Text style={[styles.miniMacroRingValue, { color: theme.text }]}>{currentFiber}</Text>
                       </View>
                     </ProgressRing>
-                    <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Carbs</Text>
-                    <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.carbsMax}g</Text>
+                    <Text style={[styles.microLabel, { color: theme.textSecondary }]}>Serat</Text>
+                    <View style={styles.miniMacroControls}>
+                      <TouchableOpacity onPress={removeFiberUnit} style={[styles.miniControlBtn, { borderColor: theme.border }]} activeOpacity={0.7}>
+                        <Minus size={11} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={addFiberUnit} style={[styles.miniControlBtn, { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }]} activeOpacity={0.7}>
+                        <Plus size={11} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  
-                  <View style={styles.macroRing}>
+
+                  <View style={styles.miniMacroRing}>
                     <ProgressRing
-                      progress={Math.min((todayTotals.fat / (dailyTargets.fatMax || 70)) * 100, 100)}
-                      size={100}
-                      strokeWidth={8}
-                      color="#F59E0B"
+                      progress={Math.min((currentSodium / sodiumTarget) * 100, 100)}
+                      size={64}
+                      strokeWidth={5}
+                      color="#F97316"
                       backgroundColor={theme.border}
                     >
                       <View style={styles.macroRingContent}>
-                        <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.fat}g</Text>
+                        <Text style={[styles.miniMacroRingValue, { color: theme.text }]}>{currentSodium}</Text>
                       </View>
                     </ProgressRing>
-                    <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Fat</Text>
-                    <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.fatMax}g</Text>
+                    <Text style={[styles.microLabel, { color: theme.textSecondary }]}>Sodium</Text>
+                    <View style={styles.miniMacroControls}>
+                      <TouchableOpacity onPress={removeSodiumUnit} style={[styles.miniControlBtn, { borderColor: theme.border }]} activeOpacity={0.7}>
+                        <Minus size={11} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={addSodiumUnit} style={[styles.miniControlBtn, { backgroundColor: '#F97316', borderColor: '#F97316' }]} activeOpacity={0.7}>
+                        <Plus size={11} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </View>
+            );
+          })()}
 
-              <View style={[styles.macroPage, { width: SCREEN_WIDTH - 48 }]}>
-                {(() => {
-                  const currentSugar = getTodaySugarUnits();
-                  const sugarTarget = 8;
-                  const currentFiber = getTodayFiberUnits();
-                  const fiberTarget = 8;
-                  const currentSodium = getTodaySodiumUnits();
-                  const sodiumTarget = 8;
-                  const currentWater = getTodayWaterCups();
-                  const waterTarget = 8;
-
-                  return (
-                    <View style={{ gap: 14 }}>
-                      <View style={styles.macroRingsCard}>
-                        <View style={styles.miniMacroRing}>
-                          <ProgressRing
-                            progress={Math.min((currentSugar / sugarTarget) * 100, 100)}
-                            size={76}
-                            strokeWidth={6}
-                            color="#EC4899"
-                            backgroundColor={theme.border}
-                          >
-                            <View style={styles.macroRingContent}>
-                              <Text style={[styles.miniMacroRingValue, { color: theme.text }]}>{currentSugar}</Text>
-                            </View>
-                          </ProgressRing>
-                          <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Gula</Text>
-                          <View style={styles.miniMacroControls}>
-                            <TouchableOpacity onPress={removeSugarUnit} style={[styles.miniControlBtn, { borderColor: theme.border }]} activeOpacity={0.7}>
-                              <Minus size={12} color={theme.textSecondary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={addSugarUnit} style={[styles.miniControlBtn, { backgroundColor: '#EC4899', borderColor: '#EC4899' }]} activeOpacity={0.7}>
-                              <Plus size={12} color="#FFFFFF" />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-
-                        <View style={styles.miniMacroRing}>
-                          <ProgressRing
-                            progress={Math.min((currentFiber / fiberTarget) * 100, 100)}
-                            size={76}
-                            strokeWidth={6}
-                            color="#8B5CF6"
-                            backgroundColor={theme.border}
-                          >
-                            <View style={styles.macroRingContent}>
-                              <Text style={[styles.miniMacroRingValue, { color: theme.text }]}>{currentFiber}</Text>
-                            </View>
-                          </ProgressRing>
-                          <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Serat</Text>
-                          <View style={styles.miniMacroControls}>
-                            <TouchableOpacity onPress={removeFiberUnit} style={[styles.miniControlBtn, { borderColor: theme.border }]} activeOpacity={0.7}>
-                              <Minus size={12} color={theme.textSecondary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={addFiberUnit} style={[styles.miniControlBtn, { backgroundColor: '#8B5CF6', borderColor: '#8B5CF6' }]} activeOpacity={0.7}>
-                              <Plus size={12} color="#FFFFFF" />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-
-                        <View style={styles.miniMacroRing}>
-                          <ProgressRing
-                            progress={Math.min((currentSodium / sodiumTarget) * 100, 100)}
-                            size={76}
-                            strokeWidth={6}
-                            color="#F97316"
-                            backgroundColor={theme.border}
-                          >
-                            <View style={styles.macroRingContent}>
-                              <Text style={[styles.miniMacroRingValue, { color: theme.text }]}>{currentSodium}</Text>
-                            </View>
-                          </ProgressRing>
-                          <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Sodium</Text>
-                          <View style={styles.miniMacroControls}>
-                            <TouchableOpacity onPress={removeSodiumUnit} style={[styles.miniControlBtn, { borderColor: theme.border }]} activeOpacity={0.7}>
-                              <Minus size={12} color={theme.textSecondary} />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={addSodiumUnit} style={[styles.miniControlBtn, { backgroundColor: '#F97316', borderColor: '#F97316' }]} activeOpacity={0.7}>
-                              <Plus size={12} color="#FFFFFF" />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      </View>
-
-                      <View style={[styles.extraNutrientsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                        <View style={styles.nutrientTrackerSection}>
-                          <View style={styles.waterHeader}>
-                            <Droplets size={18} color="#38BDF8" />
-                            <Text style={[styles.waterTitle, { color: theme.text }]}>Air</Text>
-                            <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentWater}/{waterTarget} gelas</Text>
-                          </View>
-                          <View style={styles.waterCupsRow}>
-                            <TouchableOpacity
-                              style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
-                              onPress={removeWaterCup}
-                              activeOpacity={0.7}
-                            >
-                              <Minus size={16} color={theme.textSecondary} />
-                            </TouchableOpacity>
-                            <View style={styles.waterCupsDisplay}>
-                              {Array.from({ length: waterTarget }).map((_, i) => (
-                                <View
-                                  key={i}
-                                  style={[
-                                    styles.waterCupDot,
-                                    { backgroundColor: i < currentWater ? '#38BDF8' : theme.border },
-                                  ]}
-                                />
-                              ))}
-                            </View>
-                            <TouchableOpacity
-                              style={[styles.waterBtn, { backgroundColor: '#38BDF8' }]}
-                              onPress={addWaterCup}
-                              activeOpacity={0.7}
-                            >
-                              <Plus size={16} color="#FFFFFF" />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })()}
-              </View>
-              <View style={[styles.macroPage, { width: SCREEN_WIDTH - 48 }]}>
-                <View style={[styles.activityCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                  <View style={styles.activityHeader}>
-                    <View style={styles.activityTitleRow}>
-                      <Dumbbell size={18} color="#9B2C2C" />
-                      <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas & Langkah</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.activityStatsRow}>
-                    <View style={styles.activityStatItem}>
-                      <Footprints size={20} color="#3B82F6" />
-                      <Text style={[styles.activityStatValue, { color: theme.text }]}>{todaySteps.toLocaleString()}</Text>
-                      <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>langkah</Text>
-                    </View>
-                    <View style={[styles.activityStatDivider, { backgroundColor: theme.border }]} />
-                    <View style={styles.activityStatItem}>
-                      <Flame size={20} color="#9B2C2C" />
-                      <Text style={[styles.activityStatValue, { color: theme.text }]}>{totalCaloriesBurned}</Text>
-                      <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>kcal terbakar</Text>
-                    </View>
-                    <View style={[styles.activityStatDivider, { backgroundColor: theme.border }]} />
-                    <View style={styles.activityStatItem}>
-                      <Dumbbell size={20} color="#F59E0B" />
-                      <Text style={[styles.activityStatValue, { color: theme.text }]}>{todayExercises.length}</Text>
-                      <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>aktivitas</Text>
-                    </View>
-                  </View>
-
-                  {stepsCaloriesBurned > 0 && (
-                    <View style={styles.activityBreakdown}>
-                      <View style={styles.activityBreakdownRow}>
-                        <Text style={[styles.activityBreakdownLabel, { color: theme.textSecondary }]}>Langkah</Text>
-                        <Text style={[styles.activityBreakdownValue, { color: theme.textSecondary }]}>~{stepsCaloriesBurned} kcal</Text>
-                      </View>
-                      {exerciseCaloriesBurned > 0 && (
-                        <View style={styles.activityBreakdownRow}>
-                          <Text style={[styles.activityBreakdownLabel, { color: theme.textSecondary }]}>Olahraga</Text>
-                          <Text style={[styles.activityBreakdownValue, { color: theme.textSecondary }]}>~{exerciseCaloriesBurned} kcal</Text>
-                        </View>
-                      )}
-                    </View>
-                  )}
-
+          {(() => {
+            const currentWater = getTodayWaterCups();
+            const waterTarget = 8;
+            return (
+              <View style={[styles.waterCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <View style={styles.waterHeader}>
+                  <Droplets size={18} color="#38BDF8" />
+                  <Text style={[styles.waterTitle, { color: theme.text }]}>Air</Text>
+                  <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentWater}/{waterTarget} gelas</Text>
+                </View>
+                <View style={styles.waterCupsRow}>
                   <TouchableOpacity
-                    style={[styles.activityLogBtnBottom, { backgroundColor: theme.primary }]}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      router.push('/log-exercise');
-                    }}
+                    style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
+                    onPress={removeWaterCup}
+                    activeOpacity={0.7}
+                  >
+                    <Minus size={16} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                  <View style={styles.waterCupsDisplay}>
+                    {Array.from({ length: waterTarget }).map((_, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          styles.waterCupDot,
+                          { backgroundColor: i < currentWater ? '#38BDF8' : theme.border },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.waterBtn, { backgroundColor: '#38BDF8' }]}
+                    onPress={addWaterCup}
                     activeOpacity={0.7}
                   >
                     <Plus size={16} color="#FFFFFF" />
-                    <Text style={styles.activityLogBtnText}>Catat Aktivitas</Text>
                   </TouchableOpacity>
                 </View>
               </View>
-            </ScrollView>
+            );
+          })()}
 
-            <View style={styles.macroPageDots}>
-              <View style={[styles.macroPageDot, { backgroundColor: macroPage === 0 ? theme.primary : theme.border }]} />
-              <View style={[styles.macroPageDot, { backgroundColor: macroPage === 1 ? theme.primary : theme.border }]} />
-              <View style={[styles.macroPageDot, { backgroundColor: macroPage === 2 ? theme.primary : theme.border }]} />
+          <TouchableOpacity
+            style={[styles.exerciseCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push('/log-exercise');
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={styles.activityHeader}>
+              <View style={styles.activityTitleRow}>
+                <Dumbbell size={18} color="#9B2C2C" />
+                <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas & Langkah</Text>
+              </View>
+              <ChevronRightIcon size={18} color={theme.textTertiary} />
             </View>
-          </View>
+
+            <View style={styles.activityStatsRow}>
+              <View style={styles.activityStatItem}>
+                <Footprints size={20} color="#3B82F6" />
+                <Text style={[styles.activityStatValue, { color: theme.text }]}>{todaySteps.toLocaleString()}</Text>
+                <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>langkah</Text>
+              </View>
+              <View style={[styles.activityStatDivider, { backgroundColor: theme.border }]} />
+              <View style={styles.activityStatItem}>
+                <Flame size={20} color="#9B2C2C" />
+                <Text style={[styles.activityStatValue, { color: theme.text }]}>{totalCaloriesBurned}</Text>
+                <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>kcal terbakar</Text>
+              </View>
+              <View style={[styles.activityStatDivider, { backgroundColor: theme.border }]} />
+              <View style={styles.activityStatItem}>
+                <Dumbbell size={20} color="#F59E0B" />
+                <Text style={[styles.activityStatValue, { color: theme.text }]}>{todayExercises.length}</Text>
+                <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>aktivitas</Text>
+              </View>
+            </View>
+
+            {stepsCaloriesBurned > 0 && (
+              <View style={styles.activityBreakdown}>
+                <View style={styles.activityBreakdownRow}>
+                  <Text style={[styles.activityBreakdownLabel, { color: theme.textSecondary }]}>Langkah</Text>
+                  <Text style={[styles.activityBreakdownValue, { color: theme.textSecondary }]}>~{stepsCaloriesBurned} kcal</Text>
+                </View>
+                {exerciseCaloriesBurned > 0 && (
+                  <View style={styles.activityBreakdownRow}>
+                    <Text style={[styles.activityBreakdownLabel, { color: theme.textSecondary }]}>Olahraga</Text>
+                    <Text style={[styles.activityBreakdownValue, { color: theme.textSecondary }]}>~{exerciseCaloriesBurned} kcal</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </TouchableOpacity>
 
           <View style={[styles.healthScoreCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.healthScoreHeader}>
@@ -2665,13 +2639,25 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  mainCalorieCard: {
+  combinedCard: {
     marginHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 14,
     borderRadius: 14,
-    padding: 28,
+    padding: 24,
     borderWidth: 1,
     alignItems: 'center',
+    gap: 0,
+  },
+  combinedDivider: {
+    height: 1,
+    alignSelf: 'stretch',
+    marginVertical: 18,
+  },
+  macroRingsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignSelf: 'stretch',
+    gap: 8,
   },
   mainRingContainer: {
     alignItems: 'center',
@@ -2716,38 +2702,41 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500' as const,
   },
-  macroScrollWrapper: {
-    marginBottom: 32,
+  microsCard: {
+    marginHorizontal: 20,
+    marginBottom: 14,
+    borderRadius: 14,
+    padding: 18,
+    borderWidth: 1,
   },
-  macroHorizontalScroll: {
-    marginHorizontal: 24,
-  },
-  macroPage: {
-    justifyContent: 'center',
-  },
-  macroRingsCard: {
+  miniMacroRingsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    gap: 8,
+  },
+  microLabel: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase' as const,
+  },
+  waterCard: {
+    marginHorizontal: 20,
+    marginBottom: 14,
+    borderRadius: 14,
+    padding: 18,
+    borderWidth: 1,
     gap: 12,
   },
-  macroPageDots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 12,
-  },
-  macroPageDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  activityCard: {
-    borderRadius: 12,
-    padding: 16,
+  exerciseCard: {
+    marginHorizontal: 20,
+    marginBottom: 14,
+    borderRadius: 14,
+    padding: 18,
     borderWidth: 1,
     gap: 14,
   },
+
   activityHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2869,15 +2858,7 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
   },
-  activityLogBtnBottom: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginTop: 4,
-  },
+
   waterHeader: {
     flexDirection: 'row',
     alignItems: 'center',
