@@ -1250,18 +1250,6 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.fabCircle}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setActiveTab('recent');
-              setAddFoodModalVisible(true);
-            }}
-            activeOpacity={0.8}
-          >
-            <Plus size={28} color="#FFFFFF" />
-          </TouchableOpacity>
-
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Makanan {isToday ? 'Hari Ini' : 'pada Tanggal Ini'}</Text>
@@ -1375,7 +1363,17 @@ export default function HomeScreen() {
           <View style={styles.bottomPadding} />
         </ScrollView>
 
-
+        <TouchableOpacity
+          style={styles.fabCircle}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setActiveTab('recent');
+            setAddFoodModalVisible(true);
+          }}
+          activeOpacity={0.8}
+        >
+          <Plus size={28} color="#FFFFFF" />
+        </TouchableOpacity>
 
         {showMotivationalToast && motivationalMessage && (
           <Animated.View 
@@ -3080,19 +3078,21 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   fabCircle: {
-    alignSelf: 'center',
+    position: 'absolute' as const,
+    bottom: 24,
+    left: 24,
     width: 56,
     height: 56,
     borderRadius: 28,
     backgroundColor: '#6C63FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
     shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+    zIndex: 100,
   },
   catatAktivitasCardBtn: {
     flexDirection: 'row',
