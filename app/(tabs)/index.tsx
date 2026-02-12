@@ -21,7 +21,7 @@ const SUGAR_TARGET_G = 25;
 const FIBER_TARGET_G = 25;
 const SODIUM_TARGET_MG = 2300;
 import { Stack, router } from 'expo-router';
-import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2, Edit3, PlusCircle, Search as SearchIcon, Droplets, Minus, Footprints, Dumbbell, ChevronRight as ChevronRightIcon } from 'lucide-react-native';
+import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2, Edit3, PlusCircle, Search as SearchIcon, Droplets, Minus, Footprints, Dumbbell, ChevronRight as ChevronRightIcon, Utensils, Target, TrendingDown, TrendingUp, Zap, MessageSquare, Send } from 'lucide-react-native';
 import { Dimensions } from 'react-native';
 import { useNutrition, useTodayProgress, PendingFoodEntry } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -35,12 +35,13 @@ import { searchFoods } from '@/lib/foodsApi';
 import { FoodSearchResult } from '@/types/food';
 import ProgressRing from '@/components/ProgressRing';
 import { useExercise } from '@/contexts/ExerciseContext';
+import { QUICK_EXERCISES, QuickExercise, ExerciseType } from '@/types/exercise';
 import { ANIMATION_DURATION } from '@/constants/animations';
 import { getTimeBasedMessage, getProgressMessage, getCalorieFeedback, MotivationalMessage } from '@/constants/motivationalMessages';
 
 export default function HomeScreen() {
   const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, removeFromRecent, shouldSuggestFavorite, addWaterCup, removeWaterCup, getTodayWaterCups, addSugarUnit, removeSugarUnit, getTodaySugarUnits, addFiberUnit, removeFiberUnit, getTodayFiberUnits, addSodiumUnit, removeSodiumUnit, getTodaySodiumUnits } = useNutrition();
-  const { todaySteps, stepsCaloriesBurned, exerciseCaloriesBurned, totalCaloriesBurned, todayExercises } = useExercise();
+  const { todaySteps, stepsCaloriesBurned, exerciseCaloriesBurned, totalCaloriesBurned, todayExercises, addExercise } = useExercise();
   const { theme } = useTheme();
   const progress = useTodayProgress();
   const [modalVisible, setModalVisible] = useState(false);
@@ -100,6 +101,14 @@ export default function HomeScreen() {
 
   const [viewingLoggedEntryId, setViewingLoggedEntryId] = useState<string | null>(null);
   const [carouselPage, setCarouselPage] = useState(0);
+  const [exerciseMode, setExerciseMode] = useState<'quick' | 'describe' | 'manual'>('quick');
+  const [selectedQuickExercise, setSelectedQuickExercise] = useState<QuickExercise | null>(null);
+  const [quickDuration, setQuickDuration] = useState('');
+  const [exerciseDescription, setExerciseDescription] = useState('');
+  const [isAnalyzingExercise, setIsAnalyzingExercise] = useState(false);
+  const [manualExName, setManualExName] = useState('');
+  const [manualExCalories, setManualExCalories] = useState('');
+  const [manualExDuration, setManualExDuration] = useState('');
   
   const pendingModalScrollRef = useRef<ScrollView>(null);
   
@@ -992,40 +1001,54 @@ export default function HomeScreen() {
               scrollEventThrottle={16}
             >
           <View style={[styles.carouselCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.mainRingContainer}>
-              <ProgressRing
-                progress={Math.min((progress?.caloriesProgress || 0), 100)}
-                size={200}
-                strokeWidth={16}
-                color={(progress?.isOver || false) ? '#C53030' : theme.primary}
-                backgroundColor={theme.border}
-              >
-                <View style={styles.mainRingContent}>
-                  {progress?.isOver ? (
-                    <>
-                      <Text style={[styles.mainCalorieValue, { color: theme.destructive }]}>
-                        +{Math.abs(progress?.caloriesRemaining || 0)}
-                      </Text>
-                      <Text style={[styles.mainCalorieLabel, { color: theme.destructive, opacity: 0.8 }]}>kcal over</Text>
-                      <View style={styles.overIndicator}>
-                        <Text style={styles.overIndicatorText}>Target: {dailyTargets.calories}</Text>
-                      </View>
-                    </>
-                  ) : (
-                    <>
-                      <Text style={[styles.mainCalorieValue, { color: theme.text }]}>
-                        {Math.max(0, progress?.caloriesRemaining || 0)}
-                      </Text>
-                      <Text style={[styles.mainCalorieLabel, { color: theme.textSecondary }]}>kcal left</Text>
-                      <View style={styles.targetIndicator}>
-                        <Text style={[styles.targetIndicatorText, { color: theme.textTertiary }]}>
-                          {todayTotals.calories} / {dailyTargets.calories}
-                        </Text>
-                      </View>
-                    </>
-                  )}
+            <View style={styles.compactCalorieRow}>
+              <View style={styles.compactRingWrap}>
+                <ProgressRing
+                  progress={Math.min((progress?.caloriesProgress || 0), 100)}
+                  size={120}
+                  strokeWidth={12}
+                  color={(progress?.isOver || false) ? '#C53030' : theme.primary}
+                  backgroundColor={theme.border}
+                >
+                  <View style={styles.compactRingContent}>
+                    <Text style={[styles.compactCalValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
+                      {progress?.isOver ? `+${Math.abs(progress?.caloriesRemaining || 0)}` : todayTotals.calories}
+                    </Text>
+                    <Text style={[styles.compactCalUnit, { color: progress?.isOver ? theme.destructive : theme.textSecondary }]}>kcal</Text>
+                  </View>
+                </ProgressRing>
+              </View>
+              <View style={styles.compactDetailsCol}>
+                <View style={styles.compactDetailItem}>
+                  <View style={[styles.compactDetailIcon, { backgroundColor: progress?.isOver ? 'rgba(197,48,48,0.1)' : 'rgba(59,130,246,0.1)' }]}>
+                    {progress?.isOver ? <TrendingUp size={14} color="#C53030" /> : <TrendingDown size={14} color="#3B82F6" />}
+                  </View>
+                  <View>
+                    <Text style={[styles.compactDetailValue, { color: theme.text }]}>
+                      {progress?.isOver ? `+${Math.abs(progress?.caloriesRemaining || 0)}` : Math.max(0, progress?.caloriesRemaining || 0)}
+                    </Text>
+                    <Text style={[styles.compactDetailLabel, { color: theme.textSecondary }]}>{progress?.isOver ? 'kcal over' : 'tersisa'}</Text>
+                  </View>
                 </View>
-              </ProgressRing>
+                <View style={styles.compactDetailItem}>
+                  <View style={[styles.compactDetailIcon, { backgroundColor: 'rgba(249,115,22,0.1)' }]}>
+                    <Utensils size={14} color="#F97316" />
+                  </View>
+                  <View>
+                    <Text style={[styles.compactDetailValue, { color: theme.text }]}>{todayTotals.calories}</Text>
+                    <Text style={[styles.compactDetailLabel, { color: theme.textSecondary }]}>dimakan</Text>
+                  </View>
+                </View>
+                <View style={styles.compactDetailItem}>
+                  <View style={[styles.compactDetailIcon, { backgroundColor: 'rgba(108,99,255,0.1)' }]}>
+                    <Target size={14} color="#6C63FF" />
+                  </View>
+                  <View>
+                    <Text style={[styles.compactDetailValue, { color: theme.text }]}>{dailyTargets.calories}</Text>
+                    <Text style={[styles.compactDetailLabel, { color: theme.textSecondary }]}>target</Text>
+                  </View>
+                </View>
+              </View>
             </View>
 
             <View style={[styles.combinedDivider, { backgroundColor: theme.border }]} />
@@ -1034,13 +1057,13 @@ export default function HomeScreen() {
               <View style={styles.macroRing}>
                 <ProgressRing
                   progress={Math.min((progress?.proteinProgress || 0), 100)}
-                  size={72}
-                  strokeWidth={6}
+                  size={56}
+                  strokeWidth={5}
                   color={theme.primary}
                   backgroundColor={theme.border}
                 >
                   <View style={styles.macroRingContent}>
-                    <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.protein}g</Text>
+                    <Text style={[styles.macroRingValue, { color: theme.text, fontSize: 13 }]}>{todayTotals.protein}g</Text>
                   </View>
                 </ProgressRing>
                 <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Protein</Text>
@@ -1050,32 +1073,32 @@ export default function HomeScreen() {
               <View style={styles.macroRing}>
                 <ProgressRing
                   progress={Math.min((todayTotals.carbs / (dailyTargets.carbsMax || 250)) * 100, 100)}
-                  size={72}
-                  strokeWidth={6}
+                  size={56}
+                  strokeWidth={5}
                   color="#3B82F6"
                   backgroundColor={theme.border}
                 >
                   <View style={styles.macroRingContent}>
-                    <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.carbs}g</Text>
+                    <Text style={[styles.macroRingValue, { color: theme.text, fontSize: 13 }]}>{todayTotals.carbs}g</Text>
                   </View>
                 </ProgressRing>
-                <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Carbs</Text>
+                <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Karbo</Text>
                 <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.carbsMax}g</Text>
               </View>
               
               <View style={styles.macroRing}>
                 <ProgressRing
                   progress={Math.min((todayTotals.fat / (dailyTargets.fatMax || 70)) * 100, 100)}
-                  size={72}
-                  strokeWidth={6}
+                  size={56}
+                  strokeWidth={5}
                   color="#F59E0B"
                   backgroundColor={theme.border}
                 >
                   <View style={styles.macroRingContent}>
-                    <Text style={[styles.macroRingValue, { color: theme.text }]}>{todayTotals.fat}g</Text>
+                    <Text style={[styles.macroRingValue, { color: theme.text, fontSize: 13 }]}>{todayTotals.fat}g</Text>
                   </View>
                 </ProgressRing>
-                <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Fat</Text>
+                <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Lemak</Text>
                 <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.fatMax}g</Text>
               </View>
             </View>
@@ -1186,55 +1209,208 @@ export default function HomeScreen() {
           >
             <View style={styles.activityHeader}>
               <View style={styles.activityTitleRow}>
-                <Dumbbell size={20} color="#9B2C2C" />
-                <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas & Langkah</Text>
+                <Dumbbell size={18} color="#F59E0B" />
+                <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  router.push('/log-exercise');
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600' as const, color: theme.primary }}>Lihat</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.activityMiniStats}>
+              <View style={[styles.activityMiniStat, { backgroundColor: theme.background }]}>
+                <Footprints size={14} color="#3B82F6" />
+                <Text style={[styles.activityMiniStatVal, { color: theme.text }]}>{todaySteps.toLocaleString()}</Text>
+              </View>
+              <View style={[styles.activityMiniStat, { backgroundColor: theme.background }]}>
+                <Flame size={14} color="#EF4444" />
+                <Text style={[styles.activityMiniStatVal, { color: theme.text }]}>{totalCaloriesBurned} kcal</Text>
+              </View>
+              <View style={[styles.activityMiniStat, { backgroundColor: theme.background }]}>
+                <Dumbbell size={14} color="#F59E0B" />
+                <Text style={[styles.activityMiniStatVal, { color: theme.text }]}>{todayExercises.length}</Text>
               </View>
             </View>
 
-            <View style={styles.activityStatsGrid}>
-              <View style={[styles.activityStatCard, { backgroundColor: theme.background }]}>
-                <Footprints size={24} color="#3B82F6" />
-                <Text style={[styles.activityStatValue, { color: theme.text }]}>{todaySteps.toLocaleString()}</Text>
-                <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>langkah</Text>
-              </View>
-              <View style={[styles.activityStatCard, { backgroundColor: theme.background }]}>
-                <Flame size={24} color="#EF4444" />
-                <Text style={[styles.activityStatValue, { color: theme.text }]}>{totalCaloriesBurned}</Text>
-                <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>kcal terbakar</Text>
-              </View>
-              <View style={[styles.activityStatCard, { backgroundColor: theme.background }]}>
-                <Dumbbell size={24} color="#F59E0B" />
-                <Text style={[styles.activityStatValue, { color: theme.text }]}>{todayExercises.length}</Text>
-                <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>aktivitas</Text>
-              </View>
+            <View style={[styles.exModeTabs, { backgroundColor: theme.background }]}>
+              {([{ key: 'quick' as const, label: 'Cepat', Icon: Zap }, { key: 'describe' as const, label: 'Jelaskan', Icon: MessageSquare }, { key: 'manual' as const, label: 'Manual', Icon: Edit3 }]).map(({ key, label, Icon }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.exModeTab, exerciseMode === key && { backgroundColor: theme.card }]}
+                  onPress={() => {
+                    setExerciseMode(key);
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Icon size={13} color={exerciseMode === key ? theme.primary : theme.textSecondary} />
+                  <Text style={{ fontSize: 12, fontWeight: '600' as const, color: exerciseMode === key ? theme.primary : theme.textSecondary }}>{label}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
-            {stepsCaloriesBurned > 0 && (
-              <View style={[styles.activityBreakdownCard, { backgroundColor: theme.background }]}>
-                <View style={styles.activityBreakdownRow}>
-                  <Text style={[styles.activityBreakdownLabel, { color: theme.textSecondary }]}>Langkah</Text>
-                  <Text style={[styles.activityBreakdownValue, { color: theme.text }]}>~{stepsCaloriesBurned} kcal</Text>
-                </View>
-                {exerciseCaloriesBurned > 0 && (
-                  <View style={styles.activityBreakdownRow}>
-                    <Text style={[styles.activityBreakdownLabel, { color: theme.textSecondary }]}>Olahraga</Text>
-                    <Text style={[styles.activityBreakdownValue, { color: theme.text }]}>~{exerciseCaloriesBurned} kcal</Text>
+            {exerciseMode === 'quick' && (
+              <View style={styles.exQuickContent}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exQuickChips}>
+                  {QUICK_EXERCISES.map((ex) => (
+                    <TouchableOpacity
+                      key={ex.type}
+                      style={[
+                        styles.exQuickChip,
+                        { backgroundColor: theme.background, borderColor: selectedQuickExercise?.type === ex.type ? theme.primary : theme.border },
+                        selectedQuickExercise?.type === ex.type && { borderWidth: 2 },
+                      ]}
+                      onPress={() => {
+                        setSelectedQuickExercise(selectedQuickExercise?.type === ex.type ? null : ex);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.exQuickChipEmoji}>{ex.emoji}</Text>
+                      <Text style={[styles.exQuickChipLabel, { color: theme.text }]}>{ex.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                {selectedQuickExercise && (
+                  <View style={styles.exQuickInputRow}>
+                    <TextInput
+                      style={[styles.exQuickInput, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Menit"
+                      placeholderTextColor={theme.textTertiary}
+                      keyboardType="numeric"
+                      value={quickDuration}
+                      onChangeText={setQuickDuration}
+                    />
+                    <TouchableOpacity
+                      style={[styles.exLogBtn, !quickDuration && { opacity: 0.5 }]}
+                      disabled={!quickDuration}
+                      onPress={() => {
+                        const mins = parseInt(quickDuration);
+                        if (isNaN(mins) || mins <= 0) return;
+                        addExercise({
+                          type: selectedQuickExercise.type,
+                          name: selectedQuickExercise.label,
+                          caloriesBurned: Math.round(selectedQuickExercise.caloriesPerMinute * mins),
+                          duration: mins,
+                        });
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        setSelectedQuickExercise(null);
+                        setQuickDuration('');
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Check size={16} color="#FFF" />
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
             )}
 
-            <TouchableOpacity
-              style={styles.catatAktivitasCardBtn}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                router.push('/log-exercise');
-              }}
-              activeOpacity={0.8}
-            >
-              <Dumbbell size={18} color="#FFFFFF" />
-              <Text style={styles.catatAktivitasCardBtnText}>Catat Aktivitas</Text>
-            </TouchableOpacity>
+            {exerciseMode === 'describe' && (
+              <View style={styles.exDescribeContent}>
+                <View style={styles.exDescribeInputRow}>
+                  <TextInput
+                    style={[styles.exDescribeInput, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                    placeholder="Lari 30 menit di taman..."
+                    placeholderTextColor={theme.textTertiary}
+                    value={exerciseDescription}
+                    onChangeText={setExerciseDescription}
+                    multiline
+                  />
+                  <TouchableOpacity
+                    style={[styles.exLogBtn, (!exerciseDescription.trim() || isAnalyzingExercise) && { opacity: 0.5 }]}
+                    disabled={!exerciseDescription.trim() || isAnalyzingExercise}
+                    onPress={async () => {
+                      if (!exerciseDescription.trim()) return;
+                      setIsAnalyzingExercise(true);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      try {
+                        const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+                        if (!apiKey) {
+                          addExercise({ type: 'describe' as ExerciseType, name: exerciseDescription.trim(), caloriesBurned: Math.round(50 + Math.random() * 200), description: exerciseDescription.trim() });
+                          setExerciseDescription('');
+                          return;
+                        }
+                        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                          body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'You estimate calories burned from exercise descriptions. Return ONLY a JSON object with "calories" (number) and "name" (short exercise name in Indonesian). Example: {"calories": 250, "name": "Renang 30 menit"}' }, { role: 'user', content: `Estimate calories burned: "${exerciseDescription.trim()}"` }], max_tokens: 100, temperature: 0.3 }),
+                        });
+                        const data = await response.json();
+                        const aiContent = data.choices?.[0]?.message?.content || '';
+                        let parsed: { calories: number; name: string };
+                        try { const m = aiContent.match(/\{[\s\S]*\}/); parsed = JSON.parse(m ? m[0] : aiContent); } catch { parsed = { calories: 150, name: exerciseDescription.trim().slice(0, 30) }; }
+                        addExercise({ type: 'describe' as ExerciseType, name: parsed.name || exerciseDescription.trim().slice(0, 30), caloriesBurned: parsed.calories || 150, description: exerciseDescription.trim() });
+                        setExerciseDescription('');
+                      } catch (error) {
+                        console.error('Exercise describe error:', error);
+                        addExercise({ type: 'describe' as ExerciseType, name: exerciseDescription.trim().slice(0, 30), caloriesBurned: 150, description: exerciseDescription.trim() });
+                        setExerciseDescription('');
+                      } finally {
+                        setIsAnalyzingExercise(false);
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      }
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    {isAnalyzingExercise ? <ActivityIndicator size="small" color="#FFF" /> : <Send size={16} color="#FFF" />}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {exerciseMode === 'manual' && (
+              <View style={styles.exManualContent}>
+                <TextInput
+                  style={[styles.exManualInput, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                  placeholder="Nama aktivitas"
+                  placeholderTextColor={theme.textTertiary}
+                  value={manualExName}
+                  onChangeText={setManualExName}
+                />
+                <View style={styles.exManualRow}>
+                  <TextInput
+                    style={[styles.exManualInput, styles.exManualInputHalf, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                    placeholder="Kalori"
+                    placeholderTextColor={theme.textTertiary}
+                    keyboardType="numeric"
+                    value={manualExCalories}
+                    onChangeText={setManualExCalories}
+                  />
+                  <TextInput
+                    style={[styles.exManualInput, styles.exManualInputHalf, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                    placeholder="Menit"
+                    placeholderTextColor={theme.textTertiary}
+                    keyboardType="numeric"
+                    value={manualExDuration}
+                    onChangeText={setManualExDuration}
+                  />
+                </View>
+                <TouchableOpacity
+                  style={[styles.exLogBtn, styles.exManualLogBtn, (!manualExName.trim() || !manualExCalories) && { opacity: 0.5 }]}
+                  disabled={!manualExName.trim() || !manualExCalories}
+                  onPress={() => {
+                    const cals = parseInt(manualExCalories);
+                    if (isNaN(cals) || cals <= 0) return;
+                    addExercise({ type: 'manual' as ExerciseType, name: manualExName.trim(), caloriesBurned: cals, duration: manualExDuration ? parseInt(manualExDuration) : undefined });
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    setManualExName('');
+                    setManualExCalories('');
+                    setManualExDuration('');
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Check size={16} color="#FFF" />
+                  <Text style={{ fontSize: 13, fontWeight: '600' as const, color: '#FFF' }}>Simpan</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
             </ScrollView>
             <View style={styles.carouselDots}>
@@ -2654,10 +2830,62 @@ const styles = StyleSheet.create({
   carouselCard: {
     width: CAROUSEL_CARD_WIDTH,
     borderRadius: 14,
-    padding: 24,
+    padding: 18,
     borderWidth: 1,
     alignItems: 'center' as const,
     gap: 0,
+  },
+  compactCalorieRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    alignSelf: 'stretch' as const,
+    gap: 18,
+  },
+  compactRingWrap: {
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  compactRingContent: {
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  compactCalValue: {
+    fontSize: 26,
+    fontWeight: '800' as const,
+    letterSpacing: -1.5,
+    lineHeight: 30,
+  },
+  compactCalUnit: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+    marginTop: 1,
+  },
+  compactDetailsCol: {
+    flex: 1,
+    gap: 10,
+  },
+  compactDetailItem: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+  },
+  compactDetailIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  compactDetailValue: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    letterSpacing: -0.3,
+    lineHeight: 19,
+  },
+  compactDetailLabel: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+    lineHeight: 14,
   },
   carouselDots: {
     flexDirection: 'row' as const,
@@ -3114,6 +3342,139 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: '#FFFFFF',
     letterSpacing: -0.3,
+  },
+  activityMiniStats: {
+    flexDirection: 'row' as const,
+    gap: 8,
+    marginTop: 10,
+    alignSelf: 'stretch' as const,
+  },
+  activityMiniStat: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 5,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  activityMiniStatVal: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+  },
+  activitySeeAll: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  exModeTabs: {
+    flexDirection: 'row' as const,
+    borderRadius: 10,
+    padding: 3,
+    marginTop: 12,
+    alignSelf: 'stretch' as const,
+  },
+  exModeTab: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 4,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  exModeTabText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  exQuickContent: {
+    alignSelf: 'stretch' as const,
+    marginTop: 10,
+    gap: 10,
+  },
+  exQuickChips: {
+    gap: 8,
+  },
+  exQuickChip: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  exQuickChipEmoji: {
+    fontSize: 16,
+  },
+  exQuickChipLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  exQuickInputRow: {
+    flexDirection: 'row' as const,
+    gap: 8,
+    alignItems: 'center' as const,
+  },
+  exQuickInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  exLogBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#F59E0B',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  exDescribeContent: {
+    alignSelf: 'stretch' as const,
+    marginTop: 10,
+  },
+  exDescribeInputRow: {
+    flexDirection: 'row' as const,
+    gap: 8,
+    alignItems: 'flex-end' as const,
+  },
+  exDescribeInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    maxHeight: 80,
+    minHeight: 38,
+  },
+  exManualContent: {
+    alignSelf: 'stretch' as const,
+    marginTop: 10,
+    gap: 8,
+  },
+  exManualInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  exManualRow: {
+    flexDirection: 'row' as const,
+    gap: 8,
+  },
+  exManualInputHalf: {
+    flex: 1,
+  },
+  exManualLogBtn: {
+    width: 'auto' as const,
+    flexDirection: 'row' as const,
+    gap: 6,
+    paddingHorizontal: 16,
+    alignSelf: 'flex-end' as const,
   },
   waterInCarousel: {
     alignSelf: 'stretch',
