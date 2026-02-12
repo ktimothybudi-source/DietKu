@@ -1,3 +1,5 @@
+export const DEFAULT_SERVING_SIZE_G = 100;
+
 export interface SupabaseFoodItem {
   id: number;
   name: string;
@@ -9,11 +11,11 @@ export interface SupabaseFoodItem {
   fat_g_max: number | null;
   carb_g_min: number | null;
   carb_g_max: number | null;
-  // Legacy single value columns (fallback)
   energy_kcal?: number | null;
   protein_g?: number | null;
   fat_g?: number | null;
   carb_g?: number | null;
+  serving_size_g?: number | null;
   image: string | null;
 }
 
@@ -28,6 +30,7 @@ export interface FoodSearchResult {
   fatMax: number;
   carbsMin: number;
   carbsMax: number;
+  servingSizeG: number;
   image: string | null;
 }
 
@@ -38,28 +41,34 @@ export interface MealTotals {
   fat: number;
 }
 
+function convertPer100gToServing(valuePer100g: number, servingSizeG: number): number {
+  return Math.round((valuePer100g * servingSizeG) / 100);
+}
+
 export function mapSupabaseFoodToSearchResult(food: SupabaseFoodItem): FoodSearchResult {
-  // Handle both range columns and legacy single value columns
-  const caloriesMin = food.energy_kcal_min ?? food.energy_kcal ?? 0;
-  const caloriesMax = food.energy_kcal_max ?? food.energy_kcal ?? caloriesMin;
-  const proteinMin = food.protein_g_min ?? food.protein_g ?? 0;
-  const proteinMax = food.protein_g_max ?? food.protein_g ?? proteinMin;
-  const fatMin = food.fat_g_min ?? food.fat_g ?? 0;
-  const fatMax = food.fat_g_max ?? food.fat_g ?? fatMin;
-  const carbsMin = food.carb_g_min ?? food.carb_g ?? 0;
-  const carbsMax = food.carb_g_max ?? food.carb_g ?? carbsMin;
+  const servingSizeG = food.serving_size_g ?? DEFAULT_SERVING_SIZE_G;
+
+  const caloriesMinRaw = food.energy_kcal_min ?? food.energy_kcal ?? 0;
+  const caloriesMaxRaw = food.energy_kcal_max ?? food.energy_kcal ?? caloriesMinRaw;
+  const proteinMinRaw = food.protein_g_min ?? food.protein_g ?? 0;
+  const proteinMaxRaw = food.protein_g_max ?? food.protein_g ?? proteinMinRaw;
+  const fatMinRaw = food.fat_g_min ?? food.fat_g ?? 0;
+  const fatMaxRaw = food.fat_g_max ?? food.fat_g ?? fatMinRaw;
+  const carbsMinRaw = food.carb_g_min ?? food.carb_g ?? 0;
+  const carbsMaxRaw = food.carb_g_max ?? food.carb_g ?? carbsMinRaw;
 
   return {
     id: food.id,
     name: food.name,
-    caloriesMin,
-    caloriesMax,
-    proteinMin,
-    proteinMax,
-    fatMin,
-    fatMax,
-    carbsMin,
-    carbsMax,
+    caloriesMin: convertPer100gToServing(caloriesMinRaw, servingSizeG),
+    caloriesMax: convertPer100gToServing(caloriesMaxRaw, servingSizeG),
+    proteinMin: convertPer100gToServing(proteinMinRaw, servingSizeG),
+    proteinMax: convertPer100gToServing(proteinMaxRaw, servingSizeG),
+    fatMin: convertPer100gToServing(fatMinRaw, servingSizeG),
+    fatMax: convertPer100gToServing(fatMaxRaw, servingSizeG),
+    carbsMin: convertPer100gToServing(carbsMinRaw, servingSizeG),
+    carbsMax: convertPer100gToServing(carbsMaxRaw, servingSizeG),
+    servingSizeG,
     image: food.image,
   };
 }

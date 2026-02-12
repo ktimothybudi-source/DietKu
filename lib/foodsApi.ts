@@ -57,6 +57,7 @@ export async function searchFoods(
       const fatMax = item.fat_g_max ?? item.fat_max ?? item.fat_g ?? item.fat ?? fatMin;
       const carbMin = item.carb_g_min ?? item.carbs_min ?? item.carb_g ?? item.carbohydrate ?? item.carbs ?? 0;
       const carbMax = item.carb_g_max ?? item.carbs_max ?? item.carb_g ?? item.carbohydrate ?? item.carbs ?? carbMin;
+      const servingSizeG = item.serving_size_g ?? item.serving_size ?? null;
 
       const mapped: SupabaseFoodItem = {
         id: item.id as number,
@@ -69,6 +70,7 @@ export async function searchFoods(
         fat_g_max: fatMax as number,
         carb_g_min: carbMin as number,
         carb_g_max: carbMax as number,
+        serving_size_g: servingSizeG as number | null,
         image: (item.image ?? null) as string | null,
       };
       return mapped;
@@ -110,6 +112,7 @@ export async function getFoodById(id: number): Promise<FoodSearchResult | null> 
     const fatMax = item.fat_g_max ?? item.fat_g ?? fatMin;
     const carbMin = item.carb_g_min ?? item.carb_g ?? 0;
     const carbMax = item.carb_g_max ?? item.carb_g ?? carbMin;
+    const servingSizeG = item.serving_size_g ?? item.serving_size ?? null;
 
     const mapped: SupabaseFoodItem = {
       id: item.id as number,
@@ -122,6 +125,7 @@ export async function getFoodById(id: number): Promise<FoodSearchResult | null> 
       fat_g_max: fatMax as number,
       carb_g_min: carbMin as number,
       carb_g_max: carbMax as number,
+      serving_size_g: servingSizeG as number | null,
       image: (item.image ?? null) as string | null,
     };
 

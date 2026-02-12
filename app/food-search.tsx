@@ -18,7 +18,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { searchFoods } from '@/lib/foodsApi';
-import { FoodSearchResult, formatNutrientRange, getAverageFromRange } from '@/types/food';
+import { FoodSearchResult, formatNutrientRange, getAverageFromRange, DEFAULT_SERVING_SIZE_G } from '@/types/food';
 
 const DEBOUNCE_DELAY = 300;
 
@@ -83,8 +83,9 @@ export default function FoodSearchScreen() {
     const avgProtein = getAverageFromRange(food.proteinMin, food.proteinMax);
     const avgCarbs = getAverageFromRange(food.carbsMin, food.carbsMax);
     const avgFat = getAverageFromRange(food.fatMin, food.fatMax);
+    const servingLabel = `${food.servingSizeG}g`;
     
-    console.log('[FoodSearch] Selected food:', food.name, 'calories:', food.caloriesMin, '-', food.caloriesMax);
+    console.log('[FoodSearch] Selected food:', food.name, 'serving:', food.servingSizeG, 'g', 'calories:', food.caloriesMin, '-', food.caloriesMax);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     const hasRange = food.caloriesMin !== food.caloriesMax || 
@@ -98,8 +99,8 @@ export default function FoodSearchScreen() {
     const fatRange = formatNutrientRange(food.fatMin, food.fatMax);
     
     const message = hasRange
-      ? `${food.name}\n\n📊 Rentang Nutrisi:\n• Kalori: ${calRange} kcal\n• Protein: ${proteinRange}g\n• Karbo: ${carbsRange}g\n• Lemak: ${fatRange}g\n\n✅ Nilai rata-rata akan ditambahkan:\n• ${avgCalories} kcal • ${avgProtein}g protein\n• ${avgCarbs}g karbo • ${avgFat}g lemak`
-      : `${food.name}\n\n• ${avgCalories} kcal\n• ${avgProtein}g protein\n• ${avgCarbs}g karbo\n• ${avgFat}g lemak`;
+      ? `${food.name}\n🍽 Per sajian (${servingLabel})\n\n📊 Rentang Nutrisi:\n• Kalori: ${calRange} kcal\n• Protein: ${proteinRange}g\n• Karbo: ${carbsRange}g\n• Lemak: ${fatRange}g\n\n✅ Nilai rata-rata akan ditambahkan:\n• ${avgCalories} kcal • ${avgProtein}g protein\n• ${avgCarbs}g karbo • ${avgFat}g lemak`
+      : `${food.name}\n🍽 Per sajian (${servingLabel})\n\n• ${avgCalories} kcal\n• ${avgProtein}g protein\n• ${avgCarbs}g karbo\n• ${avgFat}g lemak`;
 
     Alert.alert(
       'Tambah Makanan',
@@ -165,6 +166,9 @@ export default function FoodSearchScreen() {
           {item.name}
         </Text>
         
+        <Text style={[styles.servingText, { color: theme.textTertiary }]}>
+          Per sajian ({item.servingSizeG}g)
+        </Text>
         <View style={styles.macroRow}>
           <View style={styles.macroItem}>
             <Flame size={12} color="#EF4444" />
@@ -420,6 +424,10 @@ const styles = StyleSheet.create({
   macroText: {
     fontSize: 12,
     fontWeight: '500' as const,
+  },
+  servingText: {
+    fontSize: 11,
+    fontWeight: '400' as const,
   },
   emptyContainer: {
     flex: 1,
