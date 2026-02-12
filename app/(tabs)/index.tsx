@@ -1181,20 +1181,14 @@ export default function HomeScreen() {
             })()}
           </View>
 
-          <TouchableOpacity
+          <View
             style={[styles.carouselCard, { backgroundColor: theme.card, borderColor: theme.border, marginLeft: CAROUSEL_GAP }]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push('/log-exercise');
-            }}
-            activeOpacity={0.7}
           >
             <View style={styles.activityHeader}>
               <View style={styles.activityTitleRow}>
                 <Dumbbell size={20} color="#9B2C2C" />
                 <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas & Langkah</Text>
               </View>
-              <ChevronRightIcon size={18} color={theme.textTertiary} />
             </View>
 
             <View style={styles.activityStatsGrid}>
@@ -1229,7 +1223,19 @@ export default function HomeScreen() {
                 )}
               </View>
             )}
-          </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.catatAktivitasCardBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.push('/log-exercise');
+              }}
+              activeOpacity={0.8}
+            >
+              <Dumbbell size={18} color="#FFFFFF" />
+              <Text style={styles.catatAktivitasCardBtnText}>Catat Aktivitas</Text>
+            </TouchableOpacity>
+          </View>
             </ScrollView>
             <View style={styles.carouselDots}>
               {[0, 1, 2].map((i) => (
@@ -1244,35 +1250,17 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <View style={styles.catatButtonRow}>
-            <TouchableOpacity
-              style={styles.catatButtonFlex}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                setActiveTab('recent');
-                setAddFoodModalVisible(true);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={styles.catatButtonInner}>
-                <Plus size={20} color="#FFFFFF" />
-                <Text style={styles.catatButtonText}>Catat Makanan</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.catatAktivitasFlex}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                router.push('/log-exercise');
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={styles.catatAktivitasInner}>
-                <Dumbbell size={20} color="#FFFFFF" />
-                <Text style={styles.catatButtonText}>Catat Aktivitas</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.fabCircle}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setActiveTab('recent');
+              setAddFoodModalVisible(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <Plus size={28} color="#FFFFFF" />
+          </TouchableOpacity>
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -3091,48 +3079,38 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 4,
   },
-  catatButtonRow: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 14,
-    gap: 10,
-  },
-  catatButtonFlex: {
-    flex: 1,
-  },
-  catatAktivitasFlex: {
-    flex: 1,
-  },
-  catatButtonInner: {
-    flexDirection: 'row',
+  fabCircle: {
+    alignSelf: 'center',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#6C63FF',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#6C63FF',
-    paddingVertical: 14,
-    borderRadius: 14,
+    marginBottom: 14,
     shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 6,
   },
-  catatAktivitasInner: {
+  catatAktivitasCardBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     backgroundColor: '#F59E0B',
-    paddingVertical: 14,
-    borderRadius: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 12,
     shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  catatButtonText: {
-    fontSize: 15,
+  catatAktivitasCardBtnText: {
+    fontSize: 14,
     fontWeight: '700' as const,
     color: '#FFFFFF',
     letterSpacing: -0.3,
