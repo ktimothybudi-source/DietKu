@@ -646,8 +646,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   logButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 12,
+    backgroundColor: '#6C63FF',
+    borderRadius: 16,
     paddingHorizontal: 20,
     paddingVertical: 14,
     flexDirection: 'row',
@@ -681,8 +681,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   describeButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 12,
+    backgroundColor: '#6C63FF',
+    borderRadius: 16,
     paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',

@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   indicatorLine: {
     width: 3,
     height: 50,
-    backgroundColor: '#10B981',
+    backgroundColor: '#6C63FF',
     borderRadius: 2,
   },
   indicatorTriangle: {
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 10,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: '#10B981',
+    borderTopColor: '#6C63FF',
     marginTop: -1,
   },
   ticksContainer: {

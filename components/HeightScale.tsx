@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   indicatorLine: {
     width: 60,
     height: 4,
-    backgroundColor: "#10B981",
+    backgroundColor: "#6C63FF",
     borderRadius: 2,
   },
   ticksContainer: {

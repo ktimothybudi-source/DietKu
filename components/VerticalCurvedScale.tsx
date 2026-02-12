@@ -107,7 +107,7 @@ export default function VerticalCurvedScale({
         
         <Path
           d={pathData}
-          stroke="#10B981"
+          stroke="#6C63FF"
           strokeWidth={6}
           fill="none"
           strokeLinecap="round"
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   },
   recommendedTextActive: {
     fontSize: 12,
-    color: '#10B981',
+    color: '#6C63FF',
     fontWeight: '600' as const,
     textAlign: 'center',
   },
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A2A2A',
   },
   tickRecommended: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#6C63FF',
     width: 20,
   },
   tickLabel: {
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
   },
   tickLabelRecommended: {
-    color: '#10B981',
+    color: '#6C63FF',
   },
   curveColumn: {
     width: 200,
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   handleRecommended: {
-    borderColor: '#10B981',
+    borderColor: '#6C63FF',
     backgroundColor: 'rgba(16, 185, 129, 0.1)',
   },
   handleArrowUp: {

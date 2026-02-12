@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   valueTextLarge: {
     fontSize: 48,
     fontWeight: '700' as const,
-    color: '#10B981',
+    color: '#6C63FF',
   },
   arrowText: {
     fontSize: 24,
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   tickCenter: {
     height: 24,
-    backgroundColor: '#10B981',
+    backgroundColor: '#6C63FF',
     width: 3,
   },
   rangeHighlight: {
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     borderColor: '#0A0A0A',
   },
   handleDotActive: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#6C63FF',
     width: 26,
     height: 26,
     borderRadius: 13,
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   },
   labelTextCenter: {
     fontSize: 14,
-    color: '#10B981',
+    color: '#6C63FF',
     fontWeight: '700' as const,
   },
   deltaDisplay: {
@@ -303,6 +303,6 @@ const styles = StyleSheet.create({
   deltaText: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: '#10B981',
+    color: '#6C63FF',
   },
 });

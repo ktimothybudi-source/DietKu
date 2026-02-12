@@ -38,9 +38,9 @@ export interface PostComment {
 }
 
 export const AVATAR_COLORS = [
-  '#1B4332',
-  '#2D6A4F',
-  '#3A7D5C',
+  '#6C63FF',
+  '#8B85FF',
+  '#5B5FC7',
   '#264653',
   '#2A9D8F',
   '#E76F51',

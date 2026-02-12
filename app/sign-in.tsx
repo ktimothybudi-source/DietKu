@@ -242,7 +242,7 @@ export default function SignInScreen() {
               <Svg width="64" height="64" viewBox="0 0 24 24" fill="none">
                 <Path
                   d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  fill="#10B981"
+                  fill="#6C63FF"
                 />
               </Svg>
             </View>
@@ -350,7 +350,7 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F6F4F1',
   },
   loadingContainer: {
     justifyContent: 'center',
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666666',
+    color: '#6E6E82',
   },
   scrollContent: {
     flexGrow: 1,
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: 'rgba(108, 99, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -388,13 +388,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700' as const,
-    color: '#000000',
+    color: '#1A1A2E',
     textAlign: 'center',
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666666',
+    color: '#6E6E82',
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -407,22 +407,22 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 15,
     fontWeight: '600' as const,
-    color: '#000000',
+    color: '#1A1A2E',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#F5F5F5',
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#EEEDF2',
+    borderRadius: 24,
     paddingHorizontal: 20,
     paddingVertical: 16,
     fontSize: 16,
-    color: '#000000',
+    color: '#1A1A2E',
   },
   signInButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 16,
+    backgroundColor: '#6C63FF',
+    borderRadius: 28,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
@@ -446,18 +446,18 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: '#EEEDF2',
   },
   dividerText: {
     fontSize: 14,
-    color: '#999999',
+    color: '#AEAEB8',
     marginHorizontal: 16,
   },
   googleButton: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#EEEDF2',
+    borderRadius: 28,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   googleButtonText: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: '#000000',
+    color: '#1A1A2E',
   },
   footer: {
     flexDirection: 'row',
@@ -481,11 +481,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 15,
-    color: '#666666',
+    color: '#6E6E82',
   },
   footerLink: {
     fontSize: 15,
     fontWeight: '600' as const,
-    color: '#10B981',
+    color: '#6C63FF',
   },
 });

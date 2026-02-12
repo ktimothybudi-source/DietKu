@@ -467,10 +467,15 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   card: {
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 18,
     marginBottom: 16,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
   },
   cardHeader: {
     marginBottom: 16,
@@ -540,7 +545,7 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
   },
   editButton: {
-    borderRadius: 10,
+    borderRadius: 20,
     padding: 14,
     alignItems: 'center',
     marginTop: 8,
@@ -598,7 +603,7 @@ const styles = StyleSheet.create({
   deleteButton: {
     width: 34,
     height: 34,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },

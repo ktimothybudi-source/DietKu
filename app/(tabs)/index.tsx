@@ -2566,7 +2566,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   calendarDaySelected: {
-    backgroundColor: '#1B4332',
+    backgroundColor: '#6C63FF',
   },
   calendarDayToday: {
     borderWidth: 2,
@@ -2635,10 +2635,10 @@ const styles = StyleSheet.create({
   motivationalToastContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1B4332',
+    backgroundColor: '#6C63FF',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 16,
     gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -2650,7 +2650,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#92400E',
   },
   motivationalToastCelebration: {
-    backgroundColor: '#1B4332',
+    backgroundColor: '#6C63FF',
   },
   motivationalToastEmoji: {
     fontSize: 20,
@@ -3056,12 +3056,12 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 14,
-    backgroundColor: '#1B4332',
+    backgroundColor: '#6C63FF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 4,
   },
@@ -3119,8 +3119,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   addButton: {
-    backgroundColor: '#1B4332',
-    borderRadius: 10,
+    backgroundColor: '#6C63FF',
+    borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -3246,8 +3246,8 @@ const styles = StyleSheet.create({
   },
   confirmButton: {
     flex: 2,
-    backgroundColor: '#1B4332',
-    borderRadius: 10,
+    backgroundColor: '#6C63FF',
+    borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -3378,8 +3378,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   foodDetailShareButton: {
-    backgroundColor: '#1B4332',
-    borderRadius: 10,
+    backgroundColor: '#6C63FF',
+    borderRadius: 16,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -3495,7 +3495,7 @@ const styles = StyleSheet.create({
   pendingDeleteText: {
     fontSize: 15,
     fontWeight: '600' as const,
-    color: '#C53030',
+    color: '#E5544B',
   },
   pendingResultState: {
     gap: 16,
@@ -3622,7 +3622,7 @@ const styles = StyleSheet.create({
   addItemButtonText: {
     fontSize: 13,
     fontWeight: '600' as const,
-    color: '#1B4332',
+    color: '#6C63FF',
   },
   editItemCard: {
     borderRadius: 12,
@@ -3686,8 +3686,8 @@ const styles = StyleSheet.create({
   editItemSaveBtn: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#1B4332',
+    borderRadius: 12,
+    backgroundColor: '#6C63FF',
     alignItems: 'center',
   },
   editItemSaveText: {
@@ -3700,9 +3700,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#1B4332',
+    backgroundColor: '#6C63FF',
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 16,
     marginTop: 16,
   },
   confirmEditedText: {
@@ -3736,8 +3736,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 10,
-    backgroundColor: '#1B4332',
+    borderRadius: 16,
+    backgroundColor: '#6C63FF',
   },
   pendingConfirmText: {
     fontSize: 16,
@@ -3809,7 +3809,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#1B4332',
+    backgroundColor: '#6C63FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -3818,14 +3818,14 @@ const styles = StyleSheet.create({
     bottom: 120,
     left: 20,
     right: 20,
-    backgroundColor: '#1B4332',
-    borderRadius: 10,
+    backgroundColor: '#6C63FF',
+    borderRadius: 16,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#000',
+    shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -4075,7 +4075,7 @@ const styles = StyleSheet.create({
   },
   searchErrorText: {
     fontSize: 14,
-    color: '#C53030',
+    color: '#E5544B',
   },
   usdaBrandName: {
     fontSize: 12,

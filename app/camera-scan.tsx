@@ -539,8 +539,8 @@ const styles = StyleSheet.create({
   permissionButton: {
     paddingHorizontal: 18,
     paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#10B981',
+    borderRadius: 16,
+    backgroundColor: '#6C63FF',
   },
   permissionButtonText: {
     color: '#FFFFFF',
@@ -599,9 +599,9 @@ const styles = StyleSheet.create({
     borderTopColor: '#1F1F1F',
   },
   modalPrimary: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#6C63FF',
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
   },
   modalPrimaryText: {

@@ -178,7 +178,7 @@ export default function FoodSearchScreen() {
           </View>
           
           <View style={styles.macroItem}>
-            <Drumstick size={12} color="#10B981" />
+            <Drumstick size={12} color="#6C63FF" />
             <Text style={[styles.macroText, { color: theme.textSecondary }]}>
               {renderNutrientValue(item.proteinMin, item.proteinMax, 'g')}
             </Text>

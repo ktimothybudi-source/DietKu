@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(16, 185, 129, 0.08)',
     borderTopWidth: 2,
     borderBottomWidth: 2,
-    borderColor: '#10B981',
+    borderColor: '#6C63FF',
     borderRadius: 12,
   },
   item: {
@@ -139,6 +139,6 @@ const styles = StyleSheet.create({
   itemTextSelected: {
     fontSize: 40,
     fontWeight: '700',
-    color: '#10B981', // changed to green to match highlight
+    color: '#6C63FF', // changed to green to match highlight
   },
 });

@@ -12,8 +12,8 @@ export const STORY_TEMPLATES: StoryTemplate[] = [
     id: 'health_focus',
     name: 'Health Focus',
     description: 'Emphasize nutrition',
-    gradientColors: ['rgba(16,185,129,0.3)', 'transparent', 'rgba(0,0,0,0.8)'],
-    accentColor: '#10B981',
+    gradientColors: ['rgba(108,99,255,0.3)', 'transparent', 'rgba(0,0,0,0.8)'],
+    accentColor: '#6C63FF',
   },
   {
     id: 'restaurant',

@@ -35,15 +35,20 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: theme.tabBar,
           borderTopColor: theme.border,
-          borderTopWidth: 1,
+          borderTopWidth: 0,
           height: tabBarHeight,
           paddingBottom: tabBarPaddingBottom,
           paddingTop: 6,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.04,
+          shadowRadius: 8,
+          elevation: 4,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: "500" as const,
-          letterSpacing: 0.3,
+          fontWeight: "600" as const,
+          letterSpacing: 0.2,
         },
       }}
     >

@@ -484,7 +484,7 @@ export default function OnboardingScreen() {
         }}
         activeOpacity={0.7}
       >
-        <Globe size={16} color="#10B981" />
+        <Globe size={16} color="#6C63FF" />
         <Text style={styles.languageText}>{language === 'id' ? 'ID' : 'EN'}</Text>
       </TouchableOpacity>
 
@@ -547,7 +547,7 @@ export default function OnboardingScreen() {
         <TouchableOpacity style={styles.introPrimaryButton} onPress={handleNext} activeOpacity={0.85}>
           <Text style={styles.introPrimaryButtonText}>Mulai Perjalananmu</Text>
           <View style={styles.introButtonIconCircle}>
-            <ArrowRight size={16} color="#10B981" />
+            <ArrowRight size={16} color="#6C63FF" />
           </View>
         </TouchableOpacity>
 
@@ -647,10 +647,10 @@ export default function OnboardingScreen() {
         >
           <View style={[styles.genderIconCircle, sex === 'male' && styles.genderIconCircleActive]}>
             <Svg width="60" height="60" viewBox="0 0 24 24" fill="none">
-              <Circle cx="12" cy="12" r="5" stroke={sex === 'male' ? '#10B981' : '#999999'} strokeWidth="2" />
+              <Circle cx="12" cy="12" r="5" stroke={sex === 'male' ? '#6C63FF' : '#999999'} strokeWidth="2" />
               <Path
                 d="M17 7L22 2M22 2h-5M22 2v5"
-                stroke={sex === 'male' ? '#10B981' : '#999999'}
+                stroke={sex === 'male' ? '#6C63FF' : '#999999'}
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -670,10 +670,10 @@ export default function OnboardingScreen() {
         >
           <View style={[styles.genderIconCircle, sex === 'female' && styles.genderIconCircleActive]}>
             <Svg width="60" height="60" viewBox="0 0 24 24" fill="none">
-              <Circle cx="12" cy="9" r="5" stroke={sex === 'female' ? '#10B981' : '#999999'} strokeWidth="2" />
+              <Circle cx="12" cy="9" r="5" stroke={sex === 'female' ? '#6C63FF' : '#999999'} strokeWidth="2" />
               <Path
                 d="M12 14v8M9 19h6"
-                stroke={sex === 'female' ? '#10B981' : '#999999'}
+                stroke={sex === 'female' ? '#6C63FF' : '#999999'}
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -862,7 +862,7 @@ export default function OnboardingScreen() {
           <Svg width="64" height="64" viewBox="0 0 24 24" fill="none">
             <Path
               d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              stroke="#10B981"
+              stroke="#6C63FF"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -1134,7 +1134,7 @@ export default function OnboardingScreen() {
             <Svg width="64" height="64" viewBox="0 0 24 24" fill="none">
               <Path
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                stroke="#10B981"
+                stroke="#6C63FF"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -1259,7 +1259,7 @@ export default function OnboardingScreen() {
           <Svg width="64" height="64" viewBox="0 0 24 24" fill="none">
             <Path
               d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              fill="#10B981"
+              fill="#6C63FF"
             />
           </Svg>
         </View>
@@ -1356,7 +1356,7 @@ export default function OnboardingScreen() {
                 cx="70"
                 cy="70"
                 r="60"
-                stroke="#10B981"
+                stroke="#6C63FF"
                 strokeWidth="8"
                 fill="none"
                 strokeLinecap="round"
@@ -1366,7 +1366,7 @@ export default function OnboardingScreen() {
             </G>
           </Svg>
           <View style={styles.circularProgressTextContainer}>
-            <Sparkles size={32} color="#10B981" />
+            <Sparkles size={32} color="#6C63FF" />
           </View>
         </View>
         <Text style={styles.loadingTitle}>Membuat rencana{'\n'}khusus Anda</Text>
@@ -1449,7 +1449,7 @@ export default function OnboardingScreen() {
                   cx="100"
                   cy="100"
                   r="70"
-                  stroke="#10B981"
+                  stroke="#6C63FF"
                   strokeWidth="22"
                   fill="none"
                   strokeDasharray={`${(proteinPercent / 100) * 439.8} 439.8`}
@@ -1479,7 +1479,7 @@ export default function OnboardingScreen() {
               <Text style={styles.legendText}>Karbo {carbsPercent}%</Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+              <View style={[styles.legendDot, { backgroundColor: '#6C63FF' }]} />
               <Text style={styles.legendText}>Protein {proteinPercent}%</Text>
             </View>
             <View style={styles.legendItem}>
@@ -1708,7 +1708,7 @@ export default function OnboardingScreen() {
           <Svg width="64" height="64" viewBox="0 0 24 24" fill="none">
             <Path
               d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              fill="#10B981"
+              fill="#6C63FF"
             />
           </Svg>
         </View>
@@ -1915,20 +1915,20 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: '#F6F4F1' },
   scrollContent: { flexGrow: 1, padding: 20 },
   backButtonTop: { marginBottom: 12, alignSelf: 'flex-start' },
   progressBarContainer: { marginBottom: 24 },
   progressBar: {
     height: 3,
-    backgroundColor: '#E5E5E5',
+    backgroundColor: '#EEEDF2',
     borderRadius: 2,
     overflow: 'hidden',
     marginBottom: 8,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#10B981',
+    backgroundColor: '#6C63FF',
     borderRadius: 2,
   },
   contentWrapper: { flex: 1 },
@@ -1939,7 +1939,7 @@ const styles = StyleSheet.create({
     width: 128,
     height: 128,
     borderRadius: 64,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: 'rgba(108, 99, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 48,
@@ -1962,7 +1962,7 @@ const styles = StyleSheet.create({
 
   introContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F6F4F1',
   },
   introImageHero: {
     alignSelf: 'center',
@@ -1991,11 +1991,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(16, 185, 129, 0.95)',
+    backgroundColor: 'rgba(108, 99, 255, 0.95)',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    shadowColor: '#10B981',
+    shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -2036,18 +2036,18 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   introPrimaryButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    backgroundColor: '#6C63FF',
+    borderRadius: 28,
+    paddingVertical: 18,
+    paddingHorizontal: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
-    shadowRadius: 10,
+    shadowRadius: 14,
     elevation: 6,
   },
   introPrimaryButtonText: {
@@ -2077,43 +2077,43 @@ const styles = StyleSheet.create({
   introSignInTextBold: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#10B981',
+    color: '#6C63FF',
   },
 
   questionContainer: { marginBottom: 24 },
   questionTitle: {
     fontSize: 26,
     fontWeight: '700',
-    color: '#000000',
+    color: '#1A1A2E',
     marginBottom: 10,
     lineHeight: 34,
   },
-  questionSubtitle: { fontSize: 16, color: '#666666', lineHeight: 24 },
+  questionSubtitle: { fontSize: 16, color: '#6E6E82', lineHeight: 24 },
 
   optionsList: { gap: 12, marginBottom: 24 },
   activityCard: {
-    backgroundColor: '#F5F5F5',
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#EEEDF2',
+    borderRadius: 24,
     padding: 20,
   },
-  activityCardActive: { borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.08)' },
+  activityCardActive: { borderColor: '#6C63FF', backgroundColor: 'rgba(108, 99, 255, 0.06)' },
   activityCardTitle: { fontSize: 18, fontWeight: '600', color: '#666666', marginBottom: 6 },
   activityCardTitleActive: { color: '#000000' },
   activityCardDesc: { fontSize: 14, color: '#666666', lineHeight: 20 },
 
   goalCard: {
-    backgroundColor: '#F5F5F5',
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#EEEDF2',
+    borderRadius: 24,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  goalCardActive: { borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.08)' },
+  goalCardActive: { borderColor: '#6C63FF', backgroundColor: 'rgba(108, 99, 255, 0.06)' },
   goalIconContainer: {
     width: 42,
     height: 42,
@@ -2129,8 +2129,8 @@ const styles = StyleSheet.create({
   goalCardDesc: { fontSize: 12, color: '#666666', lineHeight: 16 },
 
   primaryButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 16,
+    backgroundColor: '#6C63FF',
+    borderRadius: 28,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -2143,15 +2143,15 @@ const styles = StyleSheet.create({
   genderOptions: { flexDirection: 'row', gap: 16, marginBottom: 24 },
   genderCard: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#EEEDF2',
+    borderRadius: 28,
     padding: 28,
     alignItems: 'center',
     gap: 16,
   },
-  genderCardActive: { borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.08)' },
+  genderCardActive: { borderColor: '#6C63FF', backgroundColor: 'rgba(108, 99, 255, 0.06)' },
   genderIconCircle: {
     width: 120,
     height: 120,
@@ -2160,7 +2160,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  genderIconCircleActive: { backgroundColor: 'rgba(16, 185, 129, 0.15)' },
+  genderIconCircleActive: { backgroundColor: 'rgba(108, 99, 255, 0.12)' },
   genderText: { fontSize: 20, fontWeight: '600', color: '#666666' },
   genderTextActive: { color: '#000000' },
 
@@ -2189,7 +2189,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: 'rgba(108, 99, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 40,
@@ -2208,10 +2208,10 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#EEEDF2',
+    borderRadius: 24,
     paddingHorizontal: 24,
     paddingVertical: 20,
     gap: 12,
@@ -2227,10 +2227,10 @@ const styles = StyleSheet.create({
   inputUnit: { fontSize: 24, fontWeight: '600' as const, color: '#666666' },
 
   dateButton: {
-    backgroundColor: '#F5F5F5',
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#EEEDF2',
+    borderRadius: 24,
     paddingHorizontal: 32,
     paddingVertical: 24,
   },
@@ -2242,10 +2242,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 24,
-    backgroundColor: '#F5F5F5',
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#EEEDF2',
+    borderRadius: 24,
     padding: 28,
   },
   comparisonItem: { flex: 1, alignItems: 'center', gap: 8 },
@@ -2294,12 +2294,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    backgroundColor: 'rgba(108, 99, 255, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.12)',
+    borderColor: 'rgba(108, 99, 255, 0.12)',
     zIndex: 10,
   },
-  languageText: { fontSize: 12, fontWeight: '600' as const, color: '#10B981' },
+  languageText: { fontSize: 12, fontWeight: '600' as const, color: '#6C63FF' },
 
   signInLink: { marginTop: 20, padding: 12, alignItems: 'center' },
   signInLinkText: { fontSize: 15, fontWeight: '600' as const, color: '#666666' },
@@ -2307,32 +2307,32 @@ const styles = StyleSheet.create({
   notificationButtons: { gap: 12 },
   skipButton: {
     backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#EEEDF2',
+    borderRadius: 28,
     padding: 20,
     alignItems: 'center',
   },
-  skipButtonText: { fontSize: 18, fontWeight: '600' as const, color: '#666666' },
+  skipButtonText: { fontSize: 18, fontWeight: '600' as const, color: '#6E6E82' },
 
   finalScrollView: { flex: 1 },
   finalScrollContent: { flexGrow: 1 },
   finalPlanContainer: { alignItems: 'center' },
   finalPlanTitle: { fontSize: 26, fontWeight: '700', color: '#000000', textAlign: 'center', marginBottom: 20, lineHeight: 32 },
   projectionBanner: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    backgroundColor: 'rgba(108, 99, 255, 0.08)',
     borderWidth: 2,
-    borderColor: 'rgba(16, 185, 129, 0.4)',
-    borderRadius: 20,
+    borderColor: 'rgba(108, 99, 255, 0.2)',
+    borderRadius: 24,
     paddingVertical: 20,
     paddingHorizontal: 24,
     marginBottom: 32,
     alignItems: 'center',
     width: '100%',
   },
-  projectionLabel: { fontSize: 14, color: '#666666', marginBottom: 4, textAlign: 'center' },
-  projectionWeight: { fontSize: 40, fontWeight: '700' as const, color: '#10B981', marginBottom: 4, textAlign: 'center' },
-  projectionDate: { fontSize: 16, color: '#10B981', fontWeight: '600' as const, textAlign: 'center' },
+  projectionLabel: { fontSize: 14, color: '#6E6E82', marginBottom: 4, textAlign: 'center' },
+  projectionWeight: { fontSize: 40, fontWeight: '700' as const, color: '#6C63FF', marginBottom: 4, textAlign: 'center' },
+  projectionDate: { fontSize: 16, color: '#6C63FF', fontWeight: '600' as const, textAlign: 'center' },
 
   donutChartContainer: { width: 200, height: 200, marginBottom: 20, position: 'relative', alignItems: 'center', justifyContent: 'center' },
   donutCenter: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
@@ -2345,8 +2345,8 @@ const styles = StyleSheet.create({
 
   tipsSection: { width: '100%', gap: 12, marginBottom: 24 },
   tipsSectionTitle: { fontSize: 18, fontWeight: '600' as const, color: '#000000', marginBottom: 8 },
-  tipCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', borderRadius: 16, padding: 16, gap: 12 },
-  tipIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(16, 185, 129, 0.1)', alignItems: 'center', justifyContent: 'center' },
+  tipCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 24, padding: 16, gap: 12 },
+  tipIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(108, 99, 255, 0.08)', alignItems: 'center', justifyContent: 'center' },
   tipIcon: { fontSize: 22 },
   tipContent: { flex: 1 },
   tipTitle: { fontSize: 15, fontWeight: '600' as const, color: '#000000', marginBottom: 2 },
@@ -2360,8 +2360,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
     padding: 24,
     maxHeight: '90%',
   },
@@ -2369,13 +2369,13 @@ const styles = StyleSheet.create({
   subscriptionHeroImage: { width: '100%', height: 160, borderRadius: 20, marginBottom: 20 },
   subscriptionTitle: { fontSize: 24, fontWeight: '700' as const, color: '#000000', textAlign: 'center', marginBottom: 10, lineHeight: 32 },
   subscriptionSubtitle: { fontSize: 15, color: '#666666', textAlign: 'center', lineHeight: 22, marginBottom: 24, paddingHorizontal: 8 },
-  subscriptionPriceCard: { backgroundColor: '#F5F5F5', borderWidth: 2, borderColor: '#E5E5E5', borderRadius: 16, padding: 16, marginBottom: 12 },
-  subscriptionPriceCardActive: { borderColor: '#10B981', backgroundColor: 'rgba(16, 185, 129, 0.08)' },
+  subscriptionPriceCard: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#EEEDF2', borderRadius: 24, padding: 16, marginBottom: 12 },
+  subscriptionPriceCardActive: { borderColor: '#6C63FF', backgroundColor: 'rgba(108, 99, 255, 0.06)' },
   subscriptionPriceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   subscriptionPlanLabel: { fontSize: 14, color: '#666666', marginBottom: 4 },
-  subscriptionPlanPrice: { fontSize: 18, fontWeight: '700' as const, color: '#10B981' },
+  subscriptionPlanPrice: { fontSize: 18, fontWeight: '700' as const, color: '#6C63FF' },
   subscriptionMonthlyEquiv: { fontSize: 13, color: '#666666', marginTop: 4 },
-  subscriptionButton: { backgroundColor: '#10B981', borderRadius: 16, padding: 18, alignItems: 'center', marginBottom: 16 },
+  subscriptionButton: { backgroundColor: '#6C63FF', borderRadius: 28, padding: 18, alignItems: 'center', marginBottom: 16 },
   subscriptionButtonText: { fontSize: 18, fontWeight: '600' as const, color: '#FFFFFF', marginBottom: 4 },
   subscriptionButtonSubtext: { fontSize: 13, color: 'rgba(255, 255, 255, 0.8)' },
   subscriptionFooter: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
@@ -2406,20 +2406,20 @@ const styles = StyleSheet.create({
   },
 
   header: { alignItems: 'center', marginBottom: 32 },
-  iconCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(16, 185, 129, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  iconCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(108, 99, 255, 0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   signInTitle: { fontSize: 28, fontWeight: '700' as const, color: '#000000', textAlign: 'center', marginBottom: 12 },
   signInSubtitle: { fontSize: 16, color: '#666666', textAlign: 'center', lineHeight: 24 },
 
   signInForm: { flex: 1 },
   inputGroup: { marginBottom: 20 },
   inputLabel: { fontSize: 15, fontWeight: '600' as const, color: '#000000', marginBottom: 8 },
-  signInInput: { backgroundColor: '#F5F5F5', borderWidth: 2, borderColor: '#E5E5E5', borderRadius: 16, paddingHorizontal: 20, paddingVertical: 16, fontSize: 16, color: '#000000' },
+  signInInput: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#EEEDF2', borderRadius: 24, paddingHorizontal: 20, paddingVertical: 16, fontSize: 16, color: '#1A1A2E' },
 
   divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 24 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#E5E5E5' },
   dividerText: { fontSize: 14, color: '#999999', marginHorizontal: 16 },
 
-  googleButton: { backgroundColor: '#FFFFFF', borderWidth: 2, borderColor: '#E5E5E5', borderRadius: 16, padding: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
+  googleButton: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#EEEDF2', borderRadius: 28, padding: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
   googleButtonText: { fontSize: 16, fontWeight: '600' as const, color: '#000000' },
 
   skipSignInButton: { padding: 16, alignItems: 'center', marginTop: 16 },
@@ -2434,7 +2434,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    backgroundColor: 'rgba(108, 99, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 32,
@@ -2466,13 +2466,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   nameInput: {
-    backgroundColor: '#F5F5F5',
-    borderWidth: 2,
-    borderColor: '#E5E5E5',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#EEEDF2',
+    borderRadius: 24,
     padding: 20,
     fontSize: 18,
-    color: '#000000',
+    color: '#1A1A2E',
     marginBottom: 12,
   },
   nameInputHelper: {

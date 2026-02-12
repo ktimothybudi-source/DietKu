@@ -91,7 +91,7 @@ export default function ArcScale({ value, onChange, min, max, unit, step = 1 }: 
         <Path
           key={i}
           d={`M ${x1} ${y1} L ${x2} ${y2}`}
-          stroke="#10B981"
+          stroke="#6C63FF"
           strokeWidth={tickWidth}
           opacity={tickOpacity}
           strokeLinecap="round"
@@ -118,7 +118,7 @@ export default function ArcScale({ value, onChange, min, max, unit, step = 1 }: 
           cx={x}
           cy={y}
           r={10}
-          fill="#10B981"
+          fill="#6C63FF"
         />
         <Circle
           cx={x}
@@ -207,6 +207,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#10B981',
+    backgroundColor: '#6C63FF',
   },
 });

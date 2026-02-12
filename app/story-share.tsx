@@ -496,7 +496,7 @@ export default function StoryShareScreen() {
                 style={styles.nameEditTouchable}
               >
                 <Text style={styles.toggleSubtitle}>{customMealName}</Text>
-                <Edit3 size={12} color="#10B981" style={styles.editIcon} />
+                <Edit3 size={12} color="#6C63FF" style={styles.editIcon} />
               </TouchableOpacity>
             )}
           </View>
@@ -670,7 +670,7 @@ export default function StoryShareScreen() {
             disabled={isLoadingLocation}
           >
             <View style={styles.locationOptionIcon}>
-              <Navigation size={20} color="#10B981" />
+              <Navigation size={20} color="#6C63FF" />
             </View>
             <Text style={styles.locationOptionText}>
               {isLoadingLocation ? 'Getting location...' : 'Use current location'}
@@ -821,7 +821,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(16, 185, 129, 0.3)',
+    backgroundColor: 'rgba(108, 99, 255, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -901,7 +901,7 @@ const styles = StyleSheet.create({
   },
   trackedByBrand: {
     fontWeight: '700' as const,
-    color: '#10B981',
+    color: '#6C63FF',
   },
   previewCaloriesUnit: {
     fontSize: 24,
@@ -948,12 +948,12 @@ const styles = StyleSheet.create({
   },
   nameEditInput: {
     fontSize: 13,
-    color: '#10B981',
+    color: '#6C63FF',
     marginTop: 2,
     paddingVertical: 4,
     paddingHorizontal: 0,
     borderBottomWidth: 1,
-    borderBottomColor: '#10B981',
+    borderBottomColor: '#6C63FF',
   },
   nameEditTouchable: {
     flexDirection: 'row',
@@ -998,7 +998,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toggleIconActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.3)',
+    backgroundColor: 'rgba(108, 99, 255, 0.3)',
   },
   toggleLabel: {
     fontSize: 16,
@@ -1022,8 +1022,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toggleCheckActive: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
+    backgroundColor: '#6C63FF',
+    borderColor: '#6C63FF',
   },
   watermarkRow: {
     flexDirection: 'row',
@@ -1122,7 +1122,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: 'rgba(108, 99, 255, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -1159,7 +1159,7 @@ const styles = StyleSheet.create({
   addLocationBtn: {
     fontSize: 15,
     fontWeight: '600' as const,
-    color: '#10B981',
+    color: '#6C63FF',
     paddingHorizontal: 12,
   },
   presetsTitle: {

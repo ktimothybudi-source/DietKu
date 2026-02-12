@@ -2158,7 +2158,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   calendarDaySelected: {
-    backgroundColor: '#1B4332',
+    backgroundColor: '#6C63FF',
   },
   calendarDayToday: {
     borderWidth: 2,

@@ -36,7 +36,7 @@ export interface LocationData {
 
 export const HEALTH_RATINGS: { id: HealthRating; label: string; icon: string; color: string }[] = [
   { id: 'sangat_sehat', label: 'Sangat Sehat', icon: '💚', color: '#059669' },
-  { id: 'sehat', label: 'Sehat', icon: '✅', color: '#10B981' },
+  { id: 'sehat', label: 'Sehat', icon: '✅', color: '#6C63FF' },
   { id: 'cukup_sehat', label: 'Cukup Sehat', icon: '⚠️', color: '#F59E0B' },
   { id: 'kurang_sehat', label: 'Kurang Sehat', icon: '❌', color: '#EF4444' },
 ];
