@@ -23,7 +23,6 @@ import {
   Trophy,
   Send,
 } from 'lucide-react-native';
-import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCommunity } from '@/contexts/CommunityContext';
 import { useNutrition } from '@/contexts/NutritionContext';
@@ -56,6 +55,20 @@ function Avatar({ name, color, size = 40 }: { name: string; color: string; size?
     </View>
   );
 }
+
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  try {
+    const navigatorAny = (globalThis as { navigator?: { clipboard?: { writeText?: (value: string) => Promise<void> } } }).navigator;
+    if (navigatorAny?.clipboard?.writeText) {
+      await navigatorAny.clipboard.writeText(text);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Clipboard error:', error);
+    return false;
+  }
+};
 
 const PostCard = React.memo(({ post, onLike, onComment, onDelete, currentUserId, theme }: {
   post: FoodPost;
@@ -290,9 +303,13 @@ export default function CommunityScreen() {
 
   const handleCopyInvite = useCallback(async () => {
     console.log('community:copy-invite');
-    await Clipboard.setStringAsync(inviteLink);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Link Disalin', 'Bagikan link ini untuk mengundang anggota ke grup.');
+    const copied = await copyToClipboard(inviteLink);
+    if (copied) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Link Disalin', 'Bagikan link ini untuk mengundang anggota ke grup.');
+      return;
+    }
+    Alert.alert('Salin Manual', 'Tidak bisa menyalin otomatis. Silakan salin link di atas secara manual.');
   }, [inviteLink]);
 
   const handleSendChat = useCallback(() => {

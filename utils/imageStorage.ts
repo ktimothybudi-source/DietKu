@@ -1,6 +1,13 @@
 import * as FileSystem from 'expo-file-system';
 
-const IMAGES_DIR = `${FileSystem.documentDirectory}meal-photos/`;
+type FileSystemDirectories = {
+  documentDirectory?: string;
+  cacheDirectory?: string;
+};
+
+const fileSystemDirs = FileSystem as unknown as FileSystemDirectories;
+const baseDirectory = fileSystemDirs.documentDirectory ?? fileSystemDirs.cacheDirectory ?? 'file:///';
+const IMAGES_DIR = `${baseDirectory}meal-photos/`;
 
 async function ensureDirectoryExists() {
   const dirInfo = await FileSystem.getInfoAsync(IMAGES_DIR);

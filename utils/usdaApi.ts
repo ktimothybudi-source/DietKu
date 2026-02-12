@@ -139,7 +139,7 @@ async function rankUSDAResults(originalQuery: string, results: USDAFoodItem[]): 
     const rankedIndices = ranking.split(',').map((n: string) => parseInt(n.trim()) - 1).filter((n: number) => !isNaN(n) && n >= 0 && n < results.length);
     console.log('AI ranking:', rankedIndices);
     
-    const rankedResults = rankedIndices.map(idx => results[idx]);
+    const rankedResults = rankedIndices.map((idx: number) => results[idx]);
     const unranked = results.filter((_, idx) => !rankedIndices.includes(idx));
     
     return [...rankedResults, ...unranked];
