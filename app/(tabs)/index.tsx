@@ -1001,106 +1001,129 @@ export default function HomeScreen() {
               scrollEventThrottle={16}
             >
           <View style={[styles.carouselCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.compactCalorieRow}>
-              <View style={styles.compactRingWrap}>
+            <View style={styles.heroCalorieRow}>
+              <View style={styles.heroRingWrap}>
                 <ProgressRing
                   progress={Math.min((progress?.caloriesProgress || 0), 100)}
-                  size={120}
-                  strokeWidth={12}
-                  color={(progress?.isOver || false) ? '#C53030' : theme.primary}
+                  size={130}
+                  strokeWidth={14}
+                  color={(progress?.isOver || false) ? '#C53030' : '#4CAF7D'}
                   backgroundColor={theme.border}
                 >
-                  <View style={styles.compactRingContent}>
-                    <Text style={[styles.compactCalValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
-                      {progress?.isOver ? `+${Math.abs(progress?.caloriesRemaining || 0)}` : todayTotals.calories}
+                  <View style={styles.heroRingContent}>
+                    <Flame size={20} color={theme.textTertiary} />
+                    <Text style={[styles.heroCalValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
+                      {todayTotals.calories}
                     </Text>
-                    <Text style={[styles.compactCalUnit, { color: progress?.isOver ? theme.destructive : theme.textSecondary }]}>kcal</Text>
+                    <Text style={[styles.heroCalLabel, { color: theme.textSecondary }]}>kalori</Text>
                   </View>
                 </ProgressRing>
               </View>
-              <View style={styles.compactDetailsCol}>
-                <View style={styles.compactDetailItem}>
-                  <View style={[styles.compactDetailIcon, { backgroundColor: progress?.isOver ? 'rgba(197,48,48,0.1)' : 'rgba(59,130,246,0.1)' }]}>
-                    {progress?.isOver ? <TrendingUp size={14} color="#C53030" /> : <TrendingDown size={14} color="#3B82F6" />}
-                  </View>
-                  <View>
-                    <Text style={[styles.compactDetailValue, { color: theme.text }]}>
-                      {progress?.isOver ? `+${Math.abs(progress?.caloriesRemaining || 0)}` : Math.max(0, progress?.caloriesRemaining || 0)}
-                    </Text>
-                    <Text style={[styles.compactDetailLabel, { color: theme.textSecondary }]}>{progress?.isOver ? 'kcal over' : 'tersisa'}</Text>
-                  </View>
+              <View style={styles.heroDetailsCol}>
+                <View style={styles.heroStatRow}>
+                  <Target size={14} color="#4CAF7D" />
+                  <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Target</Text>
+                  <Text style={[styles.heroStatValue, { color: theme.text }]}>{dailyTargets.calories.toLocaleString()}</Text>
                 </View>
-                <View style={styles.compactDetailItem}>
-                  <View style={[styles.compactDetailIcon, { backgroundColor: 'rgba(249,115,22,0.1)' }]}>
-                    <Utensils size={14} color="#F97316" />
-                  </View>
-                  <View>
-                    <Text style={[styles.compactDetailValue, { color: theme.text }]}>{todayTotals.calories}</Text>
-                    <Text style={[styles.compactDetailLabel, { color: theme.textSecondary }]}>dimakan</Text>
-                  </View>
+                <View style={styles.heroStatRow}>
+                  <Utensils size={14} color="#F59E0B" />
+                  <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Makan</Text>
+                  <Text style={[styles.heroStatValue, { color: '#F59E0B' }]}>-{todayTotals.calories.toLocaleString()}</Text>
                 </View>
-                <View style={styles.compactDetailItem}>
-                  <View style={[styles.compactDetailIcon, { backgroundColor: 'rgba(108,99,255,0.1)' }]}>
-                    <Target size={14} color="#6C63FF" />
-                  </View>
-                  <View>
-                    <Text style={[styles.compactDetailValue, { color: theme.text }]}>{dailyTargets.calories}</Text>
-                    <Text style={[styles.compactDetailLabel, { color: theme.textSecondary }]}>target</Text>
-                  </View>
+                <View style={styles.heroStatRow}>
+                  <Dumbbell size={14} color="#4CAF7D" />
+                  <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Olahraga</Text>
+                  <Text style={[styles.heroStatValue, { color: '#4CAF7D' }]}>+{totalCaloriesBurned}</Text>
                 </View>
+                <View style={[styles.heroRemainingDivider, { backgroundColor: theme.border }]} />
+                <Text style={[styles.heroRemainingLabel, { color: theme.textSecondary }]}>{progress?.isOver ? 'BERLEBIH' : 'TERSISA'}</Text>
+                <Text style={[styles.heroRemainingValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
+                  {progress?.isOver ? `+${Math.abs(progress?.caloriesRemaining || 0).toLocaleString()}` : Math.max(0, progress?.caloriesRemaining || 0).toLocaleString()}
+                </Text>
               </View>
             </View>
 
-            <View style={[styles.combinedDivider, { backgroundColor: theme.border }]} />
-
-            <View style={styles.macroRingsRow}>
-              <View style={styles.macroRing}>
-                <ProgressRing
-                  progress={Math.min((progress?.proteinProgress || 0), 100)}
-                  size={56}
-                  strokeWidth={5}
-                  color={theme.primary}
-                  backgroundColor={theme.border}
-                >
-                  <View style={styles.macroRingContent}>
-                    <Text style={[styles.macroRingValue, { color: theme.text, fontSize: 13 }]}>{todayTotals.protein}g</Text>
-                  </View>
-                </ProgressRing>
-                <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Protein</Text>
-                <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.protein}g</Text>
-              </View>
-              
-              <View style={styles.macroRing}>
-                <ProgressRing
-                  progress={Math.min((todayTotals.carbs / (dailyTargets.carbsMax || 250)) * 100, 100)}
-                  size={56}
-                  strokeWidth={5}
-                  color="#3B82F6"
-                  backgroundColor={theme.border}
-                >
-                  <View style={styles.macroRingContent}>
-                    <Text style={[styles.macroRingValue, { color: theme.text, fontSize: 13 }]}>{todayTotals.carbs}g</Text>
-                  </View>
-                </ProgressRing>
-                <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Karbo</Text>
-                <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.carbsMax}g</Text>
-              </View>
-              
-              <View style={styles.macroRing}>
-                <ProgressRing
-                  progress={Math.min((todayTotals.fat / (dailyTargets.fatMax || 70)) * 100, 100)}
-                  size={56}
-                  strokeWidth={5}
-                  color="#F59E0B"
-                  backgroundColor={theme.border}
-                >
-                  <View style={styles.macroRingContent}>
-                    <Text style={[styles.macroRingValue, { color: theme.text, fontSize: 13 }]}>{todayTotals.fat}g</Text>
-                  </View>
-                </ProgressRing>
-                <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Lemak</Text>
-                <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{dailyTargets.fatMax}g</Text>
-              </View>
+            <View style={styles.macroCardsRow}>
+              {(() => {
+                const proteinPct = dailyTargets.protein > 0 ? Math.round((todayTotals.protein / dailyTargets.protein) * 100) : 0;
+                const carbsTarget = dailyTargets.carbsMax || 250;
+                const carbsPct = carbsTarget > 0 ? Math.round((todayTotals.carbs / carbsTarget) * 100) : 0;
+                const fatTarget = dailyTargets.fatMax || 70;
+                const fatPct = fatTarget > 0 ? Math.round((todayTotals.fat / fatTarget) * 100) : 0;
+                return (
+                  <>
+                    <View style={[styles.macroMiniCard, { backgroundColor: theme.background }]}>
+                      <ProgressRing
+                        progress={Math.min(proteinPct, 100)}
+                        size={52}
+                        strokeWidth={5}
+                        color="#FF8A80"
+                        backgroundColor={theme.border}
+                      >
+                        <Text style={{ fontSize: 16 }}>🍗</Text>
+                      </ProgressRing>
+                      <View style={styles.macroMiniInfo}>
+                        <Text style={[styles.macroMiniValues, { color: theme.text }]}>
+                          <Text style={styles.macroMiniCurrent}>{todayTotals.protein}</Text>
+                          <Text style={[styles.macroMiniTarget, { color: theme.textTertiary }]}> /{dailyTargets.protein}g</Text>
+                        </Text>
+                        <View style={styles.macroMiniBottom}>
+                          <Text style={[styles.macroMiniName, { color: theme.textSecondary }]}>Protein</Text>
+                          <View style={[styles.macroPctBadge, { backgroundColor: 'rgba(255,138,128,0.15)' }]}>
+                            <Text style={[styles.macroPctText, { color: '#FF8A80' }]}>{proteinPct}%</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                    <View style={[styles.macroMiniCard, { backgroundColor: theme.background }]}>
+                      <ProgressRing
+                        progress={Math.min(carbsPct, 100)}
+                        size={52}
+                        strokeWidth={5}
+                        color="#FFD54F"
+                        backgroundColor={theme.border}
+                      >
+                        <Text style={{ fontSize: 16 }}>🌾</Text>
+                      </ProgressRing>
+                      <View style={styles.macroMiniInfo}>
+                        <Text style={[styles.macroMiniValues, { color: theme.text }]}>
+                          <Text style={styles.macroMiniCurrent}>{todayTotals.carbs}</Text>
+                          <Text style={[styles.macroMiniTarget, { color: theme.textTertiary }]}> /{carbsTarget}g</Text>
+                        </Text>
+                        <View style={styles.macroMiniBottom}>
+                          <Text style={[styles.macroMiniName, { color: theme.textSecondary }]}>Karbo</Text>
+                          <View style={[styles.macroPctBadge, { backgroundColor: 'rgba(255,213,79,0.15)' }]}>
+                            <Text style={[styles.macroPctText, { color: '#F9A825' }]}>{carbsPct}%</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                    <View style={[styles.macroMiniCard, { backgroundColor: theme.background }]}>
+                      <ProgressRing
+                        progress={Math.min(fatPct, 100)}
+                        size={52}
+                        strokeWidth={5}
+                        color="#80DEEA"
+                        backgroundColor={theme.border}
+                      >
+                        <Text style={{ fontSize: 16 }}>🥑</Text>
+                      </ProgressRing>
+                      <View style={styles.macroMiniInfo}>
+                        <Text style={[styles.macroMiniValues, { color: theme.text }]}>
+                          <Text style={styles.macroMiniCurrent}>{todayTotals.fat}</Text>
+                          <Text style={[styles.macroMiniTarget, { color: theme.textTertiary }]}> /{fatTarget}g</Text>
+                        </Text>
+                        <View style={styles.macroMiniBottom}>
+                          <Text style={[styles.macroMiniName, { color: theme.textSecondary }]}>Lemak</Text>
+                          <View style={[styles.macroPctBadge, { backgroundColor: 'rgba(128,222,234,0.15)' }]}>
+                            <Text style={[styles.macroPctText, { color: '#00ACC1' }]}>{fatPct}%</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  </>
+                );
+              })()}
             </View>
           </View>
 
@@ -2835,57 +2858,118 @@ const styles = StyleSheet.create({
     alignItems: 'center' as const,
     gap: 0,
   },
-  compactCalorieRow: {
+  heroCalorieRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     alignSelf: 'stretch' as const,
-    gap: 18,
+    gap: 20,
   },
-  compactRingWrap: {
+  heroRingWrap: {
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
-  compactRingContent: {
+  heroRingContent: {
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
-  compactCalValue: {
-    fontSize: 26,
+  heroCalValue: {
+    fontSize: 28,
     fontWeight: '800' as const,
     letterSpacing: -1.5,
-    lineHeight: 30,
+    lineHeight: 32,
+    marginTop: 2,
   },
-  compactCalUnit: {
+  heroCalLabel: {
     fontSize: 11,
     fontWeight: '500' as const,
     marginTop: 1,
   },
-  compactDetailsCol: {
+  heroDetailsCol: {
     flex: 1,
-    gap: 10,
+    gap: 6,
   },
-  compactDetailItem: {
+  heroStatRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: 10,
+    gap: 8,
   },
-  compactDetailIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+  heroStatLabel: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    flex: 1,
   },
-  compactDetailValue: {
-    fontSize: 16,
+  heroStatValue: {
+    fontSize: 15,
     fontWeight: '700' as const,
     letterSpacing: -0.3,
-    lineHeight: 19,
   },
-  compactDetailLabel: {
-    fontSize: 11,
+  heroRemainingDivider: {
+    height: 1,
+    alignSelf: 'stretch' as const,
+    marginVertical: 4,
+  },
+  heroRemainingLabel: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase' as const,
+    textAlign: 'right' as const,
+  },
+  heroRemainingValue: {
+    fontSize: 32,
+    fontWeight: '800' as const,
+    letterSpacing: -1.5,
+    textAlign: 'right' as const,
+    lineHeight: 36,
+  },
+  macroCardsRow: {
+    flexDirection: 'row' as const,
+    alignSelf: 'stretch' as const,
+    gap: 8,
+    marginTop: 16,
+  },
+  macroMiniCard: {
+    flex: 1,
+    borderRadius: 12,
+    padding: 10,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  macroMiniInfo: {
+    alignItems: 'center' as const,
+    gap: 4,
+  },
+  macroMiniValues: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    textAlign: 'center' as const,
+  },
+  macroMiniCurrent: {
+    fontSize: 16,
+    fontWeight: '800' as const,
+    letterSpacing: -0.5,
+  },
+  macroMiniTarget: {
+    fontSize: 12,
     fontWeight: '500' as const,
-    lineHeight: 14,
+  },
+  macroMiniBottom: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  macroMiniName: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+  },
+  macroPctBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  macroPctText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
   },
   carouselDots: {
     flexDirection: 'row' as const,
