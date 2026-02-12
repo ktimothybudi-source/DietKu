@@ -29,6 +29,7 @@ import {
 } from 'lucide-react-native';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useExercise } from '@/contexts/ExerciseContext';
 import { FoodEntry } from '@/types/nutrition';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -64,6 +65,7 @@ export default function AnalyticsScreen() {
   const { profile, dailyTargets, foodLog, streakData, weightHistory } = nutrition;
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const exerciseData = useExercise();
 
   const [timeRange, setTimeRange] = useState<TimeRange>('7h');
   const [showWeightModal, setShowWeightModal] = useState(false);
@@ -574,6 +576,56 @@ export default function AnalyticsScreen() {
     };
   }, [profile, stats.currentWeight, weightChartData]);
 
+  const weightChanges = useMemo(() => {
+    if (!weightChartData || weightChartData.length === 0) return [];
+    const periods = [
+      { label: '3 hari', days: 3 },
+      { label: '7 hari', days: 7 },
+      { label: '14 hari', days: 14 },
+      { label: '30 hari', days: 30 },
+      { label: '90 hari', days: 90 },
+      { label: 'Semua', days: 9999 },
+    ];
+    const latestWeight = weightChartData[weightChartData.length - 1]?.weight ?? 0;
+    return periods.map(period => {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - period.days);
+      const filteredEntries = period.days === 9999
+        ? weightChartData
+        : weightChartData.filter((w: any) => new Date(w.date) <= cutoff);
+      const pastWeight = filteredEntries.length > 0
+        ? (period.days === 9999 ? filteredEntries[0].weight : filteredEntries[filteredEntries.length - 1].weight)
+        : null;
+      if (pastWeight === null) return { label: period.label, change: 0, trend: 'none' as const };
+      const change = latestWeight - pastWeight;
+      const trend = change > 0.05 ? 'up' as const : change < -0.05 ? 'down' as const : 'none' as const;
+      return { label: period.label, change: Math.round(change * 10) / 10, trend };
+    });
+  }, [weightChartData]);
+
+  const expenditureChanges = useMemo(() => {
+    const periods = [
+      { label: '3 hari', days: 3 },
+      { label: '7 hari', days: 7 },
+      { label: '14 hari', days: 14 },
+      { label: '30 hari', days: 30 },
+      { label: '90 hari', days: 90 },
+    ];
+    return periods.map(period => {
+      const recentDays = dayData.slice(-period.days);
+      const olderStart = Math.max(0, dayData.length - period.days * 2);
+      const olderEnd = Math.max(0, dayData.length - period.days);
+      const olderDays = dayData.slice(olderStart, olderEnd);
+      const recentWithData = recentDays.filter(d => d.calories > 0);
+      const olderWithData = olderDays.filter(d => d.calories > 0);
+      const recentAvg = recentWithData.length > 0 ? recentWithData.reduce((s, d) => s + d.calories, 0) / recentWithData.length : 0;
+      const olderAvg = olderWithData.length > 0 ? olderWithData.reduce((s, d) => s + d.calories, 0) / olderWithData.length : 0;
+      const change = olderAvg > 0 ? recentAvg - olderAvg : 0;
+      const trend = change > 10 ? 'up' as const : change < -10 ? 'down' as const : 'none' as const;
+      return { label: period.label, change: Math.round(change * 10) / 10, trend };
+    });
+  }, [dayData]);
+
   const renderWeightSection = () => {
     const hasWeightData = weightChartData.length >= 1;
     const targetWeight = stats.targetWeight;
@@ -884,6 +936,233 @@ export default function AnalyticsScreen() {
     );
   };
 
+  const renderStreakVisualization = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const weekLabels = ['M', 'S', 'S', 'R', 'K', 'J', 'S'];
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - dayOfWeek);
+    const log = (foodLog as Record<string, FoodEntry[]>) || {};
+    const weekDaysData = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(weekStart);
+      date.setDate(weekStart.getDate() + i);
+      const dateKey = formatDateKey(date);
+      const hasEntries = (log[dateKey] || []).length > 0;
+      const isToday = dateKey === formatDateKey(new Date());
+      const isFuture = date > today;
+      return { day: weekLabels[i], logged: hasEntries, isToday, isFuture };
+    });
+    return (
+      <View style={styles.streakRow}>
+        <View style={[styles.streakCardLeft, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Flame size={28} color="#FF6B35" fill="#FF6B35" />
+          <Text style={[styles.streakCardNumber, { color: theme.text }]}>{streakData?.currentStreak ?? 0}</Text>
+          <Text style={[styles.streakCardLabel, { color: theme.textSecondary }]}>Day Streak</Text>
+          <View style={styles.weekDotsRow}>
+            {weekDaysData.map((d, i) => (
+              <View key={i} style={styles.weekDotCol}>
+                <Text style={[styles.weekDotDayLabel, { color: d.isToday ? theme.primary : theme.textTertiary }]}>{d.day}</Text>
+                <View style={[
+                  styles.weekDotCircle,
+                  { backgroundColor: d.logged ? theme.primary : d.isFuture ? 'transparent' : theme.border },
+                  d.isToday && !d.logged && { borderWidth: 2, borderColor: theme.primary, backgroundColor: 'transparent' },
+                ]} />
+              </View>
+            ))}
+          </View>
+        </View>
+        <View style={[styles.streakCardRight, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Award size={28} color="#F59E0B" />
+          <Text style={[styles.streakCardNumber, { color: theme.text }]}>{streakData?.bestStreak ?? 0}</Text>
+          <Text style={[styles.streakCardLabel, { color: theme.textSecondary }]}>Rekor Terbaik</Text>
+        </View>
+      </View>
+    );
+  };
+
+  const renderWeightChanges = () => {
+    if (weightChanges.length === 0) return null;
+    return (
+      <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.chartHeader}>
+          <View style={styles.chartTitleRow}>
+            <View style={[styles.chartIconWrap, { backgroundColor: '#3B82F6' + '15' }]}>
+              <Scale size={18} color="#3B82F6" />
+            </View>
+            <Text style={[styles.chartTitle, { color: theme.text }]}>Perubahan Berat</Text>
+          </View>
+        </View>
+        {weightChanges.map((item, i) => (
+          <View key={i} style={[styles.changeRow, i < weightChanges.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+            <Text style={[styles.changeLabel, { color: theme.textSecondary }]}>{item.label}</Text>
+            <View style={[styles.changeTrendBar, { backgroundColor: item.trend === 'down' ? '#3B82F620' : item.trend === 'up' ? '#F59E0B20' : theme.border }]} />
+            <Text style={[styles.changeValue, { color: theme.text }]}>{item.change > 0 ? '+' : ''}{item.change} kg</Text>
+            <Text style={[styles.changeTrend, { color: item.trend === 'down' ? '#3B82F6' : item.trend === 'up' ? '#F59E0B' : theme.textTertiary }]}>
+              {item.trend === 'up' ? '↗ Naik' : item.trend === 'down' ? '↘ Turun' : '→ Tetap'}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  const renderWeeklyEnergy = () => {
+    const last7 = dayData.slice(-7);
+    const weekData = last7.map(d => {
+      const dateExercises = exerciseData.exercises?.[d.dateKey] || [];
+      const dateSteps = exerciseData.stepsData?.[d.dateKey] || 0;
+      const stepsCals = Math.round(dateSteps * 0.04);
+      const exerciseCals = (dateExercises as any[]).reduce((sum: number, e: any) => sum + (e.caloriesBurned || 0), 0);
+      const burned = stepsCals + exerciseCals;
+      return { ...d, burned, consumed: d.calories };
+    });
+    const totalBurned = weekData.reduce((sum, d) => sum + d.burned, 0);
+    const totalConsumed = weekData.reduce((sum, d) => sum + d.consumed, 0);
+    const totalEnergy = totalConsumed - totalBurned;
+    const maxVal = Math.max(...weekData.map(d => Math.max(d.burned, d.consumed)), 1);
+    const chartHeight = 130;
+    return (
+      <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.chartHeader}>
+          <View style={styles.chartTitleRow}>
+            <View style={[styles.chartIconWrap, { backgroundColor: '#22C55E15' }]}>
+              <Zap size={18} color="#22C55E" />
+            </View>
+            <Text style={[styles.chartTitle, { color: theme.text }]}>Energi Mingguan</Text>
+          </View>
+        </View>
+        <View style={styles.energyStatsRow}>
+          <View style={styles.energyStat}>
+            <Text style={[styles.energyStatLabel, { color: theme.textSecondary }]}>Terbakar</Text>
+            <Text style={[styles.energyStatValue, { color: '#F59E0B' }]}>{totalBurned.toLocaleString()}</Text>
+            <Text style={[styles.energyStatUnit, { color: theme.textTertiary }]}>cal</Text>
+          </View>
+          <View style={styles.energyStat}>
+            <Text style={[styles.energyStatLabel, { color: theme.textSecondary }]}>Dikonsumsi</Text>
+            <Text style={[styles.energyStatValue, { color: theme.primary }]}>{totalConsumed.toLocaleString()}</Text>
+            <Text style={[styles.energyStatUnit, { color: theme.textTertiary }]}>cal</Text>
+          </View>
+          <View style={styles.energyStat}>
+            <Text style={[styles.energyStatLabel, { color: theme.textSecondary }]}>Energi</Text>
+            <Text style={[styles.energyStatValue, { color: totalEnergy >= 0 ? theme.destructive : '#3B82F6' }]}>{totalEnergy >= 0 ? '+' : ''}{totalEnergy}</Text>
+            <Text style={[styles.energyStatUnit, { color: theme.textTertiary }]}>cal</Text>
+          </View>
+        </View>
+        <View style={[styles.energyChartArea, { height: chartHeight + 30 }]}>
+          {weekData.map((d) => {
+            const burnedH = maxVal > 0 ? (d.burned / maxVal) * chartHeight : 0;
+            const consumedH = maxVal > 0 ? (d.consumed / maxVal) * chartHeight : 0;
+            const dayLabel = new Date(d.dateKey).toLocaleDateString('id-ID', { weekday: 'short' }).slice(0, 3);
+            return (
+              <View key={d.dateKey} style={styles.energyBarCol}>
+                <View style={styles.energyBarPair}>
+                  <View style={[styles.energyBar, { height: Math.max(burnedH, 3), backgroundColor: '#F59E0B' }]} />
+                  <View style={[styles.energyBar, { height: Math.max(consumedH, 3), backgroundColor: theme.primary }]} />
+                </View>
+                <Text style={[styles.energyDayLabel, { color: theme.textTertiary }]}>{dayLabel}</Text>
+              </View>
+            );
+          })}
+        </View>
+        <View style={[styles.chartLegend, { borderTopColor: theme.border }]}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Terbakar</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: theme.primary }]} />
+            <Text style={[styles.legendText, { color: theme.textSecondary }]}>Dikonsumsi</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderExpenditureChanges = () => {
+    return (
+      <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.chartHeader}>
+          <View style={styles.chartTitleRow}>
+            <View style={[styles.chartIconWrap, { backgroundColor: '#F59E0B15' }]}>
+              <TrendingUp size={18} color="#F59E0B" />
+            </View>
+            <Text style={[styles.chartTitle, { color: theme.text }]}>Perubahan Konsumsi</Text>
+          </View>
+        </View>
+        {expenditureChanges.map((item, i) => (
+          <View key={i} style={[styles.changeRow, i < expenditureChanges.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+            <Text style={[styles.changeLabel, { color: theme.textSecondary }]}>{item.label}</Text>
+            <View style={[styles.changeTrendBar, { backgroundColor: item.trend === 'up' ? '#F59E0B20' : item.trend === 'down' ? '#3B82F620' : theme.border }]} />
+            <Text style={[styles.changeValue, { color: theme.text }]}>{item.change > 0 ? '+' : ''}{item.change} cal</Text>
+            <Text style={[styles.changeTrend, { color: item.trend === 'up' ? '#F59E0B' : item.trend === 'down' ? '#3B82F6' : theme.textTertiary }]}>
+              {item.trend === 'up' ? '↗ Naik' : item.trend === 'down' ? '↘ Turun' : '→ Tetap'}
+            </Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  const renderBMICard = () => {
+    if (!profile?.height || !profile?.weight) return null;
+    const heightM = profile.height / 100;
+    const bmi = profile.weight / (heightM * heightM);
+    const bmiRounded = Math.round(bmi * 10) / 10;
+    let category = '';
+    let categoryColor = '';
+    if (bmi < 18.5) { category = 'Kurus'; categoryColor = '#3B82F6'; }
+    else if (bmi < 25) { category = 'Normal'; categoryColor = '#22C55E'; }
+    else if (bmi < 30) { category = 'Berlebih'; categoryColor = '#F59E0B'; }
+    else { category = 'Obesitas'; categoryColor = '#EF4444'; }
+    const scalePosition = Math.max(0, Math.min(100, ((bmi - 15) / 25) * 100));
+    return (
+      <View style={[styles.bmiCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.bmiHeader}>
+          <Text style={[styles.bmiTitle, { color: theme.text }]}>BMI Kamu</Text>
+        </View>
+        <View style={styles.bmiValueRow}>
+          <Text style={[styles.bmiValueText, { color: theme.text }]}>{bmiRounded}</Text>
+          <View style={[styles.bmiBadge, { backgroundColor: categoryColor + '18' }]}>
+            <Text style={[styles.bmiBadgeText, { color: categoryColor }]}>{category}</Text>
+          </View>
+        </View>
+        <View style={styles.bmiScaleWrapper}>
+          <View style={styles.bmiScaleBar}>
+            <View style={[styles.bmiSegment, { backgroundColor: '#3B82F6', flex: 14 }]} />
+            <View style={[styles.bmiSegment, { backgroundColor: '#22C55E', flex: 26 }]} />
+            <View style={[styles.bmiSegment, { backgroundColor: '#F59E0B', flex: 20 }]} />
+            <View style={[styles.bmiSegment, { backgroundColor: '#EF4444', flex: 40 }]} />
+          </View>
+          <View style={[styles.bmiPointer, { left: `${scalePosition}%` }]}>
+            <View style={[styles.bmiPointerLine, { backgroundColor: theme.text }]} />
+          </View>
+        </View>
+        <View style={styles.bmiLegendRow}>
+          <View style={styles.bmiLegendCol}>
+            <View style={[styles.bmiLegendDot, { backgroundColor: '#3B82F6' }]} />
+            <Text style={[styles.bmiLegendLabel, { color: theme.textTertiary }]}>Kurus</Text>
+            <Text style={[styles.bmiLegendRange, { color: theme.textTertiary }]}>&lt;18.5</Text>
+          </View>
+          <View style={styles.bmiLegendCol}>
+            <View style={[styles.bmiLegendDot, { backgroundColor: '#22C55E' }]} />
+            <Text style={[styles.bmiLegendLabel, { color: theme.textTertiary }]}>Normal</Text>
+            <Text style={[styles.bmiLegendRange, { color: theme.textTertiary }]}>18.5-24.9</Text>
+          </View>
+          <View style={styles.bmiLegendCol}>
+            <View style={[styles.bmiLegendDot, { backgroundColor: '#F59E0B' }]} />
+            <Text style={[styles.bmiLegendLabel, { color: theme.textTertiary }]}>Berlebih</Text>
+            <Text style={[styles.bmiLegendRange, { color: theme.textTertiary }]}>25.0-29.9</Text>
+          </View>
+          <View style={styles.bmiLegendCol}>
+            <View style={[styles.bmiLegendDot, { backgroundColor: '#EF4444' }]} />
+            <Text style={[styles.bmiLegendLabel, { color: theme.textTertiary }]}>Obesitas</Text>
+            <Text style={[styles.bmiLegendRange, { color: theme.textTertiary }]}>&gt;30.0</Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   if (!setupReady) {
     return (
       <>
@@ -953,9 +1232,14 @@ export default function AnalyticsScreen() {
             ))}
           </View>
 
+          {renderStreakVisualization()}
           {renderWeightSection()}
+          {renderWeightChanges()}
           {renderCalorieChart()}
+          {renderWeeklyEnergy()}
+          {renderExpenditureChanges()}
           {renderMacroChart()}
+          {renderBMICard()}
 
           <View style={styles.statsGrid}>
             <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -1886,5 +2170,217 @@ const styles = StyleSheet.create({
   calendarDayTextSelected: {
     color: '#FFFFFF',
     fontWeight: '700' as const,
+  },
+  streakRow: {
+    flexDirection: 'row' as const,
+    gap: 10,
+    marginBottom: 16,
+  },
+  streakCardLeft: {
+    flex: 3,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  streakCardRight: {
+    flex: 2,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 6,
+  },
+  streakCardNumber: {
+    fontSize: 28,
+    fontWeight: '800' as const,
+    letterSpacing: -1,
+  },
+  streakCardLabel: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  weekDotsRow: {
+    flexDirection: 'row' as const,
+    gap: 6,
+    marginTop: 8,
+  },
+  weekDotCol: {
+    alignItems: 'center' as const,
+    gap: 4,
+  },
+  weekDotDayLabel: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+  },
+  weekDotCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  changeRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    paddingVertical: 14,
+    gap: 10,
+  },
+  changeLabel: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    width: 60,
+  },
+  changeTrendBar: {
+    width: 32,
+    height: 16,
+    borderRadius: 4,
+  },
+  changeValue: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    flex: 1,
+    textAlign: 'right' as const,
+  },
+  changeTrend: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    width: 72,
+    textAlign: 'right' as const,
+  },
+  energyStatsRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: 20,
+  },
+  energyStat: {
+    alignItems: 'center' as const,
+    flex: 1,
+  },
+  energyStatLabel: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    marginBottom: 4,
+  },
+  energyStatValue: {
+    fontSize: 20,
+    fontWeight: '800' as const,
+    letterSpacing: -0.5,
+  },
+  energyStatUnit: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    marginTop: 2,
+  },
+  energyChartArea: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'flex-end' as const,
+    paddingBottom: 24,
+  },
+  energyBarCol: {
+    flex: 1,
+    alignItems: 'center' as const,
+    justifyContent: 'flex-end' as const,
+    gap: 6,
+  },
+  energyBarPair: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+    gap: 3,
+  },
+  energyBar: {
+    width: 14,
+    borderRadius: 4,
+    minHeight: 3,
+  },
+  energyDayLabel: {
+    fontSize: 10,
+    fontWeight: '500' as const,
+  },
+  bmiCard: {
+    borderRadius: 12,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1,
+  },
+  bmiHeader: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    marginBottom: 12,
+  },
+  bmiTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    letterSpacing: -0.2,
+  },
+  bmiValueRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 12,
+    marginBottom: 20,
+  },
+  bmiValueText: {
+    fontSize: 36,
+    fontWeight: '800' as const,
+    letterSpacing: -1,
+  },
+  bmiBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  bmiBadgeText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+  },
+  bmiScaleWrapper: {
+    position: 'relative' as const,
+    marginBottom: 20,
+    height: 20,
+  },
+  bmiScaleBar: {
+    flexDirection: 'row' as const,
+    height: 10,
+    borderRadius: 5,
+    overflow: 'hidden' as const,
+    marginTop: 5,
+  },
+  bmiSegment: {
+    height: '100%' as const,
+  },
+  bmiPointer: {
+    position: 'absolute' as const,
+    top: 0,
+    width: 3,
+    height: 20,
+    marginLeft: -1.5,
+  },
+  bmiPointerLine: {
+    width: 3,
+    height: 20,
+    borderRadius: 1.5,
+  },
+  bmiLegendRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+  },
+  bmiLegendCol: {
+    alignItems: 'center' as const,
+    gap: 3,
+  },
+  bmiLegendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  bmiLegendLabel: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+  },
+  bmiLegendRange: {
+    fontSize: 10,
+    fontWeight: '500' as const,
   },
 });
