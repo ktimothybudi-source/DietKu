@@ -1082,14 +1082,12 @@ export default function HomeScreen() {
           </View>
 
           <View style={[styles.carouselCard, { backgroundColor: theme.card, borderColor: theme.border, marginLeft: CAROUSEL_GAP }]}>
-            <Text style={[styles.microCardTitle, { color: theme.text }]}>Mikro Nutrisi</Text>
-            <Text style={[styles.microCardSubtitle, { color: theme.textSecondary }]}>Otomatis dari analisis AI</Text>
             {(() => {
               const currentSugar = getTodaySugarUnits();
               const currentFiber = getTodayFiberUnits();
               const currentSodium = getTodaySodiumUnits();
               return (
-                <View style={[styles.macroRingsRow, { marginTop: 24 }]}>
+                <View style={[styles.macroRingsRow, { marginTop: 0 }]}>
                   <View style={styles.macroRing}>
                     <ProgressRing
                       progress={Math.min((currentSugar / SUGAR_TARGET_G) * 100, 100)}
@@ -1138,6 +1136,49 @@ export default function HomeScreen() {
                 </View>
               );
             })()}
+
+            <View style={[styles.combinedDivider, { backgroundColor: theme.border }]} />
+
+            {(() => {
+              const currentWater = getTodayWaterCups();
+              const waterTarget = 8;
+              return (
+                <View style={styles.waterInCarousel}>
+                  <View style={styles.waterHeader}>
+                    <Droplets size={18} color="#38BDF8" />
+                    <Text style={[styles.waterTitle, { color: theme.text }]}>Air</Text>
+                    <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentWater}/{waterTarget} gelas</Text>
+                  </View>
+                  <View style={styles.waterCupsRow}>
+                    <TouchableOpacity
+                      style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
+                      onPress={removeWaterCup}
+                      activeOpacity={0.7}
+                    >
+                      <Minus size={16} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                    <View style={styles.waterCupsDisplay}>
+                      {Array.from({ length: waterTarget }).map((_, i) => (
+                        <View
+                          key={i}
+                          style={[
+                            styles.waterCupDot,
+                            { backgroundColor: i < currentWater ? '#38BDF8' : theme.border },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.waterBtn, { backgroundColor: '#38BDF8' }]}
+                      onPress={addWaterCup}
+                      activeOpacity={0.7}
+                    >
+                      <Plus size={16} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })()}
           </View>
 
           <TouchableOpacity
@@ -1150,59 +1191,44 @@ export default function HomeScreen() {
           >
             <View style={styles.activityHeader}>
               <View style={styles.activityTitleRow}>
-                <Dumbbell size={18} color="#9B2C2C" />
+                <Dumbbell size={20} color="#9B2C2C" />
                 <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas & Langkah</Text>
               </View>
               <ChevronRightIcon size={18} color={theme.textTertiary} />
             </View>
 
-            <View style={styles.activityStatsRow}>
-              <View style={styles.activityStatItem}>
-                <Footprints size={20} color="#3B82F6" />
+            <View style={styles.activityStatsGrid}>
+              <View style={[styles.activityStatCard, { backgroundColor: theme.background }]}>
+                <Footprints size={24} color="#3B82F6" />
                 <Text style={[styles.activityStatValue, { color: theme.text }]}>{todaySteps.toLocaleString()}</Text>
                 <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>langkah</Text>
               </View>
-              <View style={[styles.activityStatDivider, { backgroundColor: theme.border }]} />
-              <View style={styles.activityStatItem}>
-                <Flame size={20} color="#9B2C2C" />
+              <View style={[styles.activityStatCard, { backgroundColor: theme.background }]}>
+                <Flame size={24} color="#EF4444" />
                 <Text style={[styles.activityStatValue, { color: theme.text }]}>{totalCaloriesBurned}</Text>
                 <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>kcal terbakar</Text>
               </View>
-              <View style={[styles.activityStatDivider, { backgroundColor: theme.border }]} />
-              <View style={styles.activityStatItem}>
-                <Dumbbell size={20} color="#F59E0B" />
+              <View style={[styles.activityStatCard, { backgroundColor: theme.background }]}>
+                <Dumbbell size={24} color="#F59E0B" />
                 <Text style={[styles.activityStatValue, { color: theme.text }]}>{todayExercises.length}</Text>
                 <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>aktivitas</Text>
               </View>
             </View>
 
             {stepsCaloriesBurned > 0 && (
-              <View style={styles.activityBreakdown}>
+              <View style={[styles.activityBreakdownCard, { backgroundColor: theme.background }]}>
                 <View style={styles.activityBreakdownRow}>
                   <Text style={[styles.activityBreakdownLabel, { color: theme.textSecondary }]}>Langkah</Text>
-                  <Text style={[styles.activityBreakdownValue, { color: theme.textSecondary }]}>~{stepsCaloriesBurned} kcal</Text>
+                  <Text style={[styles.activityBreakdownValue, { color: theme.text }]}>~{stepsCaloriesBurned} kcal</Text>
                 </View>
                 {exerciseCaloriesBurned > 0 && (
                   <View style={styles.activityBreakdownRow}>
                     <Text style={[styles.activityBreakdownLabel, { color: theme.textSecondary }]}>Olahraga</Text>
-                    <Text style={[styles.activityBreakdownValue, { color: theme.textSecondary }]}>~{exerciseCaloriesBurned} kcal</Text>
+                    <Text style={[styles.activityBreakdownValue, { color: theme.text }]}>~{exerciseCaloriesBurned} kcal</Text>
                   </View>
                 )}
               </View>
             )}
-
-            <View style={[styles.combinedDivider, { backgroundColor: theme.border }]} />
-
-            <View>
-              <View style={styles.healthScoreHeader}>
-                <Text style={[styles.healthScoreTitle, { color: theme.text }]}>Health Score</Text>
-                <Text style={[styles.healthScoreValue, { color: healthScore.color }]}>{healthScore.score}/10</Text>
-              </View>
-              <View style={[styles.healthScoreBarBg, { backgroundColor: theme.border }]}>
-                <View style={[styles.healthScoreBarFill, { width: `${healthScore.score * 10}%`, backgroundColor: healthScore.color }]} />
-              </View>
-              <Text style={[styles.healthScoreMessage, { color: theme.textSecondary }]}>{healthScore.message}</Text>
-            </View>
           </TouchableOpacity>
             </ScrollView>
             <View style={styles.carouselDots}>
@@ -1218,46 +1244,20 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {(() => {
-            const currentWater = getTodayWaterCups();
-            const waterTarget = 8;
-            return (
-              <View style={[styles.waterCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <View style={styles.waterHeader}>
-                  <Droplets size={18} color="#38BDF8" />
-                  <Text style={[styles.waterTitle, { color: theme.text }]}>Air</Text>
-                  <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentWater}/{waterTarget} gelas</Text>
-                </View>
-                <View style={styles.waterCupsRow}>
-                  <TouchableOpacity
-                    style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
-                    onPress={removeWaterCup}
-                    activeOpacity={0.7}
-                  >
-                    <Minus size={16} color={theme.textSecondary} />
-                  </TouchableOpacity>
-                  <View style={styles.waterCupsDisplay}>
-                    {Array.from({ length: waterTarget }).map((_, i) => (
-                      <View
-                        key={i}
-                        style={[
-                          styles.waterCupDot,
-                          { backgroundColor: i < currentWater ? '#38BDF8' : theme.border },
-                        ]}
-                      />
-                    ))}
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.waterBtn, { backgroundColor: '#38BDF8' }]}
-                    onPress={addWaterCup}
-                    activeOpacity={0.7}
-                  >
-                    <Plus size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })()}
+          <TouchableOpacity
+            style={styles.catatButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setActiveTab('recent');
+              setAddFoodModalVisible(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <View style={styles.catatButtonInner}>
+              <Plus size={22} color="#FFFFFF" />
+              <Text style={styles.catatButtonText}>Catat Makanan</Text>
+            </View>
+          </TouchableOpacity>
 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -1372,16 +1372,7 @@ export default function HomeScreen() {
           <View style={styles.bottomPadding} />
         </ScrollView>
 
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            setActiveTab('recent');
-            setAddFoodModalVisible(true);
-          }}
-        >
-          <Plus size={28} color="#FFFFFF" />
-        </TouchableOpacity>
+
 
         {showMotivationalToast && motivationalMessage && (
           <Animated.View 
@@ -2816,14 +2807,18 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: '#FFFFFF',
   },
-  activityStatsRow: {
+  activityStatsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 10,
+    marginTop: 16,
+    alignSelf: 'stretch',
   },
-  activityStatItem: {
+  activityStatCard: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 12,
   },
   activityStatValue: {
     fontSize: 18,
@@ -2833,13 +2828,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500' as const,
   },
-  activityStatDivider: {
-    width: 1,
-    height: 32,
-  },
-  activityBreakdown: {
-    gap: 4,
-    paddingTop: 4,
+  activityBreakdownCard: {
+    alignSelf: 'stretch',
+    marginTop: 12,
+    borderRadius: 10,
+    padding: 12,
+    gap: 6,
   },
   activityBreakdownRow: {
     flexDirection: 'row',
@@ -3082,21 +3076,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 4,
   },
-  fab: {
-    position: 'absolute',
-    bottom: 28,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    backgroundColor: '#6C63FF',
+  catatButton: {
+    marginHorizontal: 20,
+    marginBottom: 14,
+  },
+  catatButtonInner: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#6C63FF',
+    paddingVertical: 16,
+    borderRadius: 14,
     shadowColor: '#6C63FF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     elevation: 4,
+  },
+  catatButtonText: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  waterInCarousel: {
+    alignSelf: 'stretch',
+    gap: 12,
   },
   modalContainer: {
     flex: 1,
