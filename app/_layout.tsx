@@ -5,6 +5,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NutritionProvider } from "@/contexts/NutritionContext";
+import { ExerciseProvider } from "@/contexts/ExerciseContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
@@ -23,6 +24,7 @@ function RootLayoutNav() {
       <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="food-search" options={{ headerShown: false, presentation: 'card' }} />
+      <Stack.Screen name="log-exercise" options={{ headerShown: false, presentation: 'card' }} />
     </Stack>
   );
 }
@@ -39,9 +41,11 @@ export default function RootLayout() {
           <ThemeProvider>
             <NotificationProvider>
               <NutritionProvider>
-                <GestureHandlerRootView>
-                  <RootLayoutNav />
-                </GestureHandlerRootView>
+                <ExerciseProvider>
+                  <GestureHandlerRootView>
+                    <RootLayoutNav />
+                  </GestureHandlerRootView>
+                </ExerciseProvider>
               </NutritionProvider>
             </NotificationProvider>
           </ThemeProvider>

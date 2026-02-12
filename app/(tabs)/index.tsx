@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 import { Stack, router } from 'expo-router';
-import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2, Edit3, PlusCircle, Search as SearchIcon, Droplets, Minus } from 'lucide-react-native';
+import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2, Edit3, PlusCircle, Search as SearchIcon, Droplets, Minus, Footprints, Dumbbell, ChevronRight as ChevronRightIcon } from 'lucide-react-native';
 import { Dimensions } from 'react-native';
 import { useNutrition, useTodayProgress, PendingFoodEntry } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -29,11 +29,13 @@ import { searchUSDAFoods, USDAFoodItem } from '@/utils/usdaApi';
 import { searchFoods } from '@/lib/foodsApi';
 import { FoodSearchResult } from '@/types/food';
 import ProgressRing from '@/components/ProgressRing';
+import { useExercise } from '@/contexts/ExerciseContext';
 import { ANIMATION_DURATION } from '@/constants/animations';
 import { getTimeBasedMessage, getProgressMessage, getCalorieFeedback, MotivationalMessage } from '@/constants/motivationalMessages';
 
 export default function HomeScreen() {
   const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, confirmPendingEntry, removePendingEntry, retryPendingEntry, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, removeFromRecent, shouldSuggestFavorite, addWaterCup, removeWaterCup, getTodayWaterCups } = useNutrition();
+  const { todaySteps, stepsCaloriesBurned, exerciseCaloriesBurned, totalCaloriesBurned, todayExercises } = useExercise();
   const { theme } = useTheme();
   const progress = useTodayProgress();
   const [modalVisible, setModalVisible] = useState(false);
@@ -1122,11 +1124,68 @@ export default function HomeScreen() {
                   })()}
                 </View>
               </View>
+              <View style={[styles.macroPage, { width: SCREEN_WIDTH - 48 }]}>
+                <View style={[styles.activityCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={styles.activityHeader}>
+                    <View style={styles.activityTitleRow}>
+                      <Dumbbell size={18} color="#EF4444" />
+                      <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas & Langkah</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.activityLogBtn, { backgroundColor: theme.primary }]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        router.push('/log-exercise');
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Plus size={14} color="#FFFFFF" />
+                      <Text style={styles.activityLogBtnText}>Catat</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.activityStatsRow}>
+                    <View style={styles.activityStatItem}>
+                      <Footprints size={20} color="#3B82F6" />
+                      <Text style={[styles.activityStatValue, { color: theme.text }]}>{todaySteps.toLocaleString()}</Text>
+                      <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>langkah</Text>
+                    </View>
+                    <View style={[styles.activityStatDivider, { backgroundColor: theme.border }]} />
+                    <View style={styles.activityStatItem}>
+                      <Flame size={20} color="#EF4444" />
+                      <Text style={[styles.activityStatValue, { color: theme.text }]}>{totalCaloriesBurned}</Text>
+                      <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>kcal terbakar</Text>
+                    </View>
+                    <View style={[styles.activityStatDivider, { backgroundColor: theme.border }]} />
+                    <View style={styles.activityStatItem}>
+                      <Dumbbell size={20} color="#F59E0B" />
+                      <Text style={[styles.activityStatValue, { color: theme.text }]}>{todayExercises.length}</Text>
+                      <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>aktivitas</Text>
+                    </View>
+                  </View>
+
+                  {stepsCaloriesBurned > 0 && (
+                    <View style={styles.activityBreakdown}>
+                      <View style={styles.activityBreakdownRow}>
+                        <Text style={[styles.activityBreakdownLabel, { color: theme.textSecondary }]}>Langkah</Text>
+                        <Text style={[styles.activityBreakdownValue, { color: theme.textSecondary }]}>~{stepsCaloriesBurned} kcal</Text>
+                      </View>
+                      {exerciseCaloriesBurned > 0 && (
+                        <View style={styles.activityBreakdownRow}>
+                          <Text style={[styles.activityBreakdownLabel, { color: theme.textSecondary }]}>Olahraga</Text>
+                          <Text style={[styles.activityBreakdownValue, { color: theme.textSecondary }]}>~{exerciseCaloriesBurned} kcal</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+              </View>
             </ScrollView>
 
             <View style={styles.macroPageDots}>
               <View style={[styles.macroPageDot, { backgroundColor: macroPage === 0 ? '#10B981' : theme.border }]} />
               <View style={[styles.macroPageDot, { backgroundColor: macroPage === 1 ? '#10B981' : theme.border }]} />
+              <View style={[styles.macroPageDot, { backgroundColor: macroPage === 2 ? '#10B981' : theme.border }]} />
             </View>
           </View>
 
@@ -2612,6 +2671,76 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
+  },
+  activityCard: {
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    gap: 14,
+  },
+  activityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  activityTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  activityTitle: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+  },
+  activityLogBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  activityLogBtnText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+  },
+  activityStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  activityStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  activityStatValue: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+  },
+  activityStatLabel: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+  },
+  activityStatDivider: {
+    width: 1,
+    height: 32,
+  },
+  activityBreakdown: {
+    gap: 4,
+    paddingTop: 4,
+  },
+  activityBreakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  activityBreakdownLabel: {
+    fontSize: 12,
+  },
+  activityBreakdownValue: {
+    fontSize: 12,
+    fontWeight: '600' as const,
   },
   extraNutrientsCard: {
     borderRadius: 16,

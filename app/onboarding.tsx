@@ -18,7 +18,7 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { Goal, ActivityLevel, Sex } from '@/types/nutrition';
-import { ArrowRight, ArrowLeft, Sparkles, Globe } from 'lucide-react-native';
+import { ArrowRight, ArrowLeft, Sparkles, Globe, Footprints, Heart } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { Svg, Path, Circle, G } from 'react-native-svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -27,6 +27,7 @@ import { ANIMATION_DURATION, SPRING_CONFIG } from '@/constants/animations';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '@/lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -85,7 +86,7 @@ export default function OnboardingScreen() {
   const [userName, setUserName] = useState('');
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
 
-  const totalSteps = 16;
+  const totalSteps = 17;
 
   // Y positions for inputs
   const heightY = useRef(0);
@@ -438,6 +439,21 @@ export default function OnboardingScreen() {
   const handleSkipSignIn = useCallback(() => {
     openSubscription();
   }, [openSubscription]);
+
+  const handleEnableHealthConnect = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      AsyncStorage.setItem('health_connect_enabled', 'true');
+    } catch (e) {
+      console.log('Error saving health connect preference:', e);
+    }
+    handleNext();
+  }, [handleNext]);
+
+  const handleSkipHealthConnect = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    handleNext();
+  }, [handleNext]);
 
   const handleEnableNotifications = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1260,6 +1276,45 @@ export default function OnboardingScreen() {
     </View>
   );
 
+  const renderHealthConnect = () => (
+    <View style={styles.stepContainer}>
+      <View style={styles.reassuranceContainer}>
+        <View style={[styles.reassuranceIconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}> 
+          <Footprints size={48} color="#3B82F6" />
+        </View>
+        <Text style={styles.reassuranceTitle}>Lacak langkah{'\n'}& aktivitas Anda</Text>
+        <Text style={styles.reassuranceSubtitle}>
+          Hubungkan dengan Apple Health atau Google Fit untuk melacak langkah dan kalori terbakar secara otomatis.
+        </Text>
+      </View>
+
+      <View style={styles.healthFeatures}>
+        <View style={styles.healthFeatureRow}>
+          <View style={styles.healthFeatureDot}>
+            <Footprints size={16} color="#3B82F6" />
+          </View>
+          <Text style={styles.healthFeatureText}>Langkah harian otomatis</Text>
+        </View>
+        <View style={styles.healthFeatureRow}>
+          <View style={[styles.healthFeatureDot, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}> 
+            <Heart size={16} color="#EF4444" />
+          </View>
+          <Text style={styles.healthFeatureText}>Kalori terbakar dari aktivitas</Text>
+        </View>
+      </View>
+
+      <View style={styles.notificationButtons}>
+        <TouchableOpacity style={[styles.primaryButton, { backgroundColor: '#3B82F6' }]} onPress={handleEnableHealthConnect} activeOpacity={0.8}>
+          <Text style={styles.primaryButtonText}>Hubungkan Sekarang</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.skipButton} onPress={handleSkipHealthConnect} activeOpacity={0.7}>
+          <Text style={styles.skipButtonText}>Nanti saja</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   const renderNotificationPermission = () => (
     <View style={styles.stepContainer}>
       <View style={styles.reassuranceContainer}>
@@ -1569,7 +1624,7 @@ export default function OnboardingScreen() {
             onPress={() => {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               setShowSubscription(false);
-              setStep(17);
+              setStep(18);
             }}
             activeOpacity={0.8}
           >
@@ -1792,6 +1847,8 @@ export default function OnboardingScreen() {
       case 16:
         return renderThankYouName();
       case 17:
+        return renderHealthConnect();
+      case 18:
         return renderNotificationPermission();
       default:
         return renderIntro();
@@ -2324,6 +2381,29 @@ const styles = StyleSheet.create({
   subscriptionFooter: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   subscriptionFooterLink: { fontSize: 12, color: '#666666' },
   subscriptionFooterDivider: { fontSize: 12, color: '#999999' },
+
+  healthFeatures: {
+    gap: 14,
+    marginBottom: 32,
+  },
+  healthFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  healthFeatureDot: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  healthFeatureText: {
+    fontSize: 15,
+    color: '#333333',
+    fontWeight: '500' as const,
+  },
 
   header: { alignItems: 'center', marginBottom: 32 },
   iconCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(16, 185, 129, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
