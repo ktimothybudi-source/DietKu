@@ -3080,7 +3080,7 @@ const styles = StyleSheet.create({
   fabCircle: {
     position: 'absolute' as const,
     bottom: 24,
-    left: 24,
+    right: 24,
     width: 56,
     height: 56,
     borderRadius: 28,
