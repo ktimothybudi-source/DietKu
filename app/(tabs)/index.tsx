@@ -997,7 +997,7 @@ export default function HomeScreen() {
                 setCarouselPage(page);
               }}
               scrollEventThrottle={16}
-              contentContainerStyle={{ paddingHorizontal: 20, gap: CAROUSEL_GAP }}
+              contentContainerStyle={{ paddingHorizontal: 20, gap: CAROUSEL_GAP, alignItems: 'stretch' }}
               decelerationRate="fast"
               snapToInterval={CAROUSEL_CARD_WIDTH + CAROUSEL_GAP}
               snapToAlignment="start"
@@ -1198,7 +1198,7 @@ export default function HomeScreen() {
                     </View>
                   );
                 })()}
-                <View style={[styles.separatedCard, styles.waterCardExpanded, { backgroundColor: theme.card }]}>
+                <View style={[styles.separatedCard, styles.waterCardExpanded, { backgroundColor: theme.card, flex: 1 }]}>
                   {(() => {
                     const currentWater = getTodayWaterCups();
                     const waterTarget = 8;
@@ -1255,7 +1255,7 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              <View style={[styles.carouselPageContainer]}>
+              <View style={styles.carouselPageContainer}>
                 <View style={styles.activitySeparateRow}>
                   <TouchableOpacity
                     style={[styles.activitySeparateCard, styles.separatedCard, { backgroundColor: theme.card }]}
@@ -1301,7 +1301,7 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
+                <View style={[styles.separatedCard, { backgroundColor: theme.card, flex: 1 }]}>
                   <View style={styles.exCardHeaderRow}>
                     <Text style={[styles.exCardTitle, { color: theme.text }]}>Catat Aktivitas</Text>
                   </View>
@@ -1385,12 +1385,12 @@ export default function HomeScreen() {
                         <View style={styles.exDescribeInputRowCompact}>
                           <TextInput
                             style={[styles.exDescribeInputFixed, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                            placeholder="Contoh: Lari 30 menit di taman, angkat beban 45 menit..."
+                            placeholder="Contoh: Lari 30 menit di taman..."
                             placeholderTextColor={theme.textTertiary}
                             value={exerciseDescription}
                             onChangeText={setExerciseDescription}
                             multiline
-                            numberOfLines={3}
+                            numberOfLines={2}
                             textAlignVertical="top"
                           />
                           <TouchableOpacity
@@ -1439,15 +1439,17 @@ export default function HomeScreen() {
                       <View style={styles.exManualContentTight}>
                         <View style={styles.exManualRowTight}>
                           <TextInput
-                            style={[styles.exManualInputTight, { flex: 2, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                            placeholder="Nama"
+                            style={[styles.exManualInputTight, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                            placeholder="Nama aktivitas"
                             placeholderTextColor={theme.textTertiary}
                             value={manualExName}
                             onChangeText={setManualExName}
                           />
+                        </View>
+                        <View style={styles.exManualRowTight}>
                           <TextInput
                             style={[styles.exManualInputTight, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                            placeholder="Kal"
+                            placeholder="Kalori"
                             placeholderTextColor={theme.textTertiary}
                             keyboardType="numeric"
                             value={manualExCalories}
@@ -1455,7 +1457,7 @@ export default function HomeScreen() {
                           />
                           <TextInput
                             style={[styles.exManualInputTight, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                            placeholder="Min"
+                            placeholder="Menit"
                             placeholderTextColor={theme.textTertiary}
                             keyboardType="numeric"
                             value={manualExDuration}
@@ -3137,6 +3139,8 @@ const styles = StyleSheet.create({
   },
   exFixedContent: {
     flex: 1,
+    minHeight: 105,
+    justifyContent: 'center' as const,
   },
   exModeTabsCompact: {
     flexDirection: 'row' as const,
@@ -3203,16 +3207,16 @@ const styles = StyleSheet.create({
   },
   exDescribeInputFixed: {
     flex: 1,
-    height: 80,
+    height: 64,
     borderRadius: 10,
     borderWidth: 1,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 8,
     fontSize: 13,
     lineHeight: 18,
   },
   exManualContentTight: {
-    gap: 0,
+    gap: 6,
   },
   exManualRowTight: {
     flexDirection: 'row' as const,
@@ -3232,8 +3236,7 @@ const styles = StyleSheet.create({
   },
   carouselPageContainer: {
     width: CAROUSEL_CARD_WIDTH,
-    gap: 12,
-    justifyContent: 'space-between' as const,
+    gap: 8,
   },
   separatedCard: {
     borderRadius: 18,
