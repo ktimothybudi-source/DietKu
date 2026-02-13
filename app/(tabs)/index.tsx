@@ -1107,340 +1107,312 @@ export default function HomeScreen() {
             })()}
           </View>
 
-          <View style={styles.carouselContainer}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={CAROUSEL_CARD_WIDTH + CAROUSEL_GAP}
-              decelerationRate="fast"
-              contentContainerStyle={{ paddingHorizontal: 20 }}
-              onScroll={(e: any) => {
-                const offsetX = e.nativeEvent.contentOffset.x;
-                const page = Math.round(offsetX / (CAROUSEL_CARD_WIDTH + CAROUSEL_GAP));
-                setCarouselPage(Math.max(0, Math.min(1, page)));
-              }}
-              scrollEventThrottle={16}
-            >
-
-          <View style={[styles.carouselCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            {(() => {
-              const currentSugar = getTodaySugarUnits();
-              const currentFiber = getTodayFiberUnits();
-              const currentSodium = getTodaySodiumUnits();
-              return (
-                <View style={[styles.macroRingsRow, { marginTop: 0 }]}>
-                  <View style={styles.macroRing}>
-                    <ProgressRing
-                      progress={Math.min((currentSugar / SUGAR_TARGET_G) * 100, 100)}
-                      size={72}
-                      strokeWidth={6}
-                      color="#EC4899"
-                      backgroundColor={theme.border}
-                    >
-                      <View style={styles.macroRingContent}>
-                        <Text style={[styles.macroRingValue, { color: theme.text }]}>{currentSugar}g</Text>
-                      </View>
-                    </ProgressRing>
-                    <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Gula</Text>
-                    <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{SUGAR_TARGET_G}g</Text>
-                  </View>
-                  <View style={styles.macroRing}>
-                    <ProgressRing
-                      progress={Math.min((currentFiber / FIBER_TARGET_G) * 100, 100)}
-                      size={72}
-                      strokeWidth={6}
-                      color="#8B5CF6"
-                      backgroundColor={theme.border}
-                    >
-                      <View style={styles.macroRingContent}>
-                        <Text style={[styles.macroRingValue, { color: theme.text }]}>{currentFiber}g</Text>
-                      </View>
-                    </ProgressRing>
-                    <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Serat</Text>
-                    <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{FIBER_TARGET_G}g</Text>
-                  </View>
-                  <View style={styles.macroRing}>
-                    <ProgressRing
-                      progress={Math.min((currentSodium / SODIUM_TARGET_MG) * 100, 100)}
-                      size={72}
-                      strokeWidth={6}
-                      color="#F97316"
-                      backgroundColor={theme.border}
-                    >
-                      <View style={styles.macroRingContent}>
-                        <Text style={[styles.macroRingValue, { color: theme.text }]}>{currentSodium < 1000 ? currentSodium + 'mg' : (currentSodium / 1000).toFixed(1) + 'g'}</Text>
-                      </View>
-                    </ProgressRing>
-                    <Text style={[styles.macroRingLabel, { color: theme.textSecondary }]}>Sodium</Text>
-                    <Text style={[styles.macroRingTarget, { color: theme.textTertiary }]}>{(SODIUM_TARGET_MG / 1000).toFixed(1)}g</Text>
-                  </View>
+          <View style={styles.sideBySideRow}>
+            <View style={[styles.sideBySideCardLeft, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={styles.activityHeader}>
+                <View style={styles.activityTitleRow}>
+                  <Dumbbell size={16} color="#F59E0B" />
+                  <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas</Text>
                 </View>
-              );
-            })()}
-
-            <View style={[styles.combinedDivider, { backgroundColor: theme.border }]} />
-
-            {(() => {
-              const currentWater = getTodayWaterCups();
-              const waterTarget = 8;
-              return (
-                <View style={styles.waterInCarousel}>
-                  <View style={styles.waterHeader}>
-                    <Droplets size={18} color="#38BDF8" />
-                    <Text style={[styles.waterTitle, { color: theme.text }]}>Air</Text>
-                    <Text style={[styles.waterCount, { color: theme.textSecondary }]}>{currentWater}/{waterTarget} gelas</Text>
-                  </View>
-                  <View style={styles.waterCupsRow}>
-                    <TouchableOpacity
-                      style={[styles.waterBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
-                      onPress={removeWaterCup}
-                      activeOpacity={0.7}
-                    >
-                      <Minus size={16} color={theme.textSecondary} />
-                    </TouchableOpacity>
-                    <View style={styles.waterCupsDisplay}>
-                      {Array.from({ length: waterTarget }).map((_, i) => (
-                        <View
-                          key={i}
-                          style={[
-                            styles.waterCupDot,
-                            { backgroundColor: i < currentWater ? '#38BDF8' : theme.border },
-                          ]}
-                        />
-                      ))}
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.waterBtn, { backgroundColor: '#38BDF8' }]}
-                      onPress={addWaterCup}
-                      activeOpacity={0.7}
-                    >
-                      <Plus size={16} color="#FFFFFF" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              );
-            })()}
-          </View>
-
-          <View
-            style={[styles.carouselCard, { backgroundColor: theme.card, borderColor: theme.border, marginLeft: CAROUSEL_GAP }]}
-          >
-            <View style={styles.activityHeader}>
-              <View style={styles.activityTitleRow}>
-                <Dumbbell size={18} color="#F59E0B" />
-                <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push('/log-exercise');
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600' as const, color: theme.primary }}>Lihat</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.activityMiniStats}>
-              <View style={[styles.activityMiniStat, { backgroundColor: theme.background }]}>
-                <Footprints size={14} color="#3B82F6" />
-                <Text style={[styles.activityMiniStatVal, { color: theme.text }]}>{todaySteps.toLocaleString()}</Text>
-              </View>
-              <View style={[styles.activityMiniStat, { backgroundColor: theme.background }]}>
-                <Flame size={14} color="#EF4444" />
-                <Text style={[styles.activityMiniStatVal, { color: theme.text }]}>{totalCaloriesBurned} kcal</Text>
-              </View>
-              <View style={[styles.activityMiniStat, { backgroundColor: theme.background }]}>
-                <Dumbbell size={14} color="#F59E0B" />
-                <Text style={[styles.activityMiniStatVal, { color: theme.text }]}>{todayExercises.length}</Text>
-              </View>
-            </View>
-
-            <View style={[styles.exModeTabs, { backgroundColor: theme.background }]}>
-              {([{ key: 'quick' as const, label: 'Cepat', Icon: Zap }, { key: 'describe' as const, label: 'Jelaskan', Icon: MessageSquare }, { key: 'manual' as const, label: 'Manual', Icon: Edit3 }]).map(({ key, label, Icon }) => (
                 <TouchableOpacity
-                  key={key}
-                  style={[styles.exModeTab, exerciseMode === key && { backgroundColor: theme.card }]}
                   onPress={() => {
-                    setExerciseMode(key);
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push('/log-exercise');
                   }}
                   activeOpacity={0.7}
                 >
-                  <Icon size={13} color={exerciseMode === key ? theme.primary : theme.textSecondary} />
-                  <Text style={{ fontSize: 12, fontWeight: '600' as const, color: exerciseMode === key ? theme.primary : theme.textSecondary }}>{label}</Text>
+                  <Text style={{ fontSize: 12, fontWeight: '600' as const, color: theme.primary }}>Lihat</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+              </View>
 
-            {exerciseMode === 'quick' && (
-              <View style={styles.exQuickContent}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exQuickChips}>
-                  {QUICK_EXERCISES.map((ex) => (
-                    <TouchableOpacity
-                      key={ex.type}
-                      style={[
-                        styles.exQuickChip,
-                        { backgroundColor: theme.background, borderColor: selectedQuickExercise?.type === ex.type ? theme.primary : theme.border },
-                        selectedQuickExercise?.type === ex.type && { borderWidth: 2 },
-                      ]}
-                      onPress={() => {
-                        setSelectedQuickExercise(selectedQuickExercise?.type === ex.type ? null : ex);
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.exQuickChipEmoji}>{ex.emoji}</Text>
-                      <Text style={[styles.exQuickChipLabel, { color: theme.text }]}>{ex.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                {selectedQuickExercise && (
-                  <View style={styles.exQuickInputRow}>
+              <View style={styles.activityMiniStatsCompact}>
+                <View style={[styles.activityMiniStatCompact, { backgroundColor: theme.background }]}>
+                  <Footprints size={12} color="#3B82F6" />
+                  <Text style={[styles.activityMiniStatValCompact, { color: theme.text }]}>{todaySteps.toLocaleString()}</Text>
+                </View>
+                <View style={[styles.activityMiniStatCompact, { backgroundColor: theme.background }]}>
+                  <Flame size={12} color="#EF4444" />
+                  <Text style={[styles.activityMiniStatValCompact, { color: theme.text }]}>{totalCaloriesBurned} kcal</Text>
+                </View>
+                <View style={[styles.activityMiniStatCompact, { backgroundColor: theme.background }]}>
+                  <Dumbbell size={12} color="#F59E0B" />
+                  <Text style={[styles.activityMiniStatValCompact, { color: theme.text }]}>{todayExercises.length}</Text>
+                </View>
+              </View>
+
+              <View style={[styles.exModeTabsCompact, { backgroundColor: theme.background }]}>
+                {([{ key: 'quick' as const, label: 'Cepat', Icon: Zap }, { key: 'describe' as const, label: 'Jelaskan', Icon: MessageSquare }, { key: 'manual' as const, label: 'Manual', Icon: Edit3 }]).map(({ key, label, Icon }) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.exModeTabCompact, exerciseMode === key && { backgroundColor: theme.card }]}
+                    onPress={() => {
+                      setExerciseMode(key);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Icon size={11} color={exerciseMode === key ? theme.primary : theme.textSecondary} />
+                    <Text style={{ fontSize: 10, fontWeight: '600' as const, color: exerciseMode === key ? theme.primary : theme.textSecondary }}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {exerciseMode === 'quick' && (
+                <View style={styles.exQuickContentCompact}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exQuickChipsCompact}>
+                    {QUICK_EXERCISES.map((ex) => (
+                      <TouchableOpacity
+                        key={ex.type}
+                        style={[
+                          styles.exQuickChipCompact,
+                          { backgroundColor: theme.background, borderColor: selectedQuickExercise?.type === ex.type ? theme.primary : theme.border },
+                          selectedQuickExercise?.type === ex.type && { borderWidth: 2 },
+                        ]}
+                        onPress={() => {
+                          setSelectedQuickExercise(selectedQuickExercise?.type === ex.type ? null : ex);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={{ fontSize: 14 }}>{ex.emoji}</Text>
+                        <Text style={[{ fontSize: 10, fontWeight: '500' as const }, { color: theme.text }]}>{ex.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  {selectedQuickExercise && (
+                    <View style={styles.exQuickInputRowCompact}>
+                      <TextInput
+                        style={[styles.exQuickInputCompact, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                        placeholder="Min"
+                        placeholderTextColor={theme.textTertiary}
+                        keyboardType="numeric"
+                        value={quickDuration}
+                        onChangeText={setQuickDuration}
+                      />
+                      <TouchableOpacity
+                        style={[styles.exLogBtnCompact, !quickDuration && { opacity: 0.5 }]}
+                        disabled={!quickDuration}
+                        onPress={() => {
+                          const mins = parseInt(quickDuration);
+                          if (isNaN(mins) || mins <= 0) return;
+                          addExercise({
+                            type: selectedQuickExercise.type,
+                            name: selectedQuickExercise.label,
+                            caloriesBurned: Math.round(selectedQuickExercise.caloriesPerMinute * mins),
+                            duration: mins,
+                          });
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          setSelectedQuickExercise(null);
+                          setQuickDuration('');
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Check size={14} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {exerciseMode === 'describe' && (
+                <View style={styles.exDescribeContentCompact}>
+                  <View style={styles.exDescribeInputRowCompact}>
                     <TextInput
-                      style={[styles.exQuickInput, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                      placeholder="Menit"
+                      style={[styles.exDescribeInputCompact, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Lari 30 menit..."
                       placeholderTextColor={theme.textTertiary}
-                      keyboardType="numeric"
-                      value={quickDuration}
-                      onChangeText={setQuickDuration}
+                      value={exerciseDescription}
+                      onChangeText={setExerciseDescription}
+                      multiline
                     />
                     <TouchableOpacity
-                      style={[styles.exLogBtn, !quickDuration && { opacity: 0.5 }]}
-                      disabled={!quickDuration}
-                      onPress={() => {
-                        const mins = parseInt(quickDuration);
-                        if (isNaN(mins) || mins <= 0) return;
-                        addExercise({
-                          type: selectedQuickExercise.type,
-                          name: selectedQuickExercise.label,
-                          caloriesBurned: Math.round(selectedQuickExercise.caloriesPerMinute * mins),
-                          duration: mins,
-                        });
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        setSelectedQuickExercise(null);
-                        setQuickDuration('');
+                      style={[styles.exLogBtnCompact, (!exerciseDescription.trim() || isAnalyzingExercise) && { opacity: 0.5 }]}
+                      disabled={!exerciseDescription.trim() || isAnalyzingExercise}
+                      onPress={async () => {
+                        if (!exerciseDescription.trim()) return;
+                        setIsAnalyzingExercise(true);
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        try {
+                          const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+                          if (!apiKey) {
+                            addExercise({ type: 'describe' as ExerciseType, name: exerciseDescription.trim(), caloriesBurned: Math.round(50 + Math.random() * 200), description: exerciseDescription.trim() });
+                            setExerciseDescription('');
+                            return;
+                          }
+                          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                            body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'You estimate calories burned from exercise descriptions. Return ONLY a JSON object with "calories" (number) and "name" (short exercise name in Indonesian). Example: {"calories": 250, "name": "Renang 30 menit"}' }, { role: 'user', content: `Estimate calories burned: "${exerciseDescription.trim()}"` }], max_tokens: 100, temperature: 0.3 }),
+                          });
+                          const data = await response.json();
+                          const aiContent = data.choices?.[0]?.message?.content || '';
+                          let parsed: { calories: number; name: string };
+                          try { const m = aiContent.match(/\{[\s\S]*\}/); parsed = JSON.parse(m ? m[0] : aiContent); } catch { parsed = { calories: 150, name: exerciseDescription.trim().slice(0, 30) }; }
+                          addExercise({ type: 'describe' as ExerciseType, name: parsed.name || exerciseDescription.trim().slice(0, 30), caloriesBurned: parsed.calories || 150, description: exerciseDescription.trim() });
+                          setExerciseDescription('');
+                        } catch (error) {
+                          console.error('Exercise describe error:', error);
+                          addExercise({ type: 'describe' as ExerciseType, name: exerciseDescription.trim().slice(0, 30), caloriesBurned: 150, description: exerciseDescription.trim() });
+                          setExerciseDescription('');
+                        } finally {
+                          setIsAnalyzingExercise(false);
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        }
                       }}
                       activeOpacity={0.8}
                     >
-                      <Check size={16} color="#FFF" />
+                      {isAnalyzingExercise ? <ActivityIndicator size="small" color="#FFF" /> : <Send size={14} color="#FFF" />}
                     </TouchableOpacity>
                   </View>
-                )}
-              </View>
-            )}
+                </View>
+              )}
 
-            {exerciseMode === 'describe' && (
-              <View style={styles.exDescribeContent}>
-                <View style={styles.exDescribeInputRow}>
+              {exerciseMode === 'manual' && (
+                <View style={styles.exManualContentCompact}>
                   <TextInput
-                    style={[styles.exDescribeInput, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                    placeholder="Lari 30 menit di taman..."
+                    style={[styles.exManualInputCompact, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                    placeholder="Nama aktivitas"
                     placeholderTextColor={theme.textTertiary}
-                    value={exerciseDescription}
-                    onChangeText={setExerciseDescription}
-                    multiline
+                    value={manualExName}
+                    onChangeText={setManualExName}
                   />
+                  <View style={styles.exManualRowCompact}>
+                    <TextInput
+                      style={[styles.exManualInputCompact, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Kal"
+                      placeholderTextColor={theme.textTertiary}
+                      keyboardType="numeric"
+                      value={manualExCalories}
+                      onChangeText={setManualExCalories}
+                    />
+                    <TextInput
+                      style={[styles.exManualInputCompact, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                      placeholder="Min"
+                      placeholderTextColor={theme.textTertiary}
+                      keyboardType="numeric"
+                      value={manualExDuration}
+                      onChangeText={setManualExDuration}
+                    />
+                  </View>
                   <TouchableOpacity
-                    style={[styles.exLogBtn, (!exerciseDescription.trim() || isAnalyzingExercise) && { opacity: 0.5 }]}
-                    disabled={!exerciseDescription.trim() || isAnalyzingExercise}
-                    onPress={async () => {
-                      if (!exerciseDescription.trim()) return;
-                      setIsAnalyzingExercise(true);
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      try {
-                        const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-                        if (!apiKey) {
-                          addExercise({ type: 'describe' as ExerciseType, name: exerciseDescription.trim(), caloriesBurned: Math.round(50 + Math.random() * 200), description: exerciseDescription.trim() });
-                          setExerciseDescription('');
-                          return;
-                        }
-                        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                          body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'You estimate calories burned from exercise descriptions. Return ONLY a JSON object with "calories" (number) and "name" (short exercise name in Indonesian). Example: {"calories": 250, "name": "Renang 30 menit"}' }, { role: 'user', content: `Estimate calories burned: "${exerciseDescription.trim()}"` }], max_tokens: 100, temperature: 0.3 }),
-                        });
-                        const data = await response.json();
-                        const aiContent = data.choices?.[0]?.message?.content || '';
-                        let parsed: { calories: number; name: string };
-                        try { const m = aiContent.match(/\{[\s\S]*\}/); parsed = JSON.parse(m ? m[0] : aiContent); } catch { parsed = { calories: 150, name: exerciseDescription.trim().slice(0, 30) }; }
-                        addExercise({ type: 'describe' as ExerciseType, name: parsed.name || exerciseDescription.trim().slice(0, 30), caloriesBurned: parsed.calories || 150, description: exerciseDescription.trim() });
-                        setExerciseDescription('');
-                      } catch (error) {
-                        console.error('Exercise describe error:', error);
-                        addExercise({ type: 'describe' as ExerciseType, name: exerciseDescription.trim().slice(0, 30), caloriesBurned: 150, description: exerciseDescription.trim() });
-                        setExerciseDescription('');
-                      } finally {
-                        setIsAnalyzingExercise(false);
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                      }
+                    style={[styles.exLogBtnCompact, styles.exManualLogBtnCompact, (!manualExName.trim() || !manualExCalories) && { opacity: 0.5 }]}
+                    disabled={!manualExName.trim() || !manualExCalories}
+                    onPress={() => {
+                      const cals = parseInt(manualExCalories);
+                      if (isNaN(cals) || cals <= 0) return;
+                      addExercise({ type: 'manual' as ExerciseType, name: manualExName.trim(), caloriesBurned: cals, duration: manualExDuration ? parseInt(manualExDuration) : undefined });
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                      setManualExName('');
+                      setManualExCalories('');
+                      setManualExDuration('');
                     }}
                     activeOpacity={0.8}
                   >
-                    {isAnalyzingExercise ? <ActivityIndicator size="small" color="#FFF" /> : <Send size={16} color="#FFF" />}
+                    <Check size={14} color="#FFF" />
+                    <Text style={{ fontSize: 11, fontWeight: '600' as const, color: '#FFF' }}>Simpan</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
-            )}
+              )}
+            </View>
 
-            {exerciseMode === 'manual' && (
-              <View style={styles.exManualContent}>
-                <TextInput
-                  style={[styles.exManualInput, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                  placeholder="Nama aktivitas"
-                  placeholderTextColor={theme.textTertiary}
-                  value={manualExName}
-                  onChangeText={setManualExName}
-                />
-                <View style={styles.exManualRow}>
-                  <TextInput
-                    style={[styles.exManualInput, styles.exManualInputHalf, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                    placeholder="Kalori"
-                    placeholderTextColor={theme.textTertiary}
-                    keyboardType="numeric"
-                    value={manualExCalories}
-                    onChangeText={setManualExCalories}
-                  />
-                  <TextInput
-                    style={[styles.exManualInput, styles.exManualInputHalf, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                    placeholder="Menit"
-                    placeholderTextColor={theme.textTertiary}
-                    keyboardType="numeric"
-                    value={manualExDuration}
-                    onChangeText={setManualExDuration}
-                  />
-                </View>
-                <TouchableOpacity
-                  style={[styles.exLogBtn, styles.exManualLogBtn, (!manualExName.trim() || !manualExCalories) && { opacity: 0.5 }]}
-                  disabled={!manualExName.trim() || !manualExCalories}
-                  onPress={() => {
-                    const cals = parseInt(manualExCalories);
-                    if (isNaN(cals) || cals <= 0) return;
-                    addExercise({ type: 'manual' as ExerciseType, name: manualExName.trim(), caloriesBurned: cals, duration: manualExDuration ? parseInt(manualExDuration) : undefined });
-                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    setManualExName('');
-                    setManualExCalories('');
-                    setManualExDuration('');
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Check size={16} color="#FFF" />
-                  <Text style={{ fontSize: 13, fontWeight: '600' as const, color: '#FFF' }}>Simpan</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-            </ScrollView>
-            <View style={styles.carouselDots}>
-              {[0, 1].map((i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.carouselDot,
-                    { backgroundColor: carouselPage === i ? theme.primary : theme.border },
-                  ]}
-                />
-              ))}
+            <View style={[styles.sideBySideCardRight, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              {(() => {
+                const currentSugar = getTodaySugarUnits();
+                const currentFiber = getTodayFiberUnits();
+                const currentSodium = getTodaySodiumUnits();
+                return (
+                  <View style={styles.microVerticalList}>
+                    <View style={styles.microVerticalItem}>
+                      <ProgressRing
+                        progress={Math.min((currentSugar / SUGAR_TARGET_G) * 100, 100)}
+                        size={44}
+                        strokeWidth={4}
+                        color="#EC4899"
+                        backgroundColor={theme.border}
+                      >
+                        <Text style={[styles.microVerticalValue, { color: theme.text }]}>{currentSugar}</Text>
+                      </ProgressRing>
+                      <View style={styles.microVerticalInfo}>
+                        <Text style={[styles.microVerticalLabel, { color: theme.text }]}>Gula</Text>
+                        <Text style={[styles.microVerticalTarget, { color: theme.textTertiary }]}>{SUGAR_TARGET_G}g</Text>
+                      </View>
+                    </View>
+                    <View style={styles.microVerticalItem}>
+                      <ProgressRing
+                        progress={Math.min((currentFiber / FIBER_TARGET_G) * 100, 100)}
+                        size={44}
+                        strokeWidth={4}
+                        color="#8B5CF6"
+                        backgroundColor={theme.border}
+                      >
+                        <Text style={[styles.microVerticalValue, { color: theme.text }]}>{currentFiber}</Text>
+                      </ProgressRing>
+                      <View style={styles.microVerticalInfo}>
+                        <Text style={[styles.microVerticalLabel, { color: theme.text }]}>Serat</Text>
+                        <Text style={[styles.microVerticalTarget, { color: theme.textTertiary }]}>{FIBER_TARGET_G}g</Text>
+                      </View>
+                    </View>
+                    <View style={styles.microVerticalItem}>
+                      <ProgressRing
+                        progress={Math.min((currentSodium / SODIUM_TARGET_MG) * 100, 100)}
+                        size={44}
+                        strokeWidth={4}
+                        color="#F97316"
+                        backgroundColor={theme.border}
+                      >
+                        <Text style={[styles.microVerticalValue, { color: theme.text }]}>{currentSodium < 1000 ? currentSodium : (currentSodium / 1000).toFixed(1) + 'g'}</Text>
+                      </ProgressRing>
+                      <View style={styles.microVerticalInfo}>
+                        <Text style={[styles.microVerticalLabel, { color: theme.text }]}>Sodium</Text>
+                        <Text style={[styles.microVerticalTarget, { color: theme.textTertiary }]}>{(SODIUM_TARGET_MG / 1000).toFixed(1)}g</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })()}
+
+              <View style={[styles.microWaterDivider, { backgroundColor: theme.border }]} />
+
+              {(() => {
+                const currentWater = getTodayWaterCups();
+                const waterTarget = 8;
+                return (
+                  <View style={styles.waterCompact}>
+                    <View style={styles.waterHeaderCompact}>
+                      <Droplets size={14} color="#38BDF8" />
+                      <Text style={[styles.waterTitleCompact, { color: theme.text }]}>Air</Text>
+                      <Text style={[styles.waterCountCompact, { color: theme.textSecondary }]}>{currentWater}/{waterTarget}</Text>
+                    </View>
+                    <View style={styles.waterControlsCompact}>
+                      <TouchableOpacity
+                        style={[styles.waterBtnCompact, { backgroundColor: theme.background, borderColor: theme.border }]}
+                        onPress={removeWaterCup}
+                        activeOpacity={0.7}
+                      >
+                        <Minus size={12} color={theme.textSecondary} />
+                      </TouchableOpacity>
+                      <View style={styles.waterDotsCompact}>
+                        {Array.from({ length: waterTarget }).map((_, i) => (
+                          <View
+                            key={i}
+                            style={[
+                              styles.waterDotCompact,
+                              { backgroundColor: i < currentWater ? '#38BDF8' : theme.border },
+                            ]}
+                          />
+                        ))}
+                      </View>
+                      <TouchableOpacity
+                        style={[styles.waterBtnCompact, { backgroundColor: '#38BDF8', borderColor: 'transparent' }]}
+                        onPress={addWaterCup}
+                        activeOpacity={0.7}
+                      >
+                        <Plus size={12} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })()}
             </View>
           </View>
 
@@ -2894,6 +2866,202 @@ const styles = StyleSheet.create({
   macroCardPctText: {
     fontSize: 11,
     fontWeight: '700' as const,
+  },
+  sideBySideRow: {
+    flexDirection: 'row' as const,
+    paddingHorizontal: 20,
+    gap: 10,
+    marginBottom: 16,
+  },
+  sideBySideCardLeft: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    gap: 10,
+  },
+  sideBySideCardRight: {
+    width: 140,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    gap: 0,
+  },
+  microVerticalList: {
+    gap: 12,
+  },
+  microVerticalItem: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+  },
+  microVerticalValue: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+  },
+  microVerticalInfo: {
+    flex: 1,
+    gap: 1,
+  },
+  microVerticalLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  microVerticalTarget: {
+    fontSize: 10,
+    fontWeight: '500' as const,
+  },
+  microWaterDivider: {
+    height: 1,
+    alignSelf: 'stretch' as const,
+    marginVertical: 12,
+  },
+  waterCompact: {
+    gap: 8,
+  },
+  waterHeaderCompact: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+  },
+  waterTitleCompact: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  waterCountCompact: {
+    fontSize: 11,
+    marginLeft: 'auto' as const,
+  },
+  waterControlsCompact: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+  },
+  waterBtnCompact: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    borderWidth: 1,
+    borderColor: 'transparent' as const,
+  },
+  waterDotsCompact: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    justifyContent: 'center' as const,
+    gap: 3,
+  },
+  waterDotCompact: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  activityMiniStatsCompact: {
+    flexDirection: 'row' as const,
+    gap: 6,
+  },
+  activityMiniStatCompact: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+  },
+  activityMiniStatValCompact: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+  },
+  exModeTabsCompact: {
+    flexDirection: 'row' as const,
+    borderRadius: 8,
+    padding: 2,
+  },
+  exModeTabCompact: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 3,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  exQuickContentCompact: {
+    gap: 6,
+  },
+  exQuickChipsCompact: {
+    gap: 6,
+  },
+  exQuickChipCompact: {
+    alignItems: 'center' as const,
+    gap: 2,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  exQuickInputRowCompact: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  exQuickInputCompact: {
+    flex: 1,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    fontSize: 13,
+  },
+  exLogBtnCompact: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#4CAF7D',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  exDescribeContentCompact: {
+    gap: 6,
+  },
+  exDescribeInputRowCompact: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+    gap: 6,
+  },
+  exDescribeInputCompact: {
+    flex: 1,
+    minHeight: 34,
+    maxHeight: 60,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    fontSize: 12,
+  },
+  exManualContentCompact: {
+    gap: 6,
+  },
+  exManualInputCompact: {
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    fontSize: 12,
+  },
+  exManualRowCompact: {
+    flexDirection: 'row' as const,
+    gap: 6,
+  },
+  exManualLogBtnCompact: {
+    flexDirection: 'row' as const,
+    width: 'auto' as const,
+    paddingHorizontal: 14,
+    gap: 4,
+    alignSelf: 'flex-end' as const,
   },
   carouselContainer: {
     marginBottom: 8,
