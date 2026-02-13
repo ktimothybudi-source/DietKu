@@ -1198,42 +1198,55 @@ export default function HomeScreen() {
                     </View>
                   );
                 })()}
-                <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
+                <View style={[styles.separatedCard, styles.waterCardExpanded, { backgroundColor: theme.card }]}>
                   {(() => {
                     const currentWater = getTodayWaterCups();
                     const waterTarget = 8;
+                    const waterPct = Math.round((currentWater / waterTarget) * 100);
                     return (
-                      <View style={styles.waterCompact}>
-                        <View style={styles.waterHeaderCompact}>
-                          <Droplets size={14} color="#38BDF8" />
-                          <Text style={[styles.waterTitleCompact, { color: theme.text }]}>Air</Text>
-                          <Text style={[styles.waterCountCompact, { color: theme.textSecondary }]}>{currentWater}/{waterTarget}</Text>
+                      <View style={styles.waterCompactExpanded}>
+                        <View style={styles.waterHeaderExpanded}>
+                          <View style={styles.waterIconBadge}>
+                            <Droplets size={18} color="#38BDF8" />
+                          </View>
+                          <View style={styles.waterHeaderTextCol}>
+                            <Text style={[styles.waterTitleExpanded, { color: theme.text }]}>Air</Text>
+                            <Text style={[styles.waterSubtitleExpanded, { color: theme.textTertiary }]}>{currentWater} dari {waterTarget} gelas</Text>
+                          </View>
+                          <View style={[styles.waterPctBadge, { backgroundColor: 'rgba(56,189,248,0.12)' }]}>
+                            <Text style={styles.waterPctText}>{waterPct}%</Text>
+                          </View>
                         </View>
-                        <View style={styles.waterControlsCompact}>
+                        <View style={styles.waterProgressBarWrap}>
+                          <View style={[styles.waterProgressBarBg, { backgroundColor: theme.border }]}>
+                            <View style={[styles.waterProgressBarFill, { width: `${Math.min(waterPct, 100)}%` }]} />
+                          </View>
+                        </View>
+                        <View style={styles.waterControlsExpanded}>
                           <TouchableOpacity
-                            style={[styles.waterBtnCompact, { backgroundColor: theme.background, borderColor: theme.border }]}
+                            style={[styles.waterBtnExpanded, { backgroundColor: theme.background, borderColor: theme.border }]}
                             onPress={removeWaterCup}
                             activeOpacity={0.7}
                           >
-                            <Minus size={12} color={theme.textSecondary} />
+                            <Minus size={14} color={theme.textSecondary} />
                           </TouchableOpacity>
-                          <View style={styles.waterDotsCompact}>
+                          <View style={styles.waterDotsExpanded}>
                             {Array.from({ length: waterTarget }).map((_, i) => (
                               <View
                                 key={i}
                                 style={[
-                                  styles.waterDotCompact,
+                                  styles.waterDotExpanded,
                                   { backgroundColor: i < currentWater ? '#38BDF8' : theme.border },
                                 ]}
                               />
                             ))}
                           </View>
                           <TouchableOpacity
-                            style={[styles.waterBtnCompact, { backgroundColor: '#38BDF8', borderColor: 'transparent' }]}
+                            style={[styles.waterBtnExpanded, { backgroundColor: '#38BDF8', borderColor: 'transparent' }]}
                             onPress={addWaterCup}
                             activeOpacity={0.7}
                           >
-                            <Plus size={12} color="#FFFFFF" />
+                            <Plus size={14} color="#FFFFFF" />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -1308,12 +1321,12 @@ export default function HomeScreen() {
 
                   {exerciseMode === 'quick' && (
                     <View style={styles.exQuickContentCompact}>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exQuickChipsCompact}>
+                      <View style={styles.exQuickGridCompact}>
                         {QUICK_EXERCISES.map((ex) => (
                           <TouchableOpacity
                             key={ex.type}
                             style={[
-                              styles.exQuickChipCompact,
+                              styles.exQuickGridChip,
                               { backgroundColor: theme.background, borderColor: selectedQuickExercise?.type === ex.type ? theme.primary : theme.border },
                               selectedQuickExercise?.type === ex.type && { borderWidth: 2 },
                             ]}
@@ -1327,7 +1340,7 @@ export default function HomeScreen() {
                             <Text style={[{ fontSize: 10, fontWeight: '500' as const }, { color: theme.text }]}>{ex.label}</Text>
                           </TouchableOpacity>
                         ))}
-                      </ScrollView>
+                      </View>
                       {selectedQuickExercise && (
                         <View style={styles.exQuickInputRowCompact}>
                           <TextInput
@@ -1367,12 +1380,14 @@ export default function HomeScreen() {
                     <View style={styles.exDescribeContentCompact}>
                       <View style={styles.exDescribeInputRowCompact}>
                         <TextInput
-                          style={[styles.exDescribeInputCompact, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                          placeholder="Lari 30 menit..."
+                          style={[styles.exDescribeInputExpanded, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                          placeholder="Contoh: Lari 30 menit di taman, angkat beban 45 menit..."
                           placeholderTextColor={theme.textTertiary}
                           value={exerciseDescription}
                           onChangeText={setExerciseDescription}
                           multiline
+                          numberOfLines={4}
+                          textAlignVertical="top"
                         />
                         <TouchableOpacity
                           style={[styles.exLogBtnCompact, (!exerciseDescription.trim() || isAnalyzingExercise) && { opacity: 0.5 }]}
@@ -1417,17 +1432,17 @@ export default function HomeScreen() {
                   )}
 
                   {exerciseMode === 'manual' && (
-                    <View style={styles.exManualContentCompact}>
-                      <TextInput
-                        style={[styles.exManualInputCompact, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                        placeholder="Nama aktivitas"
-                        placeholderTextColor={theme.textTertiary}
-                        value={manualExName}
-                        onChangeText={setManualExName}
-                      />
-                      <View style={styles.exManualRowCompact}>
+                    <View style={styles.exManualContentTight}>
+                      <View style={styles.exManualRowTight}>
                         <TextInput
-                          style={[styles.exManualInputCompact, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                          style={[styles.exManualInputTight, { flex: 2, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                          placeholder="Nama"
+                          placeholderTextColor={theme.textTertiary}
+                          value={manualExName}
+                          onChangeText={setManualExName}
+                        />
+                        <TextInput
+                          style={[styles.exManualInputTight, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
                           placeholder="Kal"
                           placeholderTextColor={theme.textTertiary}
                           keyboardType="numeric"
@@ -1435,31 +1450,30 @@ export default function HomeScreen() {
                           onChangeText={setManualExCalories}
                         />
                         <TextInput
-                          style={[styles.exManualInputCompact, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                          style={[styles.exManualInputTight, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
                           placeholder="Min"
                           placeholderTextColor={theme.textTertiary}
                           keyboardType="numeric"
                           value={manualExDuration}
                           onChangeText={setManualExDuration}
                         />
+                        <TouchableOpacity
+                          style={[styles.exLogBtnCompact, (!manualExName.trim() || !manualExCalories) && { opacity: 0.5 }]}
+                          disabled={!manualExName.trim() || !manualExCalories}
+                          onPress={() => {
+                            const cals = parseInt(manualExCalories);
+                            if (isNaN(cals) || cals <= 0) return;
+                            addExercise({ type: 'manual' as ExerciseType, name: manualExName.trim(), caloriesBurned: cals, duration: manualExDuration ? parseInt(manualExDuration) : undefined });
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            setManualExName('');
+                            setManualExCalories('');
+                            setManualExDuration('');
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <Check size={14} color="#FFF" />
+                        </TouchableOpacity>
                       </View>
-                      <TouchableOpacity
-                        style={[styles.exLogBtnCompact, styles.exManualLogBtnCompact, (!manualExName.trim() || !manualExCalories) && { opacity: 0.5 }]}
-                        disabled={!manualExName.trim() || !manualExCalories}
-                        onPress={() => {
-                          const cals = parseInt(manualExCalories);
-                          if (isNaN(cals) || cals <= 0) return;
-                          addExercise({ type: 'manual' as ExerciseType, name: manualExName.trim(), caloriesBurned: cals, duration: manualExDuration ? parseInt(manualExDuration) : undefined });
-                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                          setManualExName('');
-                          setManualExCalories('');
-                          setManualExDuration('');
-                        }}
-                        activeOpacity={0.8}
-                      >
-                        <Check size={14} color="#FFF" />
-                        <Text style={{ fontSize: 11, fontWeight: '600' as const, color: '#FFF' }}>Simpan</Text>
-                      </TouchableOpacity>
                     </View>
                   )}
                 </View>
@@ -2978,47 +2992,87 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch' as const,
     marginVertical: 12,
   },
-  waterCompact: {
-    gap: 8,
+  waterCardExpanded: {
+    flex: 1,
   },
-  waterHeaderCompact: {
+  waterCompactExpanded: {
+    flex: 1,
+    gap: 12,
+    justifyContent: 'center' as const,
+  },
+  waterHeaderExpanded: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: 5,
+    gap: 10,
   },
-  waterTitleCompact: {
-    fontSize: 12,
-    fontWeight: '600' as const,
+  waterIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(56,189,248,0.1)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
-  waterCountCompact: {
+  waterHeaderTextCol: {
+    flex: 1,
+    gap: 1,
+  },
+  waterTitleExpanded: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+  },
+  waterSubtitleExpanded: {
     fontSize: 11,
-    marginLeft: 'auto' as const,
+    fontWeight: '500' as const,
   },
-  waterControlsCompact: {
+  waterPctBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  waterPctText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#38BDF8',
+  },
+  waterProgressBarWrap: {
+    paddingVertical: 2,
+  },
+  waterProgressBarBg: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden' as const,
+  },
+  waterProgressBarFill: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#38BDF8',
+  },
+  waterControlsExpanded: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: 4,
+    gap: 6,
   },
-  waterBtnCompact: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+  waterBtnExpanded: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     borderWidth: 1,
     borderColor: 'transparent' as const,
   },
-  waterDotsCompact: {
+  waterDotsExpanded: {
     flex: 1,
     flexDirection: 'row' as const,
     flexWrap: 'wrap' as const,
     justifyContent: 'center' as const,
-    gap: 3,
+    gap: 5,
   },
-  waterDotCompact: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  waterDotExpanded: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
   },
   activitySeparateRow: {
     flexDirection: 'row' as const,
@@ -3080,18 +3134,23 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   exQuickContentCompact: {
+    gap: 8,
+  },
+  exQuickGridCompact: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
     gap: 6,
   },
-  exQuickChipsCompact: {
-    gap: 6,
-  },
-  exQuickChipCompact: {
+  exQuickGridChip: {
     alignItems: 'center' as const,
     gap: 2,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 0,
     borderRadius: 10,
     borderWidth: 1,
+    width: '22.5%' as unknown as number,
+    minWidth: 58,
+    flexGrow: 1,
   },
   exQuickInputRowCompact: {
     flexDirection: 'row' as const,
@@ -3122,36 +3181,31 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end' as const,
     gap: 6,
   },
-  exDescribeInputCompact: {
+  exDescribeInputExpanded: {
     flex: 1,
-    minHeight: 34,
-    maxHeight: 60,
-    borderRadius: 8,
+    minHeight: 70,
+    maxHeight: 100,
+    borderRadius: 10,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    fontSize: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 13,
+    lineHeight: 18,
   },
-  exManualContentCompact: {
-    gap: 6,
+  exManualContentTight: {
+    gap: 0,
   },
-  exManualInputCompact: {
+  exManualRowTight: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+  },
+  exManualInputTight: {
     height: 34,
     borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     fontSize: 12,
-  },
-  exManualRowCompact: {
-    flexDirection: 'row' as const,
-    gap: 6,
-  },
-  exManualLogBtnCompact: {
-    flexDirection: 'row' as const,
-    width: 'auto' as const,
-    paddingHorizontal: 14,
-    gap: 4,
-    alignSelf: 'flex-end' as const,
   },
   carouselContainer: {
     marginBottom: 16,
