@@ -1009,7 +1009,8 @@ export default function HomeScreen() {
                 const fatTarget = dailyTargets.fatMax || 70;
                 const fatPct = fatTarget > 0 ? Math.round((todayTotals.fat / fatTarget) * 100) : 0;
                 return (
-                  <View style={[styles.carouselPage, { backgroundColor: theme.background, borderColor: 'transparent' }]}>
+                  <View style={styles.carouselPageContainer}>
+                    <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
                     <View style={styles.heroCalorieRow}>
                       <View style={styles.heroRingWrap}>
                         <ProgressRing
@@ -1051,8 +1052,9 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                     </View>
+                    </View>
                     <View style={styles.macroCardsRow}>
-                      <View style={[styles.macroSeparateCard, { backgroundColor: theme.background }]}>
+                      <View style={[styles.macroSeparateCard, styles.separatedCard, { backgroundColor: theme.card }]}>
                         <ProgressRing
                           progress={Math.min(proteinPct, 100)}
                           size={44}
@@ -1073,7 +1075,7 @@ export default function HomeScreen() {
                           </View>
                         </View>
                       </View>
-                      <View style={[styles.macroSeparateCard, { backgroundColor: theme.background }]}>
+                      <View style={[styles.macroSeparateCard, styles.separatedCard, { backgroundColor: theme.card }]}>
                         <ProgressRing
                           progress={Math.min(carbsPct, 100)}
                           size={44}
@@ -1094,7 +1096,7 @@ export default function HomeScreen() {
                           </View>
                         </View>
                       </View>
-                      <View style={[styles.macroSeparateCard, { backgroundColor: theme.background }]}>
+                      <View style={[styles.macroSeparateCard, styles.separatedCard, { backgroundColor: theme.card }]}>
                         <ProgressRing
                           progress={Math.min(fatPct, 100)}
                           size={44}
@@ -1120,7 +1122,8 @@ export default function HomeScreen() {
                 );
               })()}
 
-              <View style={[styles.carouselPage, { backgroundColor: theme.background, borderColor: 'transparent' }]}>
+              <View style={styles.carouselPageContainer}>
+                <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
                 {(() => {
                   const currentSugar = getTodaySugarUnits();
                   const currentFiber = getTodayFiberUnits();
@@ -1221,9 +1224,11 @@ export default function HomeScreen() {
                     </View>
                   );
                 })()}
+                </View>
               </View>
 
-              <View style={[styles.carouselPage, { backgroundColor: theme.background, borderColor: 'transparent' }]}>
+              <View style={[styles.carouselPageContainer]}>
+                <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
                 <View style={styles.activityHeader}>
                   <View style={styles.activityTitleRow}>
                     <Dumbbell size={16} color="#F59E0B" />
@@ -1428,6 +1433,7 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                   </View>
                 )}
+                </View>
               </View>
             </ScrollView>
             <View style={styles.carouselDots}>
@@ -2854,8 +2860,8 @@ const styles = StyleSheet.create({
   },
   macroSeparateCard: {
     flex: 1,
-    borderRadius: 12,
-    padding: 10,
+    borderRadius: 14,
+    padding: 12,
     alignItems: 'center' as const,
     gap: 6,
   },
@@ -3094,12 +3100,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: 4,
   },
-  carouselPage: {
+  carouselPageContainer: {
     width: CAROUSEL_CARD_WIDTH,
+    gap: 12,
+  },
+  separatedCard: {
     borderRadius: 18,
     padding: 16,
-    borderWidth: 1,
-    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   carouselCard: {
     width: CAROUSEL_CARD_WIDTH,
