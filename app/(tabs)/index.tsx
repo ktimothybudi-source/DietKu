@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Dimensions,
 } from 'react-native';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CAROUSEL_CARD_WIDTH = SCREEN_WIDTH - 40;
@@ -22,7 +23,6 @@ const FIBER_TARGET_G = 25;
 const SODIUM_TARGET_MG = 2300;
 import { Stack, router } from 'expo-router';
 import { Flame, X, Check, Camera, ImageIcon, ChevronLeft, ChevronRight, Calendar, RefreshCw, Trash2, Plus, Bookmark, Clock, Star, Share2, Edit3, PlusCircle, Search as SearchIcon, Droplets, Minus, Footprints, Dumbbell, ChevronRight as ChevronRightIcon, Utensils, Target, TrendingDown, TrendingUp, Zap, MessageSquare, Send } from 'lucide-react-native';
-import { Dimensions } from 'react-native';
 import { useNutrition, useTodayProgress, PendingFoodEntry } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FoodEntry, MealAnalysis } from '@/types/nutrition';
