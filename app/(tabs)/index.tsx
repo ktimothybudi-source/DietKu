@@ -1244,210 +1244,211 @@ export default function HomeScreen() {
 
               <View style={[styles.carouselPageContainer]}>
                 <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
-                <View style={styles.activityHeader}>
-                  <View style={styles.activityTitleRow}>
-                    <Dumbbell size={16} color="#F59E0B" />
-                    <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas</Text>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      router.push('/log-exercise');
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: '600' as const, color: theme.primary }}>Lihat</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.activityMiniStatsCompact}>
-                  <View style={[styles.activityMiniStatCompact, { backgroundColor: theme.background }]}>
-                    <Footprints size={12} color="#3B82F6" />
-                    <Text style={[styles.activityMiniStatValCompact, { color: theme.text }]}>{todaySteps.toLocaleString()}</Text>
-                  </View>
-                  <View style={[styles.activityMiniStatCompact, { backgroundColor: theme.background }]}>
-                    <Flame size={12} color="#EF4444" />
-                    <Text style={[styles.activityMiniStatValCompact, { color: theme.text }]}>{totalCaloriesBurned} kcal</Text>
-                  </View>
-                  <View style={[styles.activityMiniStatCompact, { backgroundColor: theme.background }]}>
-                    <Dumbbell size={12} color="#F59E0B" />
-                    <Text style={[styles.activityMiniStatValCompact, { color: theme.text }]}>{todayExercises.length}</Text>
-                  </View>
-                </View>
-
-                <View style={[styles.exModeTabsCompact, { backgroundColor: theme.background }]}>
-                  {([{ key: 'quick' as const, label: 'Cepat', Icon: Zap }, { key: 'describe' as const, label: 'Jelaskan', Icon: MessageSquare }, { key: 'manual' as const, label: 'Manual', Icon: Edit3 }]).map(({ key, label, Icon }) => (
+                  <View style={styles.activityHeader}>
+                    <View style={styles.activityTitleRow}>
+                      <Dumbbell size={16} color="#F59E0B" />
+                      <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas</Text>
+                    </View>
                     <TouchableOpacity
-                      key={key}
-                      style={[styles.exModeTabCompact, exerciseMode === key && { backgroundColor: theme.card }]}
                       onPress={() => {
-                        setExerciseMode(key);
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        router.push('/log-exercise');
                       }}
                       activeOpacity={0.7}
                     >
-                      <Icon size={11} color={exerciseMode === key ? theme.primary : theme.textSecondary} />
-                      <Text style={{ fontSize: 10, fontWeight: '600' as const, color: exerciseMode === key ? theme.primary : theme.textSecondary }}>{label}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '600' as const, color: theme.primary }}>Lihat</Text>
                     </TouchableOpacity>
-                  ))}
+                  </View>
+                  <View style={styles.activityMiniStatsCompact}>
+                    <View style={[styles.activityMiniStatCompact, { backgroundColor: theme.background }]}>
+                      <Footprints size={12} color="#3B82F6" />
+                      <Text style={[styles.activityMiniStatValCompact, { color: theme.text }]}>{todaySteps.toLocaleString()}</Text>
+                    </View>
+                    <View style={[styles.activityMiniStatCompact, { backgroundColor: theme.background }]}>
+                      <Flame size={12} color="#EF4444" />
+                      <Text style={[styles.activityMiniStatValCompact, { color: theme.text }]}>{totalCaloriesBurned} kcal</Text>
+                    </View>
+                    <View style={[styles.activityMiniStatCompact, { backgroundColor: theme.background }]}>
+                      <Dumbbell size={12} color="#F59E0B" />
+                      <Text style={[styles.activityMiniStatValCompact, { color: theme.text }]}>{todayExercises.length}</Text>
+                    </View>
+                  </View>
                 </View>
 
-                {exerciseMode === 'quick' && (
-                  <View style={styles.exQuickContentCompact}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exQuickChipsCompact}>
-                      {QUICK_EXERCISES.map((ex) => (
-                        <TouchableOpacity
-                          key={ex.type}
-                          style={[
-                            styles.exQuickChipCompact,
-                            { backgroundColor: theme.background, borderColor: selectedQuickExercise?.type === ex.type ? theme.primary : theme.border },
-                            selectedQuickExercise?.type === ex.type && { borderWidth: 2 },
-                          ]}
-                          onPress={() => {
-                            setSelectedQuickExercise(selectedQuickExercise?.type === ex.type ? null : ex);
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={{ fontSize: 14 }}>{ex.emoji}</Text>
-                          <Text style={[{ fontSize: 10, fontWeight: '500' as const }, { color: theme.text }]}>{ex.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                    {selectedQuickExercise && (
-                      <View style={styles.exQuickInputRowCompact}>
+                <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
+                  <View style={styles.exModeTabsCompact}>
+                    {([{ key: 'quick' as const, label: 'Cepat', Icon: Zap }, { key: 'describe' as const, label: 'Jelaskan', Icon: MessageSquare }, { key: 'manual' as const, label: 'Manual', Icon: Edit3 }]).map(({ key, label, Icon }) => (
+                      <TouchableOpacity
+                        key={key}
+                        style={[styles.exModeTabCompact, exerciseMode === key && { backgroundColor: theme.background }]}
+                        onPress={() => {
+                          setExerciseMode(key);
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Icon size={11} color={exerciseMode === key ? theme.primary : theme.textSecondary} />
+                        <Text style={{ fontSize: 10, fontWeight: '600' as const, color: exerciseMode === key ? theme.primary : theme.textSecondary }}>{label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {exerciseMode === 'quick' && (
+                    <View style={styles.exQuickContentCompact}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.exQuickChipsCompact}>
+                        {QUICK_EXERCISES.map((ex) => (
+                          <TouchableOpacity
+                            key={ex.type}
+                            style={[
+                              styles.exQuickChipCompact,
+                              { backgroundColor: theme.background, borderColor: selectedQuickExercise?.type === ex.type ? theme.primary : theme.border },
+                              selectedQuickExercise?.type === ex.type && { borderWidth: 2 },
+                            ]}
+                            onPress={() => {
+                              setSelectedQuickExercise(selectedQuickExercise?.type === ex.type ? null : ex);
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={{ fontSize: 14 }}>{ex.emoji}</Text>
+                            <Text style={[{ fontSize: 10, fontWeight: '500' as const }, { color: theme.text }]}>{ex.label}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                      {selectedQuickExercise && (
+                        <View style={styles.exQuickInputRowCompact}>
+                          <TextInput
+                            style={[styles.exQuickInputCompact, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                            placeholder="Min"
+                            placeholderTextColor={theme.textTertiary}
+                            keyboardType="numeric"
+                            value={quickDuration}
+                            onChangeText={setQuickDuration}
+                          />
+                          <TouchableOpacity
+                            style={[styles.exLogBtnCompact, !quickDuration && { opacity: 0.5 }]}
+                            disabled={!quickDuration}
+                            onPress={() => {
+                              const mins = parseInt(quickDuration);
+                              if (isNaN(mins) || mins <= 0) return;
+                              addExercise({
+                                type: selectedQuickExercise.type,
+                                name: selectedQuickExercise.label,
+                                caloriesBurned: Math.round(selectedQuickExercise.caloriesPerMinute * mins),
+                                duration: mins,
+                              });
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                              setSelectedQuickExercise(null);
+                              setQuickDuration('');
+                            }}
+                            activeOpacity={0.8}
+                          >
+                            <Check size={14} color="#FFF" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {exerciseMode === 'describe' && (
+                    <View style={styles.exDescribeContentCompact}>
+                      <View style={styles.exDescribeInputRowCompact}>
                         <TextInput
-                          style={[styles.exQuickInputCompact, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                          placeholder="Min"
+                          style={[styles.exDescribeInputCompact, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                          placeholder="Lari 30 menit..."
                           placeholderTextColor={theme.textTertiary}
-                          keyboardType="numeric"
-                          value={quickDuration}
-                          onChangeText={setQuickDuration}
+                          value={exerciseDescription}
+                          onChangeText={setExerciseDescription}
+                          multiline
                         />
                         <TouchableOpacity
-                          style={[styles.exLogBtnCompact, !quickDuration && { opacity: 0.5 }]}
-                          disabled={!quickDuration}
-                          onPress={() => {
-                            const mins = parseInt(quickDuration);
-                            if (isNaN(mins) || mins <= 0) return;
-                            addExercise({
-                              type: selectedQuickExercise.type,
-                              name: selectedQuickExercise.label,
-                              caloriesBurned: Math.round(selectedQuickExercise.caloriesPerMinute * mins),
-                              duration: mins,
-                            });
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            setSelectedQuickExercise(null);
-                            setQuickDuration('');
+                          style={[styles.exLogBtnCompact, (!exerciseDescription.trim() || isAnalyzingExercise) && { opacity: 0.5 }]}
+                          disabled={!exerciseDescription.trim() || isAnalyzingExercise}
+                          onPress={async () => {
+                            if (!exerciseDescription.trim()) return;
+                            setIsAnalyzingExercise(true);
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            try {
+                              const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+                              if (!apiKey) {
+                                addExercise({ type: 'describe' as ExerciseType, name: exerciseDescription.trim(), caloriesBurned: Math.round(50 + Math.random() * 200), description: exerciseDescription.trim() });
+                                setExerciseDescription('');
+                                return;
+                              }
+                              const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                                body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'You estimate calories burned from exercise descriptions. Return ONLY a JSON object with "calories" (number) and "name" (short exercise name in Indonesian). Example: {"calories": 250, "name": "Renang 30 menit"}' }, { role: 'user', content: `Estimate calories burned: "${exerciseDescription.trim()}"` }], max_tokens: 100, temperature: 0.3 }),
+                              });
+                              const data = await response.json();
+                              const aiContent = data.choices?.[0]?.message?.content || '';
+                              let parsed: { calories: number; name: string };
+                              try { const m = aiContent.match(/\{[\s\S]*\}/); parsed = JSON.parse(m ? m[0] : aiContent); } catch { parsed = { calories: 150, name: exerciseDescription.trim().slice(0, 30) }; }
+                              addExercise({ type: 'describe' as ExerciseType, name: parsed.name || exerciseDescription.trim().slice(0, 30), caloriesBurned: parsed.calories || 150, description: exerciseDescription.trim() });
+                              setExerciseDescription('');
+                            } catch (error) {
+                              console.error('Exercise describe error:', error);
+                              addExercise({ type: 'describe' as ExerciseType, name: exerciseDescription.trim().slice(0, 30), caloriesBurned: 150, description: exerciseDescription.trim() });
+                              setExerciseDescription('');
+                            } finally {
+                              setIsAnalyzingExercise(false);
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            }
                           }}
                           activeOpacity={0.8}
                         >
-                          <Check size={14} color="#FFF" />
+                          {isAnalyzingExercise ? <ActivityIndicator size="small" color="#FFF" /> : <Send size={14} color="#FFF" />}
                         </TouchableOpacity>
                       </View>
-                    )}
-                  </View>
-                )}
+                    </View>
+                  )}
 
-                {exerciseMode === 'describe' && (
-                  <View style={styles.exDescribeContentCompact}>
-                    <View style={styles.exDescribeInputRowCompact}>
+                  {exerciseMode === 'manual' && (
+                    <View style={styles.exManualContentCompact}>
                       <TextInput
-                        style={[styles.exDescribeInputCompact, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                        placeholder="Lari 30 menit..."
+                        style={[styles.exManualInputCompact, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                        placeholder="Nama aktivitas"
                         placeholderTextColor={theme.textTertiary}
-                        value={exerciseDescription}
-                        onChangeText={setExerciseDescription}
-                        multiline
+                        value={manualExName}
+                        onChangeText={setManualExName}
                       />
+                      <View style={styles.exManualRowCompact}>
+                        <TextInput
+                          style={[styles.exManualInputCompact, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                          placeholder="Kal"
+                          placeholderTextColor={theme.textTertiary}
+                          keyboardType="numeric"
+                          value={manualExCalories}
+                          onChangeText={setManualExCalories}
+                        />
+                        <TextInput
+                          style={[styles.exManualInputCompact, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
+                          placeholder="Min"
+                          placeholderTextColor={theme.textTertiary}
+                          keyboardType="numeric"
+                          value={manualExDuration}
+                          onChangeText={setManualExDuration}
+                        />
+                      </View>
                       <TouchableOpacity
-                        style={[styles.exLogBtnCompact, (!exerciseDescription.trim() || isAnalyzingExercise) && { opacity: 0.5 }]}
-                        disabled={!exerciseDescription.trim() || isAnalyzingExercise}
-                        onPress={async () => {
-                          if (!exerciseDescription.trim()) return;
-                          setIsAnalyzingExercise(true);
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                          try {
-                            const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-                            if (!apiKey) {
-                              addExercise({ type: 'describe' as ExerciseType, name: exerciseDescription.trim(), caloriesBurned: Math.round(50 + Math.random() * 200), description: exerciseDescription.trim() });
-                              setExerciseDescription('');
-                              return;
-                            }
-                            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                              body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'system', content: 'You estimate calories burned from exercise descriptions. Return ONLY a JSON object with "calories" (number) and "name" (short exercise name in Indonesian). Example: {"calories": 250, "name": "Renang 30 menit"}' }, { role: 'user', content: `Estimate calories burned: "${exerciseDescription.trim()}"` }], max_tokens: 100, temperature: 0.3 }),
-                            });
-                            const data = await response.json();
-                            const aiContent = data.choices?.[0]?.message?.content || '';
-                            let parsed: { calories: number; name: string };
-                            try { const m = aiContent.match(/\{[\s\S]*\}/); parsed = JSON.parse(m ? m[0] : aiContent); } catch { parsed = { calories: 150, name: exerciseDescription.trim().slice(0, 30) }; }
-                            addExercise({ type: 'describe' as ExerciseType, name: parsed.name || exerciseDescription.trim().slice(0, 30), caloriesBurned: parsed.calories || 150, description: exerciseDescription.trim() });
-                            setExerciseDescription('');
-                          } catch (error) {
-                            console.error('Exercise describe error:', error);
-                            addExercise({ type: 'describe' as ExerciseType, name: exerciseDescription.trim().slice(0, 30), caloriesBurned: 150, description: exerciseDescription.trim() });
-                            setExerciseDescription('');
-                          } finally {
-                            setIsAnalyzingExercise(false);
-                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                          }
+                        style={[styles.exLogBtnCompact, styles.exManualLogBtnCompact, (!manualExName.trim() || !manualExCalories) && { opacity: 0.5 }]}
+                        disabled={!manualExName.trim() || !manualExCalories}
+                        onPress={() => {
+                          const cals = parseInt(manualExCalories);
+                          if (isNaN(cals) || cals <= 0) return;
+                          addExercise({ type: 'manual' as ExerciseType, name: manualExName.trim(), caloriesBurned: cals, duration: manualExDuration ? parseInt(manualExDuration) : undefined });
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          setManualExName('');
+                          setManualExCalories('');
+                          setManualExDuration('');
                         }}
                         activeOpacity={0.8}
                       >
-                        {isAnalyzingExercise ? <ActivityIndicator size="small" color="#FFF" /> : <Send size={14} color="#FFF" />}
+                        <Check size={14} color="#FFF" />
+                        <Text style={{ fontSize: 11, fontWeight: '600' as const, color: '#FFF' }}>Simpan</Text>
                       </TouchableOpacity>
                     </View>
-                  </View>
-                )}
-
-                {exerciseMode === 'manual' && (
-                  <View style={styles.exManualContentCompact}>
-                    <TextInput
-                      style={[styles.exManualInputCompact, { backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                      placeholder="Nama aktivitas"
-                      placeholderTextColor={theme.textTertiary}
-                      value={manualExName}
-                      onChangeText={setManualExName}
-                    />
-                    <View style={styles.exManualRowCompact}>
-                      <TextInput
-                        style={[styles.exManualInputCompact, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                        placeholder="Kal"
-                        placeholderTextColor={theme.textTertiary}
-                        keyboardType="numeric"
-                        value={manualExCalories}
-                        onChangeText={setManualExCalories}
-                      />
-                      <TextInput
-                        style={[styles.exManualInputCompact, { flex: 1, backgroundColor: theme.background, borderColor: theme.border, color: theme.text }]}
-                        placeholder="Min"
-                        placeholderTextColor={theme.textTertiary}
-                        keyboardType="numeric"
-                        value={manualExDuration}
-                        onChangeText={setManualExDuration}
-                      />
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.exLogBtnCompact, styles.exManualLogBtnCompact, (!manualExName.trim() || !manualExCalories) && { opacity: 0.5 }]}
-                      disabled={!manualExName.trim() || !manualExCalories}
-                      onPress={() => {
-                        const cals = parseInt(manualExCalories);
-                        if (isNaN(cals) || cals <= 0) return;
-                        addExercise({ type: 'manual' as ExerciseType, name: manualExName.trim(), caloriesBurned: cals, duration: manualExDuration ? parseInt(manualExDuration) : undefined });
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                        setManualExName('');
-                        setManualExCalories('');
-                        setManualExDuration('');
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Check size={14} color="#FFF" />
-                      <Text style={{ fontSize: 11, fontWeight: '600' as const, color: '#FFF' }}>Simpan</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                  )}
                 </View>
               </View>
             </ScrollView>
@@ -3027,6 +3028,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     borderRadius: 8,
     padding: 2,
+    marginBottom: 8,
   },
   exModeTabCompact: {
     flex: 1,
