@@ -987,53 +987,6 @@ export default function HomeScreen() {
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.topCardsSection}>
-            <View style={[styles.calorieCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <View style={styles.heroCalorieRow}>
-                <View style={styles.heroRingWrap}>
-                  <ProgressRing
-                    progress={Math.min((progress?.caloriesProgress || 0), 100)}
-                    size={130}
-                    strokeWidth={14}
-                    color={(progress?.isOver || false) ? '#C53030' : '#4CAF7D'}
-                    backgroundColor={theme.border}
-                  >
-                    <View style={styles.heroRingContent}>
-                      <Flame size={20} color={theme.textTertiary} />
-                      <Text style={[styles.heroCalValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
-                        {todayTotals.calories}
-                      </Text>
-                      <Text style={[styles.heroCalLabel, { color: theme.textSecondary }]}>kalori</Text>
-                    </View>
-                  </ProgressRing>
-                </View>
-                <View style={styles.heroDetailsCol}>
-                  <View style={styles.heroStatRow}>
-                    <Target size={14} color="#4CAF7D" />
-                    <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Target</Text>
-                    <Text style={[styles.heroStatValue, { color: theme.text }]}>{dailyTargets.calories.toLocaleString()}</Text>
-                  </View>
-                  <View style={styles.heroStatRow}>
-                    <Utensils size={14} color="#F59E0B" />
-                    <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Makan</Text>
-                    <Text style={[styles.heroStatValue, { color: '#F59E0B' }]}>-{todayTotals.calories.toLocaleString()}</Text>
-                  </View>
-                  <View style={styles.heroStatRow}>
-                    <Dumbbell size={14} color="#4CAF7D" />
-                    <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Olahraga</Text>
-                    <Text style={[styles.heroStatValue, { color: '#4CAF7D' }]}>+{totalCaloriesBurned}</Text>
-                  </View>
-                  <View style={[styles.heroRemainingDivider, { backgroundColor: theme.border }]} />
-                  <Text style={[styles.heroRemainingLabel, { color: theme.textSecondary }]}>{progress?.isOver ? 'BERLEBIH' : 'TERSISA'}</Text>
-                  <Text style={[styles.heroRemainingValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
-                    {progress?.isOver ? `+${Math.abs(progress?.caloriesRemaining || 0).toLocaleString()}` : Math.max(0, progress?.caloriesRemaining || 0).toLocaleString()}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-          </View>
-
           <View style={styles.carouselContainer}>
             <ScrollView
               horizontal
@@ -1056,12 +1009,53 @@ export default function HomeScreen() {
                 const fatTarget = dailyTargets.fatMax || 70;
                 const fatPct = fatTarget > 0 ? Math.round((todayTotals.fat / fatTarget) * 100) : 0;
                 return (
-                  <View style={[styles.carouselPage, { backgroundColor: theme.card, borderColor: theme.border }]}> 
+                  <View style={[styles.carouselPage, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <View style={styles.heroCalorieRow}>
+                      <View style={styles.heroRingWrap}>
+                        <ProgressRing
+                          progress={Math.min((progress?.caloriesProgress || 0), 100)}
+                          size={110}
+                          strokeWidth={12}
+                          color={(progress?.isOver || false) ? '#C53030' : '#4CAF7D'}
+                          backgroundColor={theme.border}
+                        >
+                          <View style={styles.heroRingContent}>
+                            <Flame size={16} color={theme.textTertiary} />
+                            <Text style={[styles.heroCalValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
+                              {todayTotals.calories}
+                            </Text>
+                            <Text style={[styles.heroCalLabel, { color: theme.textSecondary }]}>kalori</Text>
+                          </View>
+                        </ProgressRing>
+                      </View>
+                      <View style={styles.heroDetailsCol}>
+                        <View style={styles.heroStatRow}>
+                          <Target size={13} color="#4CAF7D" />
+                          <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Target</Text>
+                          <Text style={[styles.heroStatValue, { color: theme.text }]}>{dailyTargets.calories.toLocaleString()}</Text>
+                        </View>
+                        <View style={styles.heroStatRow}>
+                          <Utensils size={13} color="#F59E0B" />
+                          <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Makan</Text>
+                          <Text style={[styles.heroStatValue, { color: '#F59E0B' }]}>-{todayTotals.calories.toLocaleString()}</Text>
+                        </View>
+                        <View style={styles.heroStatRow}>
+                          <Dumbbell size={13} color="#4CAF7D" />
+                          <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Olahraga</Text>
+                          <Text style={[styles.heroStatValue, { color: '#4CAF7D' }]}>+{totalCaloriesBurned}</Text>
+                        </View>
+                        <View style={[styles.heroRemainingDivider, { backgroundColor: theme.border }]} />
+                        <Text style={[styles.heroRemainingLabel, { color: theme.textSecondary }]}>{progress?.isOver ? 'BERLEBIH' : 'TERSISA'}</Text>
+                        <Text style={[styles.heroRemainingValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
+                          {progress?.isOver ? `+${Math.abs(progress?.caloriesRemaining || 0).toLocaleString()}` : Math.max(0, progress?.caloriesRemaining || 0).toLocaleString()}
+                        </Text>
+                      </View>
+                    </View>
                     <View style={styles.macroCardsRow}>
                       <View style={[styles.macroSeparateCard, { backgroundColor: theme.background }]}>
                         <ProgressRing
                           progress={Math.min(proteinPct, 100)}
-                          size={52}
+                          size={44}
                           strokeWidth={5}
                           color="#FF8A80"
                           backgroundColor={theme.border}
@@ -1082,7 +1076,7 @@ export default function HomeScreen() {
                       <View style={[styles.macroSeparateCard, { backgroundColor: theme.background }]}>
                         <ProgressRing
                           progress={Math.min(carbsPct, 100)}
-                          size={52}
+                          size={44}
                           strokeWidth={5}
                           color="#FFD54F"
                           backgroundColor={theme.border}
@@ -1103,7 +1097,7 @@ export default function HomeScreen() {
                       <View style={[styles.macroSeparateCard, { backgroundColor: theme.background }]}>
                         <ProgressRing
                           progress={Math.min(fatPct, 100)}
-                          size={52}
+                          size={44}
                           strokeWidth={5}
                           color="#80DEEA"
                           backgroundColor={theme.border}
@@ -2860,26 +2854,26 @@ const styles = StyleSheet.create({
   },
   macroSeparateCard: {
     flex: 1,
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 12,
+    padding: 10,
     alignItems: 'center' as const,
-    gap: 8,
+    gap: 6,
   },
   macroCardEmoji: {
-    fontSize: 18,
+    fontSize: 15,
   },
   macroCardValues: {
     flexDirection: 'row' as const,
     alignItems: 'baseline' as const,
-    gap: 3,
+    gap: 2,
   },
   macroCardCurrent: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '800' as const,
     letterSpacing: -0.5,
   },
   macroCardTarget: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500' as const,
   },
   macroCardFooter: {
@@ -3098,13 +3092,14 @@ const styles = StyleSheet.create({
   },
   carouselContainer: {
     marginBottom: 16,
+    marginTop: 4,
   },
   carouselPage: {
     width: CAROUSEL_CARD_WIDTH,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    gap: 10,
+    gap: 12,
   },
   carouselCard: {
     width: CAROUSEL_CARD_WIDTH,
@@ -3134,7 +3129,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     alignSelf: 'stretch' as const,
-    gap: 18,
+    gap: 14,
   },
   heroRingWrap: {
     alignItems: 'center' as const,
@@ -3145,33 +3140,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center' as const,
   },
   heroCalValue: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800' as const,
     letterSpacing: -1.5,
-    lineHeight: 30,
+    lineHeight: 26,
     marginTop: 2,
   },
   heroCalLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500' as const,
     marginTop: 1,
   },
   heroDetailsCol: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
   heroStatRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: 8,
+    gap: 6,
   },
   heroStatLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500' as const,
     flex: 1,
   },
   heroStatValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700' as const,
     letterSpacing: -0.3,
   },
@@ -3181,18 +3176,18 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
   heroRemainingLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700' as const,
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
     textTransform: 'uppercase' as const,
     textAlign: 'right' as const,
   },
   heroRemainingValue: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800' as const,
     letterSpacing: -1.5,
     textAlign: 'right' as const,
-    lineHeight: 32,
+    lineHeight: 28,
   },
   macroCardsRow: {
     flexDirection: 'row' as const,
