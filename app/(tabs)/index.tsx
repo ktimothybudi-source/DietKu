@@ -1304,7 +1304,6 @@ export default function HomeScreen() {
                 <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
                   <View style={styles.exCardHeaderRow}>
                     <Text style={[styles.exCardTitle, { color: theme.text }]}>Catat Aktivitas</Text>
-                    <Text style={[styles.exCardSubtitle, { color: theme.textTertiary }]}>Pilih cara input di bawah</Text>
                   </View>
                   <View style={styles.exModeTabsCompact}>
                     {([{ key: 'quick' as const, label: 'Cepat', Icon: Zap }, { key: 'describe' as const, label: 'Jelaskan', Icon: MessageSquare }, { key: 'manual' as const, label: 'Manual', Icon: Edit3 }]).map(({ key, label, Icon }) => (
@@ -2999,7 +2998,6 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   waterCardExpanded: {
-    flex: 1,
   },
   waterCompactExpanded: {
     flex: 1,
@@ -3138,7 +3136,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   exFixedContent: {
-    height: 130,
+    flex: 1,
   },
   exModeTabsCompact: {
     flexDirection: 'row' as const,
@@ -3235,6 +3233,7 @@ const styles = StyleSheet.create({
   carouselPageContainer: {
     width: CAROUSEL_CARD_WIDTH,
     gap: 12,
+    justifyContent: 'space-between' as const,
   },
   separatedCard: {
     borderRadius: 18,
