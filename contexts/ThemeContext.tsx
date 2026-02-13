@@ -26,7 +26,7 @@ export interface Theme {
 }
 
 const lightTheme: Theme = {
-  background: '#F6F4F1',
+  background: '#FFFFFF',
   card: '#FFFFFF',
   text: '#1A1A2E',
   textSecondary: '#6E6E82',
@@ -37,7 +37,7 @@ const lightTheme: Theme = {
   accent: '#6C63FF',
   tabBar: '#FFFFFF',
   tabBarInactive: '#AEAEB8',
-  surfaceElevated: '#F0EEF5',
+  surfaceElevated: '#F5F5F7',
   destructive: '#E5544B',
   success: '#4CAF7D',
   warning: '#E5A84B',

@@ -1009,7 +1009,7 @@ export default function HomeScreen() {
                 const fatTarget = dailyTargets.fatMax || 70;
                 const fatPct = fatTarget > 0 ? Math.round((todayTotals.fat / fatTarget) * 100) : 0;
                 return (
-                  <View style={[styles.carouselPage, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={[styles.carouselPage, { backgroundColor: theme.background, borderColor: 'transparent' }]}>
                     <View style={styles.heroCalorieRow}>
                       <View style={styles.heroRingWrap}>
                         <ProgressRing
@@ -1120,7 +1120,7 @@ export default function HomeScreen() {
                 );
               })()}
 
-              <View style={[styles.carouselPage, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.carouselPage, { backgroundColor: theme.background, borderColor: 'transparent' }]}>
                 {(() => {
                   const currentSugar = getTodaySugarUnits();
                   const currentFiber = getTodayFiberUnits();
@@ -1223,7 +1223,7 @@ export default function HomeScreen() {
                 })()}
               </View>
 
-              <View style={[styles.carouselPage, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.carouselPage, { backgroundColor: theme.background, borderColor: 'transparent' }]}>
                 <View style={styles.activityHeader}>
                   <View style={styles.activityTitleRow}>
                     <Dumbbell size={16} color="#F59E0B" />
