@@ -1123,107 +1123,122 @@ export default function HomeScreen() {
               })()}
 
               <View style={styles.carouselPageContainer}>
-                <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
                 {(() => {
                   const currentSugar = getTodaySugarUnits();
                   const currentFiber = getTodayFiberUnits();
                   const currentSodium = getTodaySodiumUnits();
+                  const sugarPct = SUGAR_TARGET_G > 0 ? Math.round((currentSugar / SUGAR_TARGET_G) * 100) : 0;
+                  const fiberPct = FIBER_TARGET_G > 0 ? Math.round((currentFiber / FIBER_TARGET_G) * 100) : 0;
+                  const sodiumPct = SODIUM_TARGET_MG > 0 ? Math.round((currentSodium / SODIUM_TARGET_MG) * 100) : 0;
                   return (
-                    <View style={styles.microCarouselContent}>
-                      <View style={styles.microCarouselRow}>
-                        <View style={styles.microCarouselItem}>
-                          <ProgressRing
-                            progress={Math.min((currentSugar / SUGAR_TARGET_G) * 100, 100)}
-                            size={52}
-                            strokeWidth={5}
-                            color="#EC4899"
-                            backgroundColor={theme.border}
-                          >
-                            <Text style={[styles.microCarouselValue, { color: theme.text }]}>{currentSugar}</Text>
-                          </ProgressRing>
-                          <View style={styles.macroCardValues}>
-                            <Text style={[styles.macroCardCurrent, { color: theme.text }]}>{currentSugar}</Text>
-                            <Text style={[styles.macroCardTarget, { color: theme.textTertiary }]}>/ {SUGAR_TARGET_G}g</Text>
-                          </View>
+                    <View style={styles.macroCardsRow}>
+                      <View style={[styles.macroSeparateCard, styles.separatedCard, { backgroundColor: theme.card }]}>
+                        <ProgressRing
+                          progress={Math.min(sugarPct, 100)}
+                          size={44}
+                          strokeWidth={5}
+                          color="#EC4899"
+                          backgroundColor={theme.border}
+                        >
+                          <Text style={styles.macroCardEmoji}>🍬</Text>
+                        </ProgressRing>
+                        <View style={styles.macroCardValues}>
+                          <Text style={[styles.macroCardCurrent, { color: theme.text }]}>{currentSugar}</Text>
+                          <Text style={[styles.macroCardTarget, { color: theme.textTertiary }]}>/ {SUGAR_TARGET_G}g</Text>
+                        </View>
+                        <View style={styles.macroCardFooter}>
                           <Text style={[styles.macroCardName, { color: theme.textSecondary }]}>Gula</Text>
-                        </View>
-                        <View style={styles.microCarouselItem}>
-                          <ProgressRing
-                            progress={Math.min((currentFiber / FIBER_TARGET_G) * 100, 100)}
-                            size={52}
-                            strokeWidth={5}
-                            color="#8B5CF6"
-                            backgroundColor={theme.border}
-                          >
-                            <Text style={[styles.microCarouselValue, { color: theme.text }]}>{currentFiber}</Text>
-                          </ProgressRing>
-                          <View style={styles.macroCardValues}>
-                            <Text style={[styles.macroCardCurrent, { color: theme.text }]}>{currentFiber}</Text>
-                            <Text style={[styles.macroCardTarget, { color: theme.textTertiary }]}>/ {FIBER_TARGET_G}g</Text>
+                          <View style={[styles.macroCardPctBadge, { backgroundColor: 'rgba(236,72,153,0.15)' }]}>
+                            <Text style={[styles.macroCardPctText, { color: '#EC4899' }]}>{sugarPct}%</Text>
                           </View>
-                          <Text style={[styles.macroCardName, { color: theme.textSecondary }]}>Serat</Text>
-                        </View>
-                        <View style={styles.microCarouselItem}>
-                          <ProgressRing
-                            progress={Math.min((currentSodium / SODIUM_TARGET_MG) * 100, 100)}
-                            size={52}
-                            strokeWidth={5}
-                            color="#F97316"
-                            backgroundColor={theme.border}
-                          >
-                            <Text style={[styles.microCarouselValue, { color: theme.text }]}>{currentSodium < 1000 ? currentSodium : (currentSodium / 1000).toFixed(1)}</Text>
-                          </ProgressRing>
-                          <View style={styles.macroCardValues}>
-                            <Text style={[styles.macroCardCurrent, { color: theme.text }]}>{currentSodium < 1000 ? currentSodium : (currentSodium / 1000).toFixed(1)}</Text>
-                            <Text style={[styles.macroCardTarget, { color: theme.textTertiary }]}>/ {(SODIUM_TARGET_MG / 1000).toFixed(1)}g</Text>
-                          </View>
-                          <Text style={[styles.macroCardName, { color: theme.textSecondary }]}>Sodium</Text>
                         </View>
                       </View>
-                      <View style={[styles.microWaterDivider, { backgroundColor: theme.border }]} />
-                      {(() => {
-                        const currentWater = getTodayWaterCups();
-                        const waterTarget = 8;
-                        return (
-                          <View style={styles.waterCompact}>
-                            <View style={styles.waterHeaderCompact}>
-                              <Droplets size={14} color="#38BDF8" />
-                              <Text style={[styles.waterTitleCompact, { color: theme.text }]}>Air</Text>
-                              <Text style={[styles.waterCountCompact, { color: theme.textSecondary }]}>{currentWater}/{waterTarget}</Text>
-                            </View>
-                            <View style={styles.waterControlsCompact}>
-                              <TouchableOpacity
-                                style={[styles.waterBtnCompact, { backgroundColor: theme.background, borderColor: theme.border }]}
-                                onPress={removeWaterCup}
-                                activeOpacity={0.7}
-                              >
-                                <Minus size={12} color={theme.textSecondary} />
-                              </TouchableOpacity>
-                              <View style={styles.waterDotsCompact}>
-                                {Array.from({ length: waterTarget }).map((_, i) => (
-                                  <View
-                                    key={i}
-                                    style={[
-                                      styles.waterDotCompact,
-                                      { backgroundColor: i < currentWater ? '#38BDF8' : theme.border },
-                                    ]}
-                                  />
-                                ))}
-                              </View>
-                              <TouchableOpacity
-                                style={[styles.waterBtnCompact, { backgroundColor: '#38BDF8', borderColor: 'transparent' }]}
-                                onPress={addWaterCup}
-                                activeOpacity={0.7}
-                              >
-                                <Plus size={12} color="#FFFFFF" />
-                              </TouchableOpacity>
-                            </View>
+                      <View style={[styles.macroSeparateCard, styles.separatedCard, { backgroundColor: theme.card }]}>
+                        <ProgressRing
+                          progress={Math.min(fiberPct, 100)}
+                          size={44}
+                          strokeWidth={5}
+                          color="#8B5CF6"
+                          backgroundColor={theme.border}
+                        >
+                          <Text style={styles.macroCardEmoji}>🥦</Text>
+                        </ProgressRing>
+                        <View style={styles.macroCardValues}>
+                          <Text style={[styles.macroCardCurrent, { color: theme.text }]}>{currentFiber}</Text>
+                          <Text style={[styles.macroCardTarget, { color: theme.textTertiary }]}>/ {FIBER_TARGET_G}g</Text>
+                        </View>
+                        <View style={styles.macroCardFooter}>
+                          <Text style={[styles.macroCardName, { color: theme.textSecondary }]}>Serat</Text>
+                          <View style={[styles.macroCardPctBadge, { backgroundColor: 'rgba(139,92,246,0.15)' }]}>
+                            <Text style={[styles.macroCardPctText, { color: '#8B5CF6' }]}>{fiberPct}%</Text>
                           </View>
-                        );
-                      })()}
+                        </View>
+                      </View>
+                      <View style={[styles.macroSeparateCard, styles.separatedCard, { backgroundColor: theme.card }]}>
+                        <ProgressRing
+                          progress={Math.min(sodiumPct, 100)}
+                          size={44}
+                          strokeWidth={5}
+                          color="#F97316"
+                          backgroundColor={theme.border}
+                        >
+                          <Text style={styles.macroCardEmoji}>🧂</Text>
+                        </ProgressRing>
+                        <View style={styles.macroCardValues}>
+                          <Text style={[styles.macroCardCurrent, { color: theme.text }]}>{currentSodium < 1000 ? currentSodium : (currentSodium / 1000).toFixed(1)}</Text>
+                          <Text style={[styles.macroCardTarget, { color: theme.textTertiary }]}>/ {(SODIUM_TARGET_MG / 1000).toFixed(1)}g</Text>
+                        </View>
+                        <View style={styles.macroCardFooter}>
+                          <Text style={[styles.macroCardName, { color: theme.textSecondary }]}>Sodium</Text>
+                          <View style={[styles.macroCardPctBadge, { backgroundColor: 'rgba(249,115,22,0.15)' }]}>
+                            <Text style={[styles.macroCardPctText, { color: '#F97316' }]}>{sodiumPct}%</Text>
+                          </View>
+                        </View>
+                      </View>
                     </View>
                   );
                 })()}
+                <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
+                  {(() => {
+                    const currentWater = getTodayWaterCups();
+                    const waterTarget = 8;
+                    return (
+                      <View style={styles.waterCompact}>
+                        <View style={styles.waterHeaderCompact}>
+                          <Droplets size={14} color="#38BDF8" />
+                          <Text style={[styles.waterTitleCompact, { color: theme.text }]}>Air</Text>
+                          <Text style={[styles.waterCountCompact, { color: theme.textSecondary }]}>{currentWater}/{waterTarget}</Text>
+                        </View>
+                        <View style={styles.waterControlsCompact}>
+                          <TouchableOpacity
+                            style={[styles.waterBtnCompact, { backgroundColor: theme.background, borderColor: theme.border }]}
+                            onPress={removeWaterCup}
+                            activeOpacity={0.7}
+                          >
+                            <Minus size={12} color={theme.textSecondary} />
+                          </TouchableOpacity>
+                          <View style={styles.waterDotsCompact}>
+                            {Array.from({ length: waterTarget }).map((_, i) => (
+                              <View
+                                key={i}
+                                style={[
+                                  styles.waterDotCompact,
+                                  { backgroundColor: i < currentWater ? '#38BDF8' : theme.border },
+                                ]}
+                              />
+                            ))}
+                          </View>
+                          <TouchableOpacity
+                            style={[styles.waterBtnCompact, { backgroundColor: '#38BDF8', borderColor: 'transparent' }]}
+                            onPress={addWaterCup}
+                            activeOpacity={0.7}
+                          >
+                            <Plus size={12} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })()}
                 </View>
               </View>
 
