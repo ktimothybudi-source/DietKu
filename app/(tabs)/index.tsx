@@ -102,6 +102,7 @@ export default function HomeScreen() {
 
   const [viewingLoggedEntryId, setViewingLoggedEntryId] = useState<string | null>(null);
   const [carouselPage, setCarouselPage] = useState(0);
+  const [carouselPageHeight, setCarouselPageHeight] = useState<number>(0);
   const [exerciseMode, setExerciseMode] = useState<'quick' | 'describe' | 'manual'>('quick');
   const [selectedQuickExercise, setSelectedQuickExercise] = useState<QuickExercise | null>(null);
   const [quickDuration, setQuickDuration] = useState('');
@@ -1009,7 +1010,12 @@ export default function HomeScreen() {
                 const fatTarget = dailyTargets.fatMax || 70;
                 const fatPct = fatTarget > 0 ? Math.round((todayTotals.fat / fatTarget) * 100) : 0;
                 return (
-                  <View style={styles.carouselPageContainer}>
+                  <View style={styles.carouselPageContainer} onLayout={(e) => {
+                    const h = e.nativeEvent.layout.height;
+                    if (h > 0 && (carouselPageHeight === 0 || Math.abs(h - carouselPageHeight) > 2)) {
+                      setCarouselPageHeight(h);
+                    }
+                  }}>
                     <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
                     <View style={styles.heroCalorieRow}>
                       <View style={styles.heroRingWrap}>
@@ -1122,7 +1128,7 @@ export default function HomeScreen() {
                 );
               })()}
 
-              <View style={styles.carouselPageContainer}>
+              <View style={[styles.carouselPageContainer, carouselPageHeight > 0 && { height: carouselPageHeight }]}>
                 {(() => {
                   const currentSugar = getTodaySugarUnits();
                   const currentFiber = getTodayFiberUnits();
@@ -1255,7 +1261,7 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              <View style={styles.carouselPageContainer}>
+              <View style={[styles.carouselPageContainer, carouselPageHeight > 0 && { height: carouselPageHeight }]}>
                 <View style={styles.activitySeparateRow}>
                   <TouchableOpacity
                     style={[styles.activitySeparateCard, styles.separatedCard, { backgroundColor: theme.card }]}
