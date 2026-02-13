@@ -990,7 +990,7 @@ export default function HomeScreen() {
           <View style={styles.carouselContainer}>
             <ScrollView
               horizontal
-              pagingEnabled
+              pagingEnabled={false}
               showsHorizontalScrollIndicator={false}
               onScroll={(e) => {
                 const page = Math.round(e.nativeEvent.contentOffset.x / (CAROUSEL_CARD_WIDTH + CAROUSEL_GAP));
