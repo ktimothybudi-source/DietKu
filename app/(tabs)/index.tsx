@@ -1243,36 +1243,49 @@ export default function HomeScreen() {
               </View>
 
               <View style={[styles.carouselPageContainer]}>
-                <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
-                  <View style={styles.activityHeader}>
-                    <View style={styles.activityTitleRow}>
+                <View style={styles.activitySeparateRow}>
+                  <TouchableOpacity
+                    style={[styles.activitySeparateCard, styles.separatedCard, { backgroundColor: theme.card }]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push('/log-exercise');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.activitySeparateIconWrap, { backgroundColor: '#EFF6FF' }]}>
+                      <Footprints size={16} color="#3B82F6" />
+                    </View>
+                    <Text style={[styles.activitySeparateVal, { color: theme.text }]}>{todaySteps.toLocaleString()}</Text>
+                    <Text style={[styles.activitySeparateLabel, { color: theme.textSecondary }]}>Langkah</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.activitySeparateCard, styles.separatedCard, { backgroundColor: theme.card }]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push('/log-exercise');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.activitySeparateIconWrap, { backgroundColor: '#FEF2F2' }]}>
+                      <Flame size={16} color="#EF4444" />
+                    </View>
+                    <Text style={[styles.activitySeparateVal, { color: theme.text }]}>{totalCaloriesBurned}</Text>
+                    <Text style={[styles.activitySeparateLabel, { color: theme.textSecondary }]}>kcal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.activitySeparateCard, styles.separatedCard, { backgroundColor: theme.card }]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push('/log-exercise');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.activitySeparateIconWrap, { backgroundColor: '#FFFBEB' }]}>
                       <Dumbbell size={16} color="#F59E0B" />
-                      <Text style={[styles.activityTitle, { color: theme.text }]}>Aktivitas</Text>
                     </View>
-                    <TouchableOpacity
-                      onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        router.push('/log-exercise');
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={{ fontSize: 12, fontWeight: '600' as const, color: theme.primary }}>Lihat</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.activityMiniStatsCompact}>
-                    <View style={[styles.activityMiniStatCompact, { backgroundColor: theme.background }]}>
-                      <Footprints size={12} color="#3B82F6" />
-                      <Text style={[styles.activityMiniStatValCompact, { color: theme.text }]}>{todaySteps.toLocaleString()}</Text>
-                    </View>
-                    <View style={[styles.activityMiniStatCompact, { backgroundColor: theme.background }]}>
-                      <Flame size={12} color="#EF4444" />
-                      <Text style={[styles.activityMiniStatValCompact, { color: theme.text }]}>{totalCaloriesBurned} kcal</Text>
-                    </View>
-                    <View style={[styles.activityMiniStatCompact, { backgroundColor: theme.background }]}>
-                      <Dumbbell size={12} color="#F59E0B" />
-                      <Text style={[styles.activityMiniStatValCompact, { color: theme.text }]}>{todayExercises.length}</Text>
-                    </View>
-                  </View>
+                    <Text style={[styles.activitySeparateVal, { color: theme.text }]}>{todayExercises.length}</Text>
+                    <Text style={[styles.activitySeparateLabel, { color: theme.textSecondary }]}>Latihan</Text>
+                  </TouchableOpacity>
                 </View>
 
                 <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
@@ -3006,6 +3019,33 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
+  },
+  activitySeparateRow: {
+    flexDirection: 'row' as const,
+    gap: 10,
+  },
+  activitySeparateCard: {
+    flex: 1,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingVertical: 18,
+    paddingHorizontal: 8,
+    gap: 8,
+  },
+  activitySeparateIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  activitySeparateVal: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+  },
+  activitySeparateLabel: {
+    fontSize: 11,
+    fontWeight: '500' as const,
   },
   activityMiniStatsCompact: {
     flexDirection: 'row' as const,
