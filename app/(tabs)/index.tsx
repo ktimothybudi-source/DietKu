@@ -986,6 +986,127 @@ export default function HomeScreen() {
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <View style={styles.topCardsSection}>
+            <View style={[styles.calorieCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={styles.heroCalorieRow}>
+                <View style={styles.heroRingWrap}>
+                  <ProgressRing
+                    progress={Math.min((progress?.caloriesProgress || 0), 100)}
+                    size={130}
+                    strokeWidth={14}
+                    color={(progress?.isOver || false) ? '#C53030' : '#4CAF7D'}
+                    backgroundColor={theme.border}
+                  >
+                    <View style={styles.heroRingContent}>
+                      <Flame size={20} color={theme.textTertiary} />
+                      <Text style={[styles.heroCalValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
+                        {todayTotals.calories}
+                      </Text>
+                      <Text style={[styles.heroCalLabel, { color: theme.textSecondary }]}>kalori</Text>
+                    </View>
+                  </ProgressRing>
+                </View>
+                <View style={styles.heroDetailsCol}>
+                  <View style={styles.heroStatRow}>
+                    <Target size={14} color="#4CAF7D" />
+                    <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Target</Text>
+                    <Text style={[styles.heroStatValue, { color: theme.text }]}>{dailyTargets.calories.toLocaleString()}</Text>
+                  </View>
+                  <View style={styles.heroStatRow}>
+                    <Utensils size={14} color="#F59E0B" />
+                    <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Makan</Text>
+                    <Text style={[styles.heroStatValue, { color: '#F59E0B' }]}>-{todayTotals.calories.toLocaleString()}</Text>
+                  </View>
+                  <View style={styles.heroStatRow}>
+                    <Dumbbell size={14} color="#4CAF7D" />
+                    <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Olahraga</Text>
+                    <Text style={[styles.heroStatValue, { color: '#4CAF7D' }]}>+{totalCaloriesBurned}</Text>
+                  </View>
+                  <View style={[styles.heroRemainingDivider, { backgroundColor: theme.border }]} />
+                  <Text style={[styles.heroRemainingLabel, { color: theme.textSecondary }]}>{progress?.isOver ? 'BERLEBIH' : 'TERSISA'}</Text>
+                  <Text style={[styles.heroRemainingValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
+                    {progress?.isOver ? `+${Math.abs(progress?.caloriesRemaining || 0).toLocaleString()}` : Math.max(0, progress?.caloriesRemaining || 0).toLocaleString()}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {(() => {
+              const proteinPct = dailyTargets.protein > 0 ? Math.round((todayTotals.protein / dailyTargets.protein) * 100) : 0;
+              const carbsTarget = dailyTargets.carbsMax || 250;
+              const carbsPct = carbsTarget > 0 ? Math.round((todayTotals.carbs / carbsTarget) * 100) : 0;
+              const fatTarget = dailyTargets.fatMax || 70;
+              const fatPct = fatTarget > 0 ? Math.round((todayTotals.fat / fatTarget) * 100) : 0;
+              return (
+                <View style={styles.macroCardsRow}>
+                  <View style={[styles.macroSeparateCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <ProgressRing
+                      progress={Math.min(proteinPct, 100)}
+                      size={52}
+                      strokeWidth={5}
+                      color="#FF8A80"
+                      backgroundColor={theme.border}
+                    >
+                      <Text style={styles.macroCardEmoji}>🍗</Text>
+                    </ProgressRing>
+                    <View style={styles.macroCardValues}>
+                      <Text style={[styles.macroCardCurrent, { color: theme.text }]}>{todayTotals.protein}</Text>
+                      <Text style={[styles.macroCardTarget, { color: theme.textTertiary }]}>/ {dailyTargets.protein}g</Text>
+                    </View>
+                    <View style={styles.macroCardFooter}>
+                      <Text style={[styles.macroCardName, { color: theme.textSecondary }]}>Protein</Text>
+                      <View style={[styles.macroCardPctBadge, { backgroundColor: 'rgba(255,138,128,0.15)' }]}>
+                        <Text style={[styles.macroCardPctText, { color: '#FF8A80' }]}>{proteinPct}%</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={[styles.macroSeparateCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <ProgressRing
+                      progress={Math.min(carbsPct, 100)}
+                      size={52}
+                      strokeWidth={5}
+                      color="#FFD54F"
+                      backgroundColor={theme.border}
+                    >
+                      <Text style={styles.macroCardEmoji}>🌾</Text>
+                    </ProgressRing>
+                    <View style={styles.macroCardValues}>
+                      <Text style={[styles.macroCardCurrent, { color: theme.text }]}>{todayTotals.carbs}</Text>
+                      <Text style={[styles.macroCardTarget, { color: theme.textTertiary }]}>/ {carbsTarget}g</Text>
+                    </View>
+                    <View style={styles.macroCardFooter}>
+                      <Text style={[styles.macroCardName, { color: theme.textSecondary }]}>Karbo</Text>
+                      <View style={[styles.macroCardPctBadge, { backgroundColor: 'rgba(255,213,79,0.15)' }]}>
+                        <Text style={[styles.macroCardPctText, { color: '#F0C040' }]}>{carbsPct}%</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={[styles.macroSeparateCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <ProgressRing
+                      progress={Math.min(fatPct, 100)}
+                      size={52}
+                      strokeWidth={5}
+                      color="#80DEEA"
+                      backgroundColor={theme.border}
+                    >
+                      <Text style={styles.macroCardEmoji}>🥑</Text>
+                    </ProgressRing>
+                    <View style={styles.macroCardValues}>
+                      <Text style={[styles.macroCardCurrent, { color: theme.text }]}>{todayTotals.fat}</Text>
+                      <Text style={[styles.macroCardTarget, { color: theme.textTertiary }]}>/ {fatTarget}g</Text>
+                    </View>
+                    <View style={styles.macroCardFooter}>
+                      <Text style={[styles.macroCardName, { color: theme.textSecondary }]}>Lemak</Text>
+                      <View style={[styles.macroCardPctBadge, { backgroundColor: 'rgba(128,222,234,0.15)' }]}>
+                        <Text style={[styles.macroCardPctText, { color: '#80DEEA' }]}>{fatPct}%</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              );
+            })()}
+          </View>
+
           <View style={styles.carouselContainer}>
             <ScrollView
               horizontal
@@ -996,138 +1117,12 @@ export default function HomeScreen() {
               onScroll={(e: any) => {
                 const offsetX = e.nativeEvent.contentOffset.x;
                 const page = Math.round(offsetX / (CAROUSEL_CARD_WIDTH + CAROUSEL_GAP));
-                setCarouselPage(Math.max(0, Math.min(2, page)));
+                setCarouselPage(Math.max(0, Math.min(1, page)));
               }}
               scrollEventThrottle={16}
             >
+
           <View style={[styles.carouselCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.heroCalorieRow}>
-              <View style={styles.heroRingWrap}>
-                <ProgressRing
-                  progress={Math.min((progress?.caloriesProgress || 0), 100)}
-                  size={130}
-                  strokeWidth={14}
-                  color={(progress?.isOver || false) ? '#C53030' : '#4CAF7D'}
-                  backgroundColor={theme.border}
-                >
-                  <View style={styles.heroRingContent}>
-                    <Flame size={20} color={theme.textTertiary} />
-                    <Text style={[styles.heroCalValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
-                      {todayTotals.calories}
-                    </Text>
-                    <Text style={[styles.heroCalLabel, { color: theme.textSecondary }]}>kalori</Text>
-                  </View>
-                </ProgressRing>
-              </View>
-              <View style={styles.heroDetailsCol}>
-                <View style={styles.heroStatRow}>
-                  <Target size={14} color="#4CAF7D" />
-                  <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Target</Text>
-                  <Text style={[styles.heroStatValue, { color: theme.text }]}>{dailyTargets.calories.toLocaleString()}</Text>
-                </View>
-                <View style={styles.heroStatRow}>
-                  <Utensils size={14} color="#F59E0B" />
-                  <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Makan</Text>
-                  <Text style={[styles.heroStatValue, { color: '#F59E0B' }]}>-{todayTotals.calories.toLocaleString()}</Text>
-                </View>
-                <View style={styles.heroStatRow}>
-                  <Dumbbell size={14} color="#4CAF7D" />
-                  <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Olahraga</Text>
-                  <Text style={[styles.heroStatValue, { color: '#4CAF7D' }]}>+{totalCaloriesBurned}</Text>
-                </View>
-                <View style={[styles.heroRemainingDivider, { backgroundColor: theme.border }]} />
-                <Text style={[styles.heroRemainingLabel, { color: theme.textSecondary }]}>{progress?.isOver ? 'BERLEBIH' : 'TERSISA'}</Text>
-                <Text style={[styles.heroRemainingValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
-                  {progress?.isOver ? `+${Math.abs(progress?.caloriesRemaining || 0).toLocaleString()}` : Math.max(0, progress?.caloriesRemaining || 0).toLocaleString()}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.macroCardsRow}>
-              {(() => {
-                const proteinPct = dailyTargets.protein > 0 ? Math.round((todayTotals.protein / dailyTargets.protein) * 100) : 0;
-                const carbsTarget = dailyTargets.carbsMax || 250;
-                const carbsPct = carbsTarget > 0 ? Math.round((todayTotals.carbs / carbsTarget) * 100) : 0;
-                const fatTarget = dailyTargets.fatMax || 70;
-                const fatPct = fatTarget > 0 ? Math.round((todayTotals.fat / fatTarget) * 100) : 0;
-                return (
-                  <>
-                    <View style={styles.macroMiniCard}>
-                      <View style={styles.macroMiniRingRow}>
-                        <ProgressRing
-                          progress={Math.min(proteinPct, 100)}
-                          size={40}
-                          strokeWidth={4}
-                          color="#FF8A80"
-                          backgroundColor={theme.border}
-                        >
-                          <Text style={{ fontSize: 13 }}>🍗</Text>
-                        </ProgressRing>
-                        <View style={styles.macroMiniInfo}>
-                          <Text style={[styles.macroMiniName, { color: theme.textSecondary }]}>Protein</Text>
-                          <Text style={[styles.macroMiniValues, { color: theme.text }]}>
-                            <Text style={styles.macroMiniCurrent}>{todayTotals.protein}</Text>
-                            <Text style={[styles.macroMiniTarget, { color: theme.textTertiary }]}>/{dailyTargets.protein}g</Text>
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={[styles.macroMiniBar, { backgroundColor: theme.border }]}>
-                        <View style={[styles.macroMiniBarFill, { width: `${Math.min(proteinPct, 100)}%`, backgroundColor: '#FF8A80' }]} />
-                      </View>
-                    </View>
-                    <View style={styles.macroMiniCard}>
-                      <View style={styles.macroMiniRingRow}>
-                        <ProgressRing
-                          progress={Math.min(carbsPct, 100)}
-                          size={40}
-                          strokeWidth={4}
-                          color="#FFD54F"
-                          backgroundColor={theme.border}
-                        >
-                          <Text style={{ fontSize: 13 }}>🌾</Text>
-                        </ProgressRing>
-                        <View style={styles.macroMiniInfo}>
-                          <Text style={[styles.macroMiniName, { color: theme.textSecondary }]}>Karbo</Text>
-                          <Text style={[styles.macroMiniValues, { color: theme.text }]}>
-                          <Text style={styles.macroMiniCurrent}>{todayTotals.carbs}</Text>
-                          <Text style={[styles.macroMiniTarget, { color: theme.textTertiary }]}>/{carbsTarget}g</Text>
-                        </Text>
-                        </View>
-                      </View>
-                      <View style={[styles.macroMiniBar, { backgroundColor: theme.border }]}>
-                        <View style={[styles.macroMiniBarFill, { width: `${Math.min(carbsPct, 100)}%`, backgroundColor: '#FFD54F' }]} />
-                      </View>
-                    </View>
-                    <View style={styles.macroMiniCard}>
-                      <View style={styles.macroMiniRingRow}>
-                        <ProgressRing
-                          progress={Math.min(fatPct, 100)}
-                          size={40}
-                          strokeWidth={4}
-                          color="#80DEEA"
-                          backgroundColor={theme.border}
-                        >
-                          <Text style={{ fontSize: 13 }}>🥑</Text>
-                        </ProgressRing>
-                        <View style={styles.macroMiniInfo}>
-                          <Text style={[styles.macroMiniName, { color: theme.textSecondary }]}>Lemak</Text>
-                          <Text style={[styles.macroMiniValues, { color: theme.text }]}>
-                            <Text style={styles.macroMiniCurrent}>{todayTotals.fat}</Text>
-                            <Text style={[styles.macroMiniTarget, { color: theme.textTertiary }]}>/{fatTarget}g</Text>
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={[styles.macroMiniBar, { backgroundColor: theme.border }]}>
-                        <View style={[styles.macroMiniBarFill, { width: `${Math.min(fatPct, 100)}%`, backgroundColor: '#80DEEA' }]} />
-                      </View>
-                    </View>
-                  </>
-                );
-              })()}
-            </View>
-          </View>
-
-          <View style={[styles.carouselCard, { backgroundColor: theme.card, borderColor: theme.border, marginLeft: CAROUSEL_GAP }]}>
             {(() => {
               const currentSugar = getTodaySugarUnits();
               const currentFiber = getTodayFiberUnits();
@@ -1437,7 +1432,7 @@ export default function HomeScreen() {
           </View>
             </ScrollView>
             <View style={styles.carouselDots}>
-              {[0, 1, 2].map((i) => (
+              {[0, 1].map((i) => (
                 <View
                   key={i}
                   style={[
@@ -2846,6 +2841,59 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  topCardsSection: {
+    paddingHorizontal: 20,
+    gap: 10,
+    marginBottom: 16,
+  },
+  calorieCard: {
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+  },
+  macroSeparateCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  macroCardEmoji: {
+    fontSize: 18,
+  },
+  macroCardValues: {
+    flexDirection: 'row' as const,
+    alignItems: 'baseline' as const,
+    gap: 3,
+  },
+  macroCardCurrent: {
+    fontSize: 22,
+    fontWeight: '800' as const,
+    letterSpacing: -0.5,
+  },
+  macroCardTarget: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+  },
+  macroCardFooter: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  macroCardName: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  macroCardPctBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  macroCardPctText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
   },
   carouselContainer: {
     marginBottom: 8,
