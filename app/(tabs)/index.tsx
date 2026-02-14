@@ -17,7 +17,7 @@ import {
   Dimensions,
 } from 'react-native';
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CAROUSEL_CARD_WIDTH = SCREEN_WIDTH - 40;
+const CAROUSEL_CARD_WIDTH = SCREEN_WIDTH - 28;
 const CAROUSEL_GAP = 12;
 const SUGAR_TARGET_G = 25;
 const FIBER_TARGET_G = 25;
@@ -998,7 +998,7 @@ export default function HomeScreen() {
                 setCarouselPage(page);
               }}
               scrollEventThrottle={16}
-              contentContainerStyle={{ paddingHorizontal: 20, gap: CAROUSEL_GAP, alignItems: 'stretch' }}
+              contentContainerStyle={{ paddingHorizontal: 14, gap: CAROUSEL_GAP, alignItems: 'stretch' }}
               decelerationRate="fast"
               snapToInterval={CAROUSEL_CARD_WIDTH + CAROUSEL_GAP}
               snapToAlignment="start"
