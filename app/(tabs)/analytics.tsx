@@ -26,7 +26,10 @@ import {
   Flame,
   Zap,
   Trash2,
+  Camera,
+  Image as ImageIcon,
 } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useExercise } from '@/contexts/ExerciseContext';
@@ -80,6 +83,8 @@ export default function AnalyticsScreen() {
   const [showEditWeightModal, setShowEditWeightModal] = useState(false);
   const [selectedWeightEntry, setSelectedWeightEntry] = useState<{ date: string; weight: number } | null>(null);
   const [editWeightInput, setEditWeightInput] = useState('');
+  const [bodyPhotos, setBodyPhotos] = useState<{ uri: string; date: string; label: string }[]>([]);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
 
   const setupReady = !!profile && !!dailyTargets;
   const timeRangeDays = getTimeRangeDays(timeRange);
@@ -703,6 +708,32 @@ export default function AnalyticsScreen() {
         </View>
 
         {renderWeightGraph()}
+
+        <View style={styles.weightTimeRange}>
+          {(['7h', '30h', '90h'] as const).map(range => (
+            <TouchableOpacity
+              key={range}
+              style={[
+                styles.weightTimeRangePill,
+                { backgroundColor: theme.background, borderColor: theme.border },
+                timeRange === range && { backgroundColor: theme.primary, borderColor: theme.primary },
+              ]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setTimeRange(range);
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.weightTimeRangeText,
+                { color: theme.textSecondary },
+                timeRange === range && { color: '#ffffff' },
+              ]}>
+                {range === '7h' ? '7 Hari' : range === '30h' ? '30 Hari' : '90 Hari'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         
         {goalProjection && targetWeight > 0 && (
           <View style={[styles.projectionCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
@@ -936,6 +967,120 @@ export default function AnalyticsScreen() {
     );
   };
 
+  const takeBodyPhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('Camera permission not granted');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        aspect: [3, 4],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const today = new Date();
+        const newPhoto = {
+          uri: result.assets[0].uri,
+          date: formatDateKey(today),
+          label: today.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+        };
+        setBodyPhotos(prev => [newPhoto, ...prev]);
+        setShowPhotoModal(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error('Failed to take photo:', error);
+    }
+  };
+
+  const pickBodyPhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('Media library permission not granted');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        allowsEditing: true,
+        aspect: [3, 4],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const today = new Date();
+        const newPhoto = {
+          uri: result.assets[0].uri,
+          date: formatDateKey(today),
+          label: today.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+        };
+        setBodyPhotos(prev => [newPhoto, ...prev]);
+        setShowPhotoModal(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error('Failed to pick photo:', error);
+    }
+  };
+
+  const renderBodyProgress = () => {
+    return (
+      <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.chartHeader}>
+          <View style={styles.chartTitleRow}>
+            <View style={[styles.chartIconWrap, { backgroundColor: '#8B5CF6' + '15' }]}>
+              <Camera size={18} color="#8B5CF6" />
+            </View>
+            <View>
+              <Text style={[styles.chartTitle, { color: theme.text }]}>Foto Kemajuan</Text>
+              <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
+                Dokumentasi perubahan tubuhmu
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[styles.recordBtn, { backgroundColor: '#8B5CF6' }]}
+            onPress={() => { setShowPhotoModal(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            activeOpacity={0.8}
+          >
+            <Plus size={16} color="#FFF" />
+            <Text style={styles.recordBtnText}>Foto</Text>
+          </TouchableOpacity>
+        </View>
+
+        {bodyPhotos.length === 0 ? (
+          <TouchableOpacity
+            style={[styles.emptyPhotoState, { borderColor: theme.border }]}
+            onPress={() => { setShowPhotoModal(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.emptyPhotoIcon, { backgroundColor: '#8B5CF6' + '10' }]}>
+              <Camera size={28} color="#8B5CF6" />
+            </View>
+            <Text style={[styles.emptyPhotoTitle, { color: theme.text }]}>Mulai dokumentasi</Text>
+            <Text style={[styles.emptyPhotoText, { color: theme.textSecondary }]}>
+              Ambil foto pertamamu untuk melihat perubahan dari waktu ke waktu
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
+            {bodyPhotos.map((photo, index) => (
+              <View key={index} style={styles.photoCard}>
+                <View style={[styles.photoImageWrap, { backgroundColor: theme.background }]}>
+                  <ImageIcon size={32} color={theme.textTertiary} />
+                  <Text style={[styles.photoPlaceholder, { color: theme.textTertiary }]}>Foto</Text>
+                </View>
+                <Text style={[styles.photoDateLabel, { color: theme.textSecondary }]}>{photo.label}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+    );
+  };
+
   const renderStreakVisualization = () => {
     const today = new Date();
     const dayOfWeek = today.getDay();
@@ -972,9 +1117,9 @@ export default function AnalyticsScreen() {
           </View>
         </View>
         <View style={[styles.streakCardRight, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Award size={28} color="#F59E0B" />
-          <Text style={[styles.streakCardNumber, { color: theme.text }]}>{streakData?.bestStreak ?? 0}</Text>
-          <Text style={[styles.streakCardLabel, { color: theme.textSecondary }]}>Rekor Terbaik</Text>
+          <Target size={28} color="#3B82F6" />
+          <Text style={[styles.streakCardNumber, { color: theme.text }]}>{stats.weightProgress}%</Text>
+          <Text style={[styles.streakCardLabel, { color: theme.textSecondary }]}>tercapai</Text>
         </View>
       </View>
     );
@@ -1169,7 +1314,7 @@ export default function AnalyticsScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
           <View style={styles.header}>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>Analitik</Text>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Kemajuan</Text>
           </View>
           <View style={styles.emptyState}>
             <View style={[styles.emptyIcon, { backgroundColor: theme.card }]}>
@@ -1195,45 +1340,12 @@ export default function AnalyticsScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>Analitik</Text>
-            {profile?.goalWeight && profile?.weight && profile.goalWeight !== profile.weight && (
-              <View style={[styles.progressBadge, { backgroundColor: stats.weightProgress >= 100 ? theme.primary + '20' : '#3B82F6' + '15' }]}>
-                <Target size={16} color={stats.weightProgress >= 100 ? theme.primary : '#3B82F6'} />
-                <Text style={[styles.progressBadgeText, { color: stats.weightProgress >= 100 ? theme.primary : '#3B82F6' }]}>
-                  {stats.weightProgress}% tercapai
-                </Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.timeRangeContainer}>
-            {(['7h', '30h', '90h'] as const).map(range => (
-              <TouchableOpacity
-                key={range}
-                style={[
-                  styles.timeRangePill,
-                  { backgroundColor: theme.card, borderColor: theme.border },
-                  timeRange === range && { backgroundColor: theme.primary, borderColor: theme.primary },
-                ]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setTimeRange(range);
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={[
-                  styles.timeRangeText,
-                  { color: theme.textSecondary },
-                  timeRange === range && { color: '#ffffff' },
-                ]}>
-                  {range === '7h' ? '7 Hari' : range === '30h' ? '30 Hari' : '90 Hari'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Kemajuan</Text>
           </View>
 
           {renderStreakVisualization()}
           {renderWeightSection()}
+          {renderBodyProgress()}
           {renderWeightChanges()}
           {renderCalorieChart()}
           {renderWeeklyEnergy()}
@@ -1414,6 +1526,63 @@ export default function AnalyticsScreen() {
       </Modal>
 
       <Modal
+        visible={showPhotoModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhotoModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPhotoModal(false)}
+        />
+        <View style={[styles.modalContainer, { justifyContent: 'flex-end' }]}>
+          <View style={[styles.photoModalContent, { backgroundColor: theme.card }]}>
+            <View style={styles.photoModalHandle}>
+              <View style={[styles.photoModalHandleBar, { backgroundColor: theme.border }]} />
+            </View>
+            <Text style={[styles.photoModalTitle, { color: theme.text }]}>Foto Kemajuan Tubuh</Text>
+            <Text style={[styles.photoModalSubtitle, { color: theme.textSecondary }]}>
+              Dokumentasi perubahan tubuhmu secara berkala
+            </Text>
+            <TouchableOpacity
+              style={[styles.photoModalOption, { backgroundColor: '#8B5CF6' + '10' }]}
+              onPress={takeBodyPhoto}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.photoModalIconWrap, { backgroundColor: '#8B5CF6' + '20' }]}>
+                <Camera size={22} color="#8B5CF6" />
+              </View>
+              <View style={styles.photoModalOptionText}>
+                <Text style={[styles.photoModalOptionTitle, { color: theme.text }]}>Ambil Foto</Text>
+                <Text style={[styles.photoModalOptionDesc, { color: theme.textSecondary }]}>Gunakan kamera untuk foto baru</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.photoModalOption, { backgroundColor: '#3B82F6' + '10' }]}
+              onPress={pickBodyPhoto}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.photoModalIconWrap, { backgroundColor: '#3B82F6' + '20' }]}>
+                <ImageIcon size={22} color="#3B82F6" />
+              </View>
+              <View style={styles.photoModalOptionText}>
+                <Text style={[styles.photoModalOptionTitle, { color: theme.text }]}>Pilih dari Galeri</Text>
+                <Text style={[styles.photoModalOptionDesc, { color: theme.textSecondary }]}>Pilih foto yang sudah ada</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.photoModalCancel, { borderColor: theme.border }]}
+              onPress={() => setShowPhotoModal(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.photoModalCancelText, { color: theme.textSecondary }]}>Batal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
         visible={showEditWeightModal}
         transparent
         animationType="fade"
@@ -1521,20 +1690,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700' as const,
   },
-  timeRangeContainer: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20,
+  weightTimeRange: {
+    flexDirection: 'row' as const,
+    gap: 8,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
-  timeRangePill: {
+  weightTimeRangePill: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
-    alignItems: 'center',
+    alignItems: 'center' as const,
   },
-  timeRangeText: {
-    fontSize: 14,
+  weightTimeRangeText: {
+    fontSize: 13,
     fontWeight: '600' as const,
   },
   weightSection: {
@@ -2382,5 +2554,120 @@ const styles = StyleSheet.create({
   bmiLegendRange: {
     fontSize: 10,
     fontWeight: '500' as const,
+  },
+  emptyPhotoState: {
+    alignItems: 'center' as const,
+    paddingVertical: 28,
+    borderWidth: 1,
+    borderStyle: 'dashed' as const,
+    borderRadius: 12,
+  },
+  emptyPhotoIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    marginBottom: 12,
+  },
+  emptyPhotoTitle: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    marginBottom: 4,
+  },
+  emptyPhotoText: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    textAlign: 'center' as const,
+    paddingHorizontal: 20,
+    lineHeight: 18,
+  },
+  photoScroll: {
+    marginHorizontal: -4,
+  },
+  photoCard: {
+    marginHorizontal: 4,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  photoImageWrap: {
+    width: 90,
+    height: 120,
+    borderRadius: 10,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 4,
+  },
+  photoPlaceholder: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+  },
+  photoDateLabel: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+  },
+  photoModalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    paddingBottom: 40,
+    width: '100%' as const,
+  },
+  photoModalHandle: {
+    alignItems: 'center' as const,
+    marginBottom: 20,
+  },
+  photoModalHandleBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+  },
+  photoModalTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    marginBottom: 4,
+  },
+  photoModalSubtitle: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    marginBottom: 24,
+  },
+  photoModalOption: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 14,
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  photoModalIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  photoModalOptionText: {
+    flex: 1,
+    gap: 2,
+  },
+  photoModalOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  photoModalOptionDesc: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+  },
+  photoModalCancel: {
+    marginTop: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center' as const,
+  },
+  photoModalCancelText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
 });
