@@ -1336,10 +1336,7 @@ export default function AnalyticsScreen() {
     };
   }, [exerciseData, timeRangeDays]);
 
-  const renderMicrosWaterSection = () => {
-    const waterTarget = 8;
-    const waterProgress = waterTarget > 0 ? Math.min((microsTrend.todayWater / waterTarget) * 100, 100) : 0;
-
+  const renderMicrosSection = () => {
     const micros = [
       {
         name: 'Gula',
@@ -1374,38 +1371,17 @@ export default function AnalyticsScreen() {
       <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={styles.chartHeader}>
           <View style={styles.chartTitleRow}>
-            <View style={[styles.chartIconWrap, { backgroundColor: '#06B6D4' + '15' }]}>
-              <Droplets size={18} color="#06B6D4" />
+            <View style={[styles.chartIconWrap, { backgroundColor: '#F59E0B' + '15' }]}>
+              <Zap size={18} color="#F59E0B" />
             </View>
             <View>
-              <Text style={[styles.chartTitle, { color: theme.text }]}>Mikro & Air</Text>
+              <Text style={[styles.chartTitle, { color: theme.text }]}>Mikronutrien</Text>
               <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
                 Rata-rata {timeRange === '7h' ? '7 hari' : timeRange === '30h' ? '30 hari' : '90 hari'} terakhir
               </Text>
             </View>
           </View>
         </View>
-
-        <View style={styles.waterTrendRow}>
-          <View style={styles.waterTrendLeft}>
-            <Droplets size={20} color="#06B6D4" />
-            <View>
-              <Text style={[styles.waterTrendLabel, { color: theme.text }]}>Air Hari Ini</Text>
-              <Text style={[styles.waterTrendSub, { color: theme.textSecondary }]}>
-                Rata-rata: {microsTrend.avgWater} gelas/hari
-              </Text>
-            </View>
-          </View>
-          <View style={styles.waterTrendRight}>
-            <Text style={[styles.waterTrendValue, { color: '#06B6D4' }]}>{microsTrend.todayWater}</Text>
-            <Text style={[styles.waterTrendTarget, { color: theme.textTertiary }]}>/ {waterTarget}</Text>
-          </View>
-        </View>
-        <View style={[styles.waterProgressBg, { backgroundColor: theme.border }]}>
-          <View style={[styles.waterProgressFill, { width: `${waterProgress}%`, backgroundColor: '#06B6D4' }]} />
-        </View>
-
-        <View style={styles.microsDivider} />
 
         {micros.map((micro) => {
           const progress = micro.target > 0 ? Math.min((micro.avg / micro.target) * 100, 100) : 0;
@@ -1445,6 +1421,48 @@ export default function AnalyticsScreen() {
             </View>
           );
         })}
+      </View>
+    );
+  };
+
+  const renderWaterSection = () => {
+    const waterTarget = 8;
+    const waterProgress = waterTarget > 0 ? Math.min((microsTrend.todayWater / waterTarget) * 100, 100) : 0;
+
+    return (
+      <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.chartHeader}>
+          <View style={styles.chartTitleRow}>
+            <View style={[styles.chartIconWrap, { backgroundColor: '#06B6D4' + '15' }]}>
+              <Droplets size={18} color="#06B6D4" />
+            </View>
+            <View>
+              <Text style={[styles.chartTitle, { color: theme.text }]}>Air</Text>
+              <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
+                Rata-rata {timeRange === '7h' ? '7 hari' : timeRange === '30h' ? '30 hari' : '90 hari'} terakhir
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.waterTrendRow}>
+          <View style={styles.waterTrendLeft}>
+            <Droplets size={20} color="#06B6D4" />
+            <View>
+              <Text style={[styles.waterTrendLabel, { color: theme.text }]}>Air Hari Ini</Text>
+              <Text style={[styles.waterTrendSub, { color: theme.textSecondary }]}>
+                Rata-rata: {microsTrend.avgWater} gelas/hari
+              </Text>
+            </View>
+          </View>
+          <View style={styles.waterTrendRight}>
+            <Text style={[styles.waterTrendValue, { color: '#06B6D4' }]}>{microsTrend.todayWater}</Text>
+            <Text style={[styles.waterTrendTarget, { color: theme.textTertiary }]}>/ {waterTarget}</Text>
+          </View>
+        </View>
+        <View style={[styles.waterProgressBg, { backgroundColor: theme.border }]}>
+          <View style={[styles.waterProgressFill, { width: `${waterProgress}%`, backgroundColor: '#06B6D4' }]} />
+        </View>
       </View>
     );
   };
@@ -1684,11 +1702,12 @@ export default function AnalyticsScreen() {
           {renderBodyProgress()}
           {renderWeightChanges()}
           {renderCalorieChart()}
-          {renderMicrosWaterSection()}
           {renderActivitySection()}
           {renderWeeklyEnergy()}
           {renderExpenditureChanges()}
           {renderMacroChart()}
+          {renderMicrosSection()}
+          {renderWaterSection()}
           {renderBMICard()}
 
           <View style={styles.statsGrid}>
