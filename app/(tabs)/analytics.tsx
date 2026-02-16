@@ -28,6 +28,10 @@ import {
   Trash2,
   Camera,
   Image as ImageIcon,
+  Droplets,
+  Footprints,
+  Activity,
+  Dumbbell,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNutrition } from '@/contexts/NutritionContext';
@@ -69,6 +73,7 @@ export default function AnalyticsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const exerciseData = useExercise();
+  const nutritionRaw = nutrition as any;
 
   const [timeRange, setTimeRange] = useState<TimeRange>('7h');
   const [showWeightModal, setShowWeightModal] = useState(false);
@@ -1243,6 +1248,342 @@ export default function AnalyticsScreen() {
     );
   };
 
+  const microsTrend = useMemo(() => {
+    const waterData = nutritionRaw.waterCups || nutritionRaw.getTodayWaterCups ? {} : {};
+    const sugarData = nutritionRaw.sugarUnits || {};
+    const fiberData = nutritionRaw.fiberUnits || {};
+    const sodiumData = nutritionRaw.sodiumUnits || {};
+
+    const rawWater = (typeof nutritionRaw.waterCups === 'object' && nutritionRaw.waterCups !== null) ? nutritionRaw.waterCups : waterData;
+    const rawSugar = (typeof nutritionRaw.sugarUnits === 'object' && nutritionRaw.sugarUnits !== null) ? nutritionRaw.sugarUnits : sugarData;
+    const rawFiber = (typeof nutritionRaw.fiberUnits === 'object' && nutritionRaw.fiberUnits !== null) ? nutritionRaw.fiberUnits : fiberData;
+    const rawSodium = (typeof nutritionRaw.sodiumUnits === 'object' && nutritionRaw.sodiumUnits !== null) ? nutritionRaw.sodiumUnits : sodiumData;
+
+    const days = timeRangeDays;
+    const today = new Date();
+    let totalWater = 0, totalSugar = 0, totalFiber = 0, totalSodium = 0;
+    let daysWithWater = 0, daysWithSugar = 0, daysWithFiber = 0, daysWithSodium = 0;
+
+    for (let i = 0; i < days; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = formatDateKey(d);
+      const w = rawWater[key] || 0;
+      const s = rawSugar[key] || 0;
+      const f = rawFiber[key] || 0;
+      const n = rawSodium[key] || 0;
+      if (w > 0) { totalWater += w; daysWithWater++; }
+      if (s > 0) { totalSugar += s; daysWithSugar++; }
+      if (f > 0) { totalFiber += f; daysWithFiber++; }
+      if (n > 0) { totalSodium += n; daysWithSodium++; }
+    }
+
+    return {
+      avgWater: daysWithWater > 0 ? Math.round((totalWater / daysWithWater) * 10) / 10 : 0,
+      avgSugar: daysWithSugar > 0 ? Math.round((totalSugar / daysWithSugar) * 10) / 10 : 0,
+      avgFiber: daysWithFiber > 0 ? Math.round((totalFiber / daysWithFiber) * 10) / 10 : 0,
+      avgSodium: daysWithSodium > 0 ? Math.round(totalSodium / daysWithSodium) : 0,
+      daysWithWater,
+      daysWithSugar,
+      daysWithFiber,
+      daysWithSodium,
+      todayWater: rawWater[formatDateKey(today)] || 0,
+      todaySugar: rawSugar[formatDateKey(today)] || 0,
+      todayFiber: rawFiber[formatDateKey(today)] || 0,
+      todaySodium: rawSodium[formatDateKey(today)] || 0,
+    };
+  }, [nutritionRaw, timeRangeDays]);
+
+  const activityTrend = useMemo(() => {
+    const stepsData = exerciseData.stepsData || {};
+    const exercisesData = exerciseData.exercises || {};
+    const days = timeRangeDays;
+    const today = new Date();
+    let totalSteps = 0, totalExerciseCals = 0, totalStepsCals = 0;
+    let daysWithSteps = 0, daysWithExercise = 0;
+    let totalExerciseDuration = 0;
+
+    for (let i = 0; i < days; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = formatDateKey(d);
+      const steps = stepsData[key] || 0;
+      const dayExercises = exercisesData[key] || [];
+      const exCals = (dayExercises as any[]).reduce((sum: number, e: any) => sum + (e.caloriesBurned || 0), 0);
+      const exDuration = (dayExercises as any[]).reduce((sum: number, e: any) => sum + (e.duration || 0), 0);
+      if (steps > 0) { totalSteps += steps; daysWithSteps++; }
+      if (dayExercises.length > 0) { totalExerciseCals += exCals; totalExerciseDuration += exDuration; daysWithExercise++; }
+      totalStepsCals += Math.round(steps * 0.04);
+    }
+
+    const todayKey = formatDateKey(today);
+    const todaySteps = stepsData[todayKey] || 0;
+    const todayExercises = exercisesData[todayKey] || [];
+    const todayExCals = (todayExercises as any[]).reduce((sum: number, e: any) => sum + (e.caloriesBurned || 0), 0);
+    const todayStepsCals = Math.round(todaySteps * 0.04);
+
+    return {
+      avgSteps: daysWithSteps > 0 ? Math.round(totalSteps / daysWithSteps) : 0,
+      avgExerciseCals: daysWithExercise > 0 ? Math.round(totalExerciseCals / daysWithExercise) : 0,
+      avgExerciseDuration: daysWithExercise > 0 ? Math.round(totalExerciseDuration / daysWithExercise) : 0,
+      totalBurned: totalStepsCals + totalExerciseCals,
+      daysWithSteps,
+      daysWithExercise,
+      todaySteps,
+      todayExCals,
+      todayStepsCals,
+      todayTotalBurned: todayStepsCals + todayExCals,
+    };
+  }, [exerciseData, timeRangeDays]);
+
+  const renderMicrosWaterSection = () => {
+    const waterTarget = 8;
+    const waterProgress = waterTarget > 0 ? Math.min((microsTrend.todayWater / waterTarget) * 100, 100) : 0;
+
+    const micros = [
+      {
+        name: 'Gula',
+        value: microsTrend.todaySugar,
+        avg: microsTrend.avgSugar,
+        target: 25,
+        unit: 'g',
+        color: '#F59E0B',
+        isLessBetter: true,
+      },
+      {
+        name: 'Serat',
+        value: microsTrend.todayFiber,
+        avg: microsTrend.avgFiber,
+        target: 25,
+        unit: 'g',
+        color: '#22C55E',
+        isLessBetter: false,
+      },
+      {
+        name: 'Sodium',
+        value: microsTrend.todaySodium,
+        avg: microsTrend.avgSodium,
+        target: 2300,
+        unit: 'mg',
+        color: '#EF4444',
+        isLessBetter: true,
+      },
+    ];
+
+    return (
+      <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.chartHeader}>
+          <View style={styles.chartTitleRow}>
+            <View style={[styles.chartIconWrap, { backgroundColor: '#06B6D4' + '15' }]}>
+              <Droplets size={18} color="#06B6D4" />
+            </View>
+            <View>
+              <Text style={[styles.chartTitle, { color: theme.text }]}>Mikro & Air</Text>
+              <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
+                Rata-rata {timeRange === '7h' ? '7 hari' : timeRange === '30h' ? '30 hari' : '90 hari'} terakhir
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.waterTrendRow}>
+          <View style={styles.waterTrendLeft}>
+            <Droplets size={20} color="#06B6D4" />
+            <View>
+              <Text style={[styles.waterTrendLabel, { color: theme.text }]}>Air Hari Ini</Text>
+              <Text style={[styles.waterTrendSub, { color: theme.textSecondary }]}>
+                Rata-rata: {microsTrend.avgWater} gelas/hari
+              </Text>
+            </View>
+          </View>
+          <View style={styles.waterTrendRight}>
+            <Text style={[styles.waterTrendValue, { color: '#06B6D4' }]}>{microsTrend.todayWater}</Text>
+            <Text style={[styles.waterTrendTarget, { color: theme.textTertiary }]}>/ {waterTarget}</Text>
+          </View>
+        </View>
+        <View style={[styles.waterProgressBg, { backgroundColor: theme.border }]}>
+          <View style={[styles.waterProgressFill, { width: `${waterProgress}%`, backgroundColor: '#06B6D4' }]} />
+        </View>
+
+        <View style={styles.microsDivider} />
+
+        {micros.map((micro) => {
+          const progress = micro.target > 0 ? Math.min((micro.avg / micro.target) * 100, 100) : 0;
+          const isOverLimit = micro.isLessBetter && micro.avg > micro.target;
+          const isGood = micro.isLessBetter ? micro.avg <= micro.target : micro.avg >= micro.target;
+
+          return (
+            <View key={micro.name} style={styles.microRow}>
+              <View style={styles.microRowHeader}>
+                <View style={styles.microRowLeft}>
+                  <View style={[styles.microColorDot, { backgroundColor: micro.color }]} />
+                  <Text style={[styles.microRowName, { color: theme.text }]}>{micro.name}</Text>
+                </View>
+                <View style={styles.microRowRight}>
+                  <Text style={[styles.microRowAvg, { color: isOverLimit ? theme.destructive : theme.text }]}>
+                    {micro.avg}
+                  </Text>
+                  <Text style={[styles.microRowTarget, { color: theme.textTertiary }]}>
+                    / {micro.target}{micro.unit}
+                  </Text>
+                  {isGood && (
+                    <Text style={styles.microGoodBadge}>✓</Text>
+                  )}
+                </View>
+              </View>
+              <View style={[styles.microProgressBg, { backgroundColor: theme.border }]}>
+                <View
+                  style={[
+                    styles.microProgressFill,
+                    {
+                      width: `${progress}%`,
+                      backgroundColor: isOverLimit ? theme.destructive : micro.color,
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
+  const renderActivitySection = () => {
+    const stepsGoal = 10000;
+    const stepsProgress = stepsGoal > 0 ? Math.min((activityTrend.todaySteps / stepsGoal) * 100, 100) : 0;
+
+    const last7 = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      const key = formatDateKey(d);
+      const steps = (exerciseData.stepsData || {})[key] || 0;
+      const dayLabel = d.toLocaleDateString('id-ID', { weekday: 'short' }).slice(0, 2);
+      const isToday = key === formatDateKey(new Date());
+      return { key, steps, dayLabel, isToday };
+    });
+    const maxSteps = Math.max(...last7.map(d => d.steps), 1);
+    const stepsChartHeight = 80;
+
+    return (
+      <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.chartHeader}>
+          <View style={styles.chartTitleRow}>
+            <View style={[styles.chartIconWrap, { backgroundColor: '#10B981' + '15' }]}>
+              <Activity size={18} color="#10B981" />
+            </View>
+            <View>
+              <Text style={[styles.chartTitle, { color: theme.text }]}>Aktivitas</Text>
+              <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
+                Langkah & kalori terbakar
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.activityStatsRow}>
+          <View style={[styles.activityStatCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+            <Footprints size={18} color="#10B981" />
+            <Text style={[styles.activityStatValue, { color: theme.text }]}>
+              {activityTrend.todaySteps.toLocaleString()}
+            </Text>
+            <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>langkah</Text>
+            <View style={[styles.activityMiniProgress, { backgroundColor: theme.border }]}>
+              <View style={[styles.activityMiniProgressFill, { width: `${stepsProgress}%`, backgroundColor: '#10B981' }]} />
+            </View>
+          </View>
+
+          <View style={[styles.activityStatCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+            <Flame size={18} color="#F59E0B" />
+            <Text style={[styles.activityStatValue, { color: theme.text }]}>
+              {activityTrend.todayTotalBurned}
+            </Text>
+            <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>cal terbakar</Text>
+            <View style={styles.activityBurnBreakdown}>
+              <Text style={[styles.activityBurnDetail, { color: theme.textTertiary }]}>
+                {activityTrend.todayStepsCals} langkah
+              </Text>
+              <Text style={[styles.activityBurnDetail, { color: theme.textTertiary }]}>
+                + {activityTrend.todayExCals} latihan
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.activityStatCard, { backgroundColor: theme.background, borderColor: theme.border }]}>
+            <Dumbbell size={18} color="#8B5CF6" />
+            <Text style={[styles.activityStatValue, { color: theme.text }]}>
+              {activityTrend.avgExerciseDuration}
+            </Text>
+            <Text style={[styles.activityStatLabel, { color: theme.textSecondary }]}>mnt/hari</Text>
+            <Text style={[styles.activityBurnDetail, { color: theme.textTertiary }]}>
+              avg {activityTrend.avgExerciseCals} cal
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.stepsChartSection}>
+          <Text style={[styles.stepsChartTitle, { color: theme.textSecondary }]}>Langkah 7 hari terakhir</Text>
+          <View style={[styles.stepsChartArea, { height: stepsChartHeight + 30 }]}>
+            {last7.map((d) => {
+              const barH = maxSteps > 0 ? (d.steps / maxSteps) * stepsChartHeight : 0;
+              return (
+                <View key={d.key} style={styles.stepsBarCol}>
+                  {d.steps > 0 && (
+                    <Text style={[styles.stepsBarValue, { color: d.isToday ? '#10B981' : theme.textTertiary }]}>
+                      {d.steps >= 1000 ? `${(d.steps / 1000).toFixed(1)}k` : d.steps}
+                    </Text>
+                  )}
+                  <View
+                    style={[
+                      styles.stepsBar,
+                      {
+                        height: Math.max(barH, 4),
+                        backgroundColor: d.isToday ? '#10B981' : '#10B981' + '40',
+                      },
+                      d.isToday && { borderWidth: 2, borderColor: '#10B981' },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.stepsDayLabel,
+                      { color: d.isToday ? '#10B981' : theme.textTertiary },
+                      d.isToday && { fontWeight: '700' as const },
+                    ]}
+                  >
+                    {d.dayLabel}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={[styles.activityAvgRow, { borderTopColor: theme.border }]}>
+          <View style={styles.activityAvgItem}>
+            <Text style={[styles.activityAvgLabel, { color: theme.textSecondary }]}>Avg langkah</Text>
+            <Text style={[styles.activityAvgValue, { color: theme.text }]}>
+              {activityTrend.avgSteps.toLocaleString()}
+            </Text>
+          </View>
+          <View style={[styles.activityAvgDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.activityAvgItem}>
+            <Text style={[styles.activityAvgLabel, { color: theme.textSecondary }]}>Total terbakar</Text>
+            <Text style={[styles.activityAvgValue, { color: theme.text }]}>
+              {activityTrend.totalBurned.toLocaleString()} cal
+            </Text>
+          </View>
+          <View style={[styles.activityAvgDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.activityAvgItem}>
+            <Text style={[styles.activityAvgLabel, { color: theme.textSecondary }]}>Hari aktif</Text>
+            <Text style={[styles.activityAvgValue, { color: theme.text }]}>
+              {Math.max(activityTrend.daysWithSteps, activityTrend.daysWithExercise)}
+            </Text>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const renderBMICard = () => {
     if (!profile?.height || !profile?.weight) return null;
     const heightM = profile.height / 100;
@@ -1343,6 +1684,8 @@ export default function AnalyticsScreen() {
           {renderBodyProgress()}
           {renderWeightChanges()}
           {renderCalorieChart()}
+          {renderMicrosWaterSection()}
+          {renderActivitySection()}
           {renderWeeklyEnergy()}
           {renderExpenditureChanges()}
           {renderMacroChart()}
@@ -2677,5 +3020,203 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600' as const,
     color: '#FFFFFF',
+  },
+  waterTrendRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    marginBottom: 10,
+  },
+  waterTrendLeft: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+  },
+  waterTrendLabel: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+  },
+  waterTrendSub: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    marginTop: 1,
+  },
+  waterTrendRight: {
+    flexDirection: 'row' as const,
+    alignItems: 'baseline' as const,
+    gap: 2,
+  },
+  waterTrendValue: {
+    fontSize: 22,
+    fontWeight: '800' as const,
+    letterSpacing: -0.5,
+  },
+  waterTrendTarget: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+  },
+  waterProgressBg: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden' as const,
+    marginBottom: 4,
+  },
+  waterProgressFill: {
+    height: '100%' as const,
+    borderRadius: 4,
+  },
+  microsDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    marginVertical: 16,
+  },
+  microRow: {
+    gap: 8,
+    marginBottom: 14,
+  },
+  microRowHeader: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+  },
+  microRowLeft: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  microColorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  microRowName: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  microRowRight: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 3,
+  },
+  microRowAvg: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+  },
+  microRowTarget: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+  },
+  microGoodBadge: {
+    fontSize: 13,
+    color: '#22C55E',
+    fontWeight: '700' as const,
+    marginLeft: 4,
+  },
+  microProgressBg: {
+    height: 5,
+    borderRadius: 3,
+    overflow: 'hidden' as const,
+  },
+  microProgressFill: {
+    height: '100%' as const,
+    borderRadius: 3,
+  },
+  activityStatsRow: {
+    flexDirection: 'row' as const,
+    gap: 8,
+    marginBottom: 16,
+  },
+  activityStatCard: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center' as const,
+    gap: 4,
+  },
+  activityStatValue: {
+    fontSize: 18,
+    fontWeight: '800' as const,
+    letterSpacing: -0.5,
+  },
+  activityStatLabel: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+  },
+  activityMiniProgress: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden' as const,
+    width: '100%' as const,
+    marginTop: 4,
+  },
+  activityMiniProgressFill: {
+    height: '100%' as const,
+    borderRadius: 2,
+  },
+  activityBurnBreakdown: {
+    alignItems: 'center' as const,
+    marginTop: 2,
+  },
+  activityBurnDetail: {
+    fontSize: 10,
+    fontWeight: '500' as const,
+  },
+  stepsChartSection: {
+    marginBottom: 8,
+  },
+  stepsChartTitle: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    marginBottom: 12,
+  },
+  stepsChartArea: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'flex-end' as const,
+    paddingBottom: 24,
+  },
+  stepsBarCol: {
+    flex: 1,
+    alignItems: 'center' as const,
+    justifyContent: 'flex-end' as const,
+    gap: 4,
+  },
+  stepsBar: {
+    width: '55%' as const,
+    borderRadius: 6,
+    maxWidth: 24,
+  },
+  stepsBarValue: {
+    fontSize: 9,
+    fontWeight: '600' as const,
+  },
+  stepsDayLabel: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+  },
+  activityAvgRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    paddingTop: 14,
+    borderTopWidth: 1,
+  },
+  activityAvgItem: {
+    flex: 1,
+    alignItems: 'center' as const,
+    gap: 2,
+  },
+  activityAvgLabel: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+  },
+  activityAvgValue: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+  },
+  activityAvgDivider: {
+    width: 1,
+    height: 28,
   },
 });
