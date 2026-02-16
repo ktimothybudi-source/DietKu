@@ -1033,20 +1033,15 @@ export default function AnalyticsScreen() {
             <View style={[styles.chartIconWrap, { backgroundColor: '#8B5CF6' + '15' }]}>
               <Camera size={18} color="#8B5CF6" />
             </View>
-            <View>
-              <Text style={[styles.chartTitle, { color: theme.text }]}>Foto Kemajuan</Text>
-              <Text style={[styles.chartSubtitle, { color: theme.textSecondary }]}>
-                Dokumentasi perubahan tubuhmu
-              </Text>
-            </View>
+            <Text style={[styles.chartTitle, { color: theme.text }]}>Foto Kemajuan</Text>
           </View>
           <TouchableOpacity
-            style={[styles.recordBtn, { backgroundColor: '#8B5CF6' }]}
+            style={[styles.fotoBtn, { backgroundColor: '#8B5CF6' }]}
             onPress={() => { setShowPhotoModal(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
             activeOpacity={0.8}
           >
-            <Plus size={16} color="#FFF" />
-            <Text style={styles.recordBtnText}>Foto</Text>
+            <Plus size={14} color="#FFF" />
+            <Text style={styles.fotoBtnText}>Foto</Text>
           </TouchableOpacity>
         </View>
 
@@ -2669,5 +2664,18 @@ const styles = StyleSheet.create({
   photoModalCancelText: {
     fontSize: 16,
     fontWeight: '600' as const,
+  },
+  fotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  fotoBtnText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
   },
 });
