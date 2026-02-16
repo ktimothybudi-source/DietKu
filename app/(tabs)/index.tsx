@@ -1023,13 +1023,13 @@ export default function HomeScreen() {
                       <View style={styles.heroRingWrap}>
                         <ProgressRing
                           progress={Math.min((progress?.caloriesProgress || 0), 100)}
-                          size={110}
-                          strokeWidth={12}
+                          size={90}
+                          strokeWidth={10}
                           color={(progress?.isOver || false) ? '#C53030' : '#4CAF7D'}
                           backgroundColor={theme.border}
                         >
                           <View style={styles.heroRingContent}>
-                            <Flame size={16} color={theme.textTertiary} />
+                            <Flame size={14} color={theme.textTertiary} />
                             <Text style={[styles.heroCalValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
                               {todayTotals.calories}
                             </Text>
@@ -1039,17 +1039,17 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.heroDetailsCol}>
                         <View style={styles.heroStatRow}>
-                          <Target size={13} color="#4CAF7D" />
+                          <Target size={11} color="#4CAF7D" />
                           <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Target</Text>
                           <Text style={[styles.heroStatValue, { color: theme.text }]}>{dailyTargets.calories.toLocaleString()}</Text>
                         </View>
                         <View style={styles.heroStatRow}>
-                          <Utensils size={13} color="#F59E0B" />
+                          <Utensils size={11} color="#F59E0B" />
                           <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Makan</Text>
                           <Text style={[styles.heroStatValue, { color: '#F59E0B' }]}>-{todayTotals.calories.toLocaleString()}</Text>
                         </View>
                         <View style={styles.heroStatRow}>
-                          <Dumbbell size={13} color="#4CAF7D" />
+                          <Dumbbell size={11} color="#4CAF7D" />
                           <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Olahraga</Text>
                           <Text style={[styles.heroStatValue, { color: '#4CAF7D' }]}>+{totalCaloriesBurned}</Text>
                         </View>
@@ -3293,20 +3293,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center' as const,
   },
   heroCalValue: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '800' as const,
-    letterSpacing: -1.5,
-    lineHeight: 26,
+    letterSpacing: -1,
+    lineHeight: 22,
     marginTop: 2,
   },
   heroCalLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '500' as const,
     marginTop: 1,
   },
   heroDetailsCol: {
     flex: 1,
-    gap: 6,
+    gap: 4,
   },
   heroStatRow: {
     flexDirection: 'row' as const,
@@ -3314,12 +3314,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   heroStatLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500' as const,
     flex: 1,
   },
   heroStatValue: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700' as const,
     letterSpacing: -0.3,
   },
@@ -3336,7 +3336,7 @@ const styles = StyleSheet.create({
     textAlign: 'right' as const,
   },
   heroRemainingValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800' as const,
     letterSpacing: -1.2,
     textAlign: 'right' as const,
