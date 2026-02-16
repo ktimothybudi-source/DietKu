@@ -1018,7 +1018,7 @@ export default function HomeScreen() {
                       setCarouselPageHeight(h);
                     }
                   }}>
-                    <View style={[styles.separatedCard, { backgroundColor: theme.card }]}>
+                    <View style={[styles.separatedCard, styles.heroCardTaller, { backgroundColor: theme.card }]}>
                     <View style={styles.heroCalorieRow}>
                       <View style={styles.heroRingWrap}>
                         <ProgressRing
@@ -1333,7 +1333,11 @@ export default function HomeScreen() {
                   <View style={styles.exFixedContent}>
                     {exerciseMode === 'quick' && (
                       <View style={styles.exQuickContentCompact}>
-                        <View style={styles.exQuickGridCompact}>
+                        <ScrollView 
+                          horizontal 
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.exQuickScrollContent}
+                        >
                           {QUICK_EXERCISES.map((ex) => (
                             <TouchableOpacity
                               key={ex.type}
@@ -1348,11 +1352,11 @@ export default function HomeScreen() {
                               }}
                               activeOpacity={0.7}
                             >
-                              <Text style={{ fontSize: 20 }}>{ex.emoji}</Text>
-                              <Text style={[{ fontSize: 9, fontWeight: '500' as const }, { color: theme.text }]} numberOfLines={1}>{ex.label}</Text>
+                              <Text style={{ fontSize: 32 }}>{ex.emoji}</Text>
+                              <Text style={[{ fontSize: 11, fontWeight: '600' as const }, { color: theme.text }]} numberOfLines={1}>{ex.label}</Text>
                             </TouchableOpacity>
                           ))}
-                        </View>
+                        </ScrollView>
                         {selectedQuickExercise && (
                           <View style={styles.exQuickInputRowCompact}>
                             <TextInput
@@ -3168,19 +3172,18 @@ const styles = StyleSheet.create({
   exQuickContentCompact: {
     gap: 8,
   },
-  exQuickGridCompact: {
-    flexDirection: 'row' as const,
-    gap: 6,
+  exQuickScrollContent: {
+    paddingVertical: 4,
+    gap: 10,
   },
   exQuickGridChip: {
+    width: 90,
+    height: 100,
     alignItems: 'center' as const,
-    gap: 3,
-    paddingVertical: 10,
-    paddingHorizontal: 0,
-    borderRadius: 10,
+    justifyContent: 'center' as const,
+    gap: 6,
+    borderRadius: 12,
     borderWidth: 1,
-    flex: 1,
-    minWidth: 0,
   },
   exQuickInputRowCompact: {
     flexDirection: 'row' as const,
@@ -3252,6 +3255,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
+  },
+  heroCardTaller: {
+    minHeight: 200,
   },
   carouselCard: {
     width: CAROUSEL_CARD_WIDTH,
