@@ -1018,25 +1018,27 @@ export default function HomeScreen() {
                       setCarouselPageHeight(h);
                     }
                   }}>
-                    <View style={[styles.separatedCard, styles.heroCardTaller, { backgroundColor: theme.card }]}>
+                    <View style={[styles.heroCardOutlined, { backgroundColor: theme.card, borderColor: theme.border }]}>
                     <View style={styles.heroCalorieRow}>
                       <View style={styles.heroRingWrap}>
-                        <ProgressRing
-                          progress={Math.min((progress?.caloriesProgress || 0), 100)}
-                          size={120}
-                          strokeWidth={8}
-                          color={(progress?.isOver || false) ? '#C53030' : '#A78BFA'}
-                          backgroundColor={theme.border}
-                        >
-                          <View style={styles.heroRingContent}>
-                            <Flame size={18} color={theme.textTertiary} />
-                            <Text style={[styles.heroCalValue, { color: theme.text }]}>
-                              {todayTotals.calories}
-                            </Text>
-                            <Text style={[styles.heroCalLabel, { color: theme.textSecondary }]}>kalori</Text>
-                            <Text style={[styles.heroCalSubLabel, { color: theme.textTertiary }]}>{progress?.isOver ? 'Berlebih' : 'Tersisa'}</Text>
-                          </View>
-                        </ProgressRing>
+                        <View style={[styles.heroRingOuterBorder, { borderColor: theme.border }]}>
+                          <ProgressRing
+                            progress={Math.min((progress?.caloriesProgress || 0), 100)}
+                            size={130}
+                            strokeWidth={6}
+                            color={(progress?.isOver || false) ? '#C53030' : '#A78BFA'}
+                            backgroundColor={theme.border}
+                          >
+                            <View style={styles.heroRingContent}>
+                              <Flame size={16} color={theme.textTertiary} />
+                              <Text style={[styles.heroCalValue, { color: theme.text }]}>
+                                {todayTotals.calories}
+                              </Text>
+                              <Text style={[styles.heroCalLabel, { color: theme.text }]}>kalori</Text>
+                              <Text style={[styles.heroCalSubLabel, { color: theme.textTertiary }]}>{progress?.isOver ? 'Berlebih' : 'Tersisa'}</Text>
+                            </View>
+                          </ProgressRing>
+                        </View>
                       </View>
                       <View style={styles.heroDetailsCol}>
                         <View style={styles.heroSimpleRow}>
@@ -1044,6 +1046,7 @@ export default function HomeScreen() {
                           <Text style={[styles.heroSimpleSeparator, { color: theme.textTertiary }]}> · </Text>
                           <Text style={[styles.heroSimpleValue, { color: theme.text }]}>{dailyTargets.calories.toLocaleString()}</Text>
                         </View>
+                        <View style={[styles.heroSimpleDivider, { backgroundColor: theme.border }]} />
                         <View style={styles.heroSimpleRow}>
                           <Text style={[styles.heroSimpleLabel, { color: theme.textSecondary }]}>Makan</Text>
                           <Text style={[styles.heroSimpleSeparator, { color: theme.textTertiary }]}> · </Text>
@@ -3255,6 +3258,26 @@ const styles = StyleSheet.create({
   heroCardTaller: {
     minHeight: 200,
   },
+  heroCardOutlined: {
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  heroRingOuterBorder: {
+    borderWidth: 2,
+    borderRadius: 999,
+    padding: 4,
+  },
+  heroSimpleDivider: {
+    height: 1,
+    alignSelf: 'stretch' as const,
+    marginVertical: 2,
+  },
   carouselCard: {
     width: CAROUSEL_CARD_WIDTH,
     borderRadius: 18,
@@ -3283,7 +3306,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     alignSelf: 'stretch' as const,
-    gap: 14,
+    gap: 20,
   },
   heroRingWrap: {
     alignItems: 'center' as const,
@@ -3294,25 +3317,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center' as const,
   },
   heroCalValue: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800' as const,
     letterSpacing: -1,
-    lineHeight: 32,
+    lineHeight: 30,
     marginTop: 2,
   },
   heroCalLabel: {
-    fontSize: 12,
-    fontWeight: '500' as const,
+    fontSize: 13,
+    fontWeight: '600' as const,
     marginTop: 1,
   },
   heroCalSubLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500' as const,
     marginTop: 2,
+    textTransform: 'capitalize' as const,
   },
   heroDetailsCol: {
     flex: 1,
-    gap: 10,
+    gap: 8,
     justifyContent: 'center' as const,
   },
   heroSimpleRow: {
@@ -3321,15 +3345,15 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   heroSimpleLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500' as const,
   },
   heroSimpleSeparator: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500' as const,
   },
   heroSimpleValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700' as const,
   },
   heroStatRow: {
