@@ -2096,9 +2096,10 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   chartSubtitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '500' as const,
     marginTop: 2,
+    opacity: 0.7,
   },
   recordBtn: {
     flexDirection: 'row',
@@ -2291,8 +2292,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   targetBadgeText: {
-    fontSize: 13,
-    fontWeight: '700' as const,
+    fontSize: 11,
+    fontWeight: '600' as const,
   },
   chartContainer: {
     position: 'relative',
