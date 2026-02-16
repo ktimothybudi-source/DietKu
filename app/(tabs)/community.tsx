@@ -418,7 +418,7 @@ export default function CommunityScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={[styles.container, { backgroundColor: theme.background }]}> 
-        <View style={[styles.header, { borderBottomColor: theme.border }]}> 
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}> 
           <Text style={[styles.headerTitle, { color: theme.text }]}>Komunitas</Text>
           <TouchableOpacity
             style={[styles.createBtn, { backgroundColor: theme.primary }]}
@@ -506,10 +506,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 58,
     paddingHorizontal: 20,
     paddingBottom: 14,
-    borderBottomWidth: 1,
   },
   headerTitle: {
     fontSize: 26,
