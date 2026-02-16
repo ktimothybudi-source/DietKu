@@ -8,6 +8,7 @@ import {
   Image,
   Alert,
   Platform,
+  Share,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -72,7 +73,6 @@ export default function GroupSettingsScreen() {
 
     if (Platform.OS !== 'web') {
       try {
-        const { Share } = require('react-native');
         await Share.share({ message });
       } catch (e) {
         console.log('Share cancelled or failed:', e);
