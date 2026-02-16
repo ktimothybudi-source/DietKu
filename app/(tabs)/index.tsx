@@ -1031,10 +1031,12 @@ export default function HomeScreen() {
                           >
                             <View style={styles.heroRingContent}>
                               <Flame size={16} color={theme.textTertiary} />
-                              <Text style={[styles.heroCalValue, { color: theme.text }]}>
-                                {todayTotals.calories}
-                              </Text>
-                              <Text style={[styles.heroCalLabel, { color: theme.text }]}>kalori</Text>
+                              <View style={styles.heroCalValueRow}>
+                                <Text style={[styles.heroCalValue, { color: theme.text }]}>
+                                  {todayTotals.calories}
+                                </Text>
+                                <Text style={[styles.heroCalLabel, { color: theme.text }]}>kalori</Text>
+                              </View>
                               <Text style={[styles.heroCalSubLabel, { color: theme.textTertiary }]}>{progress?.isOver ? 'Berlebih' : 'Tersisa'}</Text>
                             </View>
                           </ProgressRing>
@@ -3316,17 +3318,22 @@ const styles = StyleSheet.create({
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
+  heroCalValueRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    marginTop: 2,
+  },
   heroCalValue: {
     fontSize: 26,
     fontWeight: '800' as const,
     letterSpacing: -1,
     lineHeight: 30,
-    marginTop: 2,
   },
   heroCalLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600' as const,
-    marginTop: 1,
+    marginTop: 6,
   },
   heroCalSubLabel: {
     fontSize: 10,
