@@ -1035,13 +1035,13 @@ export default function AnalyticsScreen() {
       <View style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={styles.chartHeader}>
           <View style={styles.chartTitleRow}>
-            <View style={[styles.chartIconWrap, { backgroundColor: '#8B5CF6' + '15' }]}>
-              <Camera size={18} color="#8B5CF6" />
+            <View style={[styles.chartIconWrap, { backgroundColor: '#3B82F6' + '15' }]}>
+              <Camera size={18} color="#3B82F6" />
             </View>
             <Text style={[styles.chartTitle, { color: theme.text }]}>Foto Kemajuan</Text>
           </View>
           <TouchableOpacity
-            style={[styles.fotoBtn, { backgroundColor: '#8B5CF6' }]}
+            style={[styles.fotoBtn, { backgroundColor: '#3B82F6' }]}
             onPress={() => { setShowPhotoModal(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
             activeOpacity={0.8}
           >
@@ -1056,8 +1056,8 @@ export default function AnalyticsScreen() {
             onPress={() => { setShowPhotoModal(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
             activeOpacity={0.7}
           >
-            <View style={[styles.emptyPhotoIcon, { backgroundColor: '#8B5CF6' + '10' }]}>
-              <Camera size={28} color="#8B5CF6" />
+            <View style={[styles.emptyPhotoIcon, { backgroundColor: '#3B82F6' + '10' }]}>
+              <Camera size={28} color="#3B82F6" />
             </View>
             <Text style={[styles.emptyPhotoTitle, { color: theme.text }]}>Mulai dokumentasi</Text>
             <Text style={[styles.emptyPhotoText, { color: theme.textSecondary }]}>
@@ -1903,12 +1903,12 @@ export default function AnalyticsScreen() {
               Dokumentasi perubahan tubuhmu secara berkala
             </Text>
             <TouchableOpacity
-              style={[styles.photoModalOption, { backgroundColor: '#8B5CF6' + '10' }]}
+              style={[styles.photoModalOption, { backgroundColor: '#3B82F6' + '10' }]}
               onPress={takeBodyPhoto}
               activeOpacity={0.7}
             >
-              <View style={[styles.photoModalIconWrap, { backgroundColor: '#8B5CF6' + '20' }]}>
-                <Camera size={22} color="#8B5CF6" />
+              <View style={[styles.photoModalIconWrap, { backgroundColor: '#3B82F6' + '20' }]}>
+                <Camera size={22} color="#3B82F6" />
               </View>
               <View style={styles.photoModalOptionText}>
                 <Text style={[styles.photoModalOptionTitle, { color: theme.text }]}>Ambil Foto</Text>
