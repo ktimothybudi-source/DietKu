@@ -38,6 +38,7 @@ import ProgressRing from '@/components/ProgressRing';
 import { useExercise } from '@/contexts/ExerciseContext';
 import { QUICK_EXERCISES, QuickExercise, ExerciseType } from '@/types/exercise';
 import { ANIMATION_DURATION } from '@/constants/animations';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getTimeBasedMessage, getProgressMessage, getCalorieFeedback, MotivationalMessage } from '@/constants/motivationalMessages';
 
 export default function HomeScreen() {
@@ -74,6 +75,7 @@ export default function HomeScreen() {
     return { year: today.getFullYear(), month: today.getMonth() };
   });
   const [shownPendingIds, setShownPendingIds] = useState<Set<string>>(new Set());
+  const insets = useSafeAreaInsets();
   const [motivationalMessage, setMotivationalMessage] = useState<MotivationalMessage & { isWarning?: boolean; isCelebration?: boolean } | null>(null);
   const [showMotivationalToast, setShowMotivationalToast] = useState(false);
   const motivationalToastAnim = useRef(new Animated.Value(-100)).current;
@@ -921,7 +923,7 @@ export default function HomeScreen() {
       />
       
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={[styles.header, { backgroundColor: theme.background }]}>
+        <View style={[styles.header, { backgroundColor: theme.background, paddingTop: insets.top + 16 }]}>
           <View style={styles.headerTop}>
             <View style={styles.appNameContainer}>
               <Image 
@@ -2717,7 +2719,6 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 60,
     paddingBottom: 16,
   },
   headerTop: {
@@ -2841,8 +2842,8 @@ const styles = StyleSheet.create({
     height: 32,
   },
   appName: {
-    fontSize: 24,
-    fontWeight: '700' as const,
+    fontSize: 26,
+    fontWeight: '800' as const,
     letterSpacing: -0.5,
   },
 

@@ -28,6 +28,7 @@ import { useCommunity } from '@/contexts/CommunityContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { FoodPost, MEAL_TYPE_LABELS } from '@/types/community';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function timeAgo(timestamp: number): string {
   const diff = Date.now() - timestamp;
@@ -217,6 +218,7 @@ export default function CommunityScreen() {
   const { theme } = useTheme();
   const { posts, toggleLike, deletePost, hasProfile, communityProfile } = useCommunity();
   const { authState } = useNutrition();
+  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<GroupTab>('feed');
   const [chatInput, setChatInput] = useState('');

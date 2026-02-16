@@ -15,12 +15,14 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCommunity } from '@/contexts/CommunityContext';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
   const { profile, dailyTargets, favorites, removeFromFavorites, authState, signOut } = useNutrition();
   const { theme, themeMode, toggleTheme } = useTheme();
   const { language } = useLanguage();
   const { communityProfile, hasProfile } = useCommunity();
+  const insets = useSafeAreaInsets();
 
   if (!profile || !dailyTargets) {
     return null;
@@ -88,7 +90,7 @@ export default function ProfileScreen() {
       />
       
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={styles.headerSection}>
+        <View style={[styles.headerSection, { paddingTop: insets.top + 16 }]}>
           <Text style={[styles.greeting, { color: theme.text }]}>Profil</Text>
         </View>
 
@@ -445,8 +447,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerSection: {
-    paddingTop: 58,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingBottom: 16,
   },
   greeting: {
