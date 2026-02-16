@@ -695,7 +695,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     }
   }, [profile, weightHistory, saveProfileMutation, saveWeightHistoryMutation]);
 
-  const addFoodEntry = useCallback((entry: Omit<FoodEntry, 'id' | 'timestamp'>) => {
+  const addFoodEntry = useCallback((entry: Omit<FoodEntry, 'id' | 'timestamp'>, autoPostToCommunity: boolean = true) => {
     console.log('[addFoodEntry] Adding entry:', entry);
     console.log('[addFoodEntry] Auth state:', authState);
     
@@ -708,6 +708,16 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     saveFoodEntryMutation.mutate(entry);
     updateStreak(todayKey);
     updateRecentMeals(entry);
+
+    if (autoPostToCommunity) {
+      const eventData = {
+        foodEntry: entry,
+        timestamp: Date.now(),
+      };
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('foodEntryAdded', { detail: eventData }));
+      }
+    }
   }, [saveFoodEntryMutation, authState]);
 
   const updateRecentMeals = (entry: Omit<FoodEntry, 'id' | 'timestamp'>) => {

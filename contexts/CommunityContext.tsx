@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { CommunityProfile, FoodPost, PostComment, CommunityGroup, GroupMember, AVATAR_COLORS, generateInviteCode } from '@/types/community';
 import { MOCK_POSTS, MOCK_COMMENTS, MOCK_GROUPS } from '@/mocks/communityPosts';
 import { useNutrition } from '@/contexts/NutritionContext';
+import { FoodEntry } from '@/types/nutrition';
 
 const COMMUNITY_PROFILE_KEY = 'community_profile';
 const COMMUNITY_POSTS_KEY = 'community_posts';
@@ -450,6 +451,44 @@ export const [CommunityProvider, useCommunity] = createContextHook(() => {
   const hasJoinedGroup = joinedGroupIds.length > 0;
   const hasProfile = !!communityProfile;
   const isLoading = profileQuery.isLoading || postsQuery.isLoading || joinedGroupIdsQuery.isLoading;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const handleFoodEntryAdded = (event: any) => {
+      const { foodEntry } = event.detail as { foodEntry: Omit<FoodEntry, 'id' | 'timestamp'> };
+      
+      if (!communityProfile || !hasJoinedGroup) {
+        console.log('Skipping auto-post: No profile or not in a group');
+        return;
+      }
+
+      console.log('Auto-posting food entry to community:', foodEntry.name);
+      
+      const newPost: FoodPost = {
+        id: `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userId: communityProfile.userId,
+        username: communityProfile.username,
+        displayName: communityProfile.displayName,
+        avatarColor: communityProfile.avatarColor,
+        caption: '',
+        foodName: foodEntry.name,
+        calories: Math.round(foodEntry.calories),
+        protein: Math.round(foodEntry.protein),
+        carbs: Math.round(foodEntry.carbs),
+        fat: Math.round(foodEntry.fat),
+        createdAt: Date.now(),
+        likes: [],
+        commentCount: 0,
+        groupId: activeGroupId || undefined,
+      };
+      
+      savePostMutation.mutate(newPost);
+    };
+
+    window.addEventListener('foodEntryAdded', handleFoodEntryAdded);
+    return () => window.removeEventListener('foodEntryAdded', handleFoodEntryAdded);
+  }, [communityProfile, hasJoinedGroup, activeGroupId, savePostMutation]);
 
   return {
     communityProfile,

@@ -268,6 +268,13 @@ export default function CommunityScreen() {
     router.push('/create-post');
   }, [authState.isSignedIn, hasProfile]);
 
+  const handleSettings = useCallback(() => {
+    if (!activeGroup) return;
+    console.log('community:group-settings', activeGroup.id);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push({ pathname: '/group-settings', params: { groupId: activeGroup.id } });
+  }, [activeGroup]);
+
   const handleComment = useCallback((postId: string) => {
     console.log('community:comment', postId);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -442,29 +449,6 @@ export default function CommunityScreen() {
 
   const HeaderContent = (
     <View style={styles.headerContent}>
-      {activeGroup && (
-        <View style={[styles.groupCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.groupHeaderRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.groupTitle, { color: theme.text }]}>{activeGroup.name}</Text>
-              <Text style={[styles.groupSubtitle, { color: theme.textSecondary }]}>
-                {activeGroup.members.length} anggota · {activeGroup.privacy === 'public' ? 'Publik' : 'Privat'}
-              </Text>
-            </View>
-            <Image source={{ uri: activeGroup.coverImage }} style={styles.groupCover} />
-          </View>
-          <TouchableOpacity
-            style={[styles.settingsBtn, { borderColor: theme.border }]}
-            onPress={handleGroupSettings}
-            activeOpacity={0.8}
-            testID="group-settings-btn"
-          >
-            <Settings size={14} color={theme.textSecondary} />
-            <Text style={[styles.settingsBtnText, { color: theme.textSecondary }]}>Pengaturan & Undang</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       <View style={styles.tabRow}>
         {([
           { key: 'feed' as const, label: 'Feed' },
@@ -579,14 +563,16 @@ export default function CommunityScreen() {
               {activeGroup?.name || 'Komunitas'}
             </Text>
           )}
-          <TouchableOpacity
-            style={[styles.createBtn, { backgroundColor: theme.primary }]}
-            onPress={handleCreatePost}
-            activeOpacity={0.8}
-            testID="community-create"
-          >
-            <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
-          </TouchableOpacity>
+          {activeGroup && (
+            <TouchableOpacity
+              style={[styles.settingsIconBtn, { backgroundColor: theme.primary }]}
+              onPress={handleSettings}
+              activeOpacity={0.8}
+              testID="community-settings"
+            >
+              <Settings size={18} color="#FFFFFF" strokeWidth={2.5} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {GroupPickerDropdown}
@@ -682,7 +668,7 @@ const styles = StyleSheet.create({
     gap: 4,
     flex: 1,
   },
-  createBtn: {
+  settingsIconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
