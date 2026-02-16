@@ -9,6 +9,7 @@ import { useNutrition } from '@/contexts/NutritionContext';
 const COMMUNITY_PROFILE_KEY = 'community_profile';
 const COMMUNITY_POSTS_KEY = 'community_posts';
 const COMMUNITY_COMMENTS_KEY = 'community_comments';
+const COMMUNITY_GROUP_KEY = 'community_joined_group';
 
 export const [CommunityProvider, useCommunity] = createContextHook(() => {
   const queryClient = useQueryClient();
@@ -17,6 +18,22 @@ export const [CommunityProvider, useCommunity] = createContextHook(() => {
   const [communityProfile, setCommunityProfile] = useState<CommunityProfile | null>(null);
   const [posts, setPosts] = useState<FoodPost[]>([]);
   const [comments, setComments] = useState<PostComment[]>([]);
+  const [hasJoinedGroup, setHasJoinedGroup] = useState(false);
+
+  const groupQuery = useQuery({
+    queryKey: ['community_group'],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(COMMUNITY_GROUP_KEY);
+      console.log('Community group joined:', stored);
+      return stored === 'true';
+    },
+  });
+
+  useEffect(() => {
+    if (groupQuery.data !== undefined) {
+      setHasJoinedGroup(groupQuery.data);
+    }
+  }, [groupQuery.data]);
 
   const profileQuery = useQuery({
     queryKey: ['community_profile', authState.email],
@@ -235,15 +252,50 @@ export const [CommunityProvider, useCommunity] = createContextHook(() => {
     return comments.filter(c => c.postId === postId);
   }, [comments]);
 
+  const joinGroupMutation = useMutation({
+    mutationFn: async () => {
+      await AsyncStorage.setItem(COMMUNITY_GROUP_KEY, 'true');
+      return true;
+    },
+    onSuccess: () => {
+      setHasJoinedGroup(true);
+      queryClient.invalidateQueries({ queryKey: ['community_group'] });
+      console.log('Joined community group');
+    },
+  });
+
+  const leaveGroupMutation = useMutation({
+    mutationFn: async () => {
+      await AsyncStorage.setItem(COMMUNITY_GROUP_KEY, 'false');
+      return false;
+    },
+    onSuccess: () => {
+      setHasJoinedGroup(false);
+      queryClient.invalidateQueries({ queryKey: ['community_group'] });
+      console.log('Left community group');
+    },
+  });
+
+  const joinGroup = useCallback(() => {
+    joinGroupMutation.mutate();
+  }, [joinGroupMutation]);
+
+  const leaveGroup = useCallback(() => {
+    leaveGroupMutation.mutate();
+  }, [leaveGroupMutation]);
+
   const hasProfile = !!communityProfile;
-  const isLoading = profileQuery.isLoading || postsQuery.isLoading;
+  const isLoading = profileQuery.isLoading || postsQuery.isLoading || groupQuery.isLoading;
 
   return {
     communityProfile,
     posts,
     comments,
     hasProfile,
+    hasJoinedGroup,
     isLoading,
+    joinGroup,
+    leaveGroup,
     saveCommunityProfile,
     createPost,
     toggleLike,

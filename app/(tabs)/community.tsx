@@ -22,6 +22,10 @@ import {
   Link as LinkIcon,
   Trophy,
   Send,
+  Users,
+  UserPlus,
+  Search,
+  Globe,
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCommunity } from '@/contexts/CommunityContext';
@@ -216,7 +220,7 @@ type LeaderEntry = {
 
 export default function CommunityScreen() {
   const { theme } = useTheme();
-  const { posts, toggleLike, deletePost, hasProfile, communityProfile } = useCommunity();
+  const { posts, toggleLike, deletePost, hasProfile, communityProfile, hasJoinedGroup, joinGroup } = useCommunity();
   const { authState } = useNutrition();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
@@ -412,6 +416,102 @@ export default function CommunityScreen() {
       </View>
     </View>
   );
+
+  const handleJoinGroup = useCallback(() => {
+    console.log('community:join-group');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!authState.isSignedIn) {
+      Alert.alert('Masuk Diperlukan', 'Silakan masuk terlebih dahulu untuk bergabung grup.', [
+        { text: 'Batal', style: 'cancel' },
+        { text: 'Masuk', onPress: () => router.push('/sign-in') },
+      ]);
+      return;
+    }
+    if (!hasProfile) {
+      router.push('/setup-community-profile');
+      return;
+    }
+    joinGroup();
+  }, [authState.isSignedIn, hasProfile, joinGroup]);
+
+  const handleCreateGroup = useCallback(() => {
+    console.log('community:create-group');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!authState.isSignedIn) {
+      Alert.alert('Masuk Diperlukan', 'Silakan masuk terlebih dahulu untuk membuat grup.', [
+        { text: 'Batal', style: 'cancel' },
+        { text: 'Masuk', onPress: () => router.push('/sign-in') },
+      ]);
+      return;
+    }
+    if (!hasProfile) {
+      router.push('/setup-community-profile');
+      return;
+    }
+    joinGroup();
+  }, [authState.isSignedIn, hasProfile, joinGroup]);
+
+  if (!hasJoinedGroup) {
+    return (
+      <>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
+          <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Komunitas</Text>
+          </View>
+
+          <View style={styles.noGroupContainer}>
+            <View style={[styles.noGroupIconWrap, { backgroundColor: theme.primary + '12' }]}>
+              <Users size={48} color={theme.primary} strokeWidth={1.5} />
+            </View>
+            <Text style={[styles.noGroupTitle, { color: theme.text }]}>Belum Ada Grup</Text>
+            <Text style={[styles.noGroupDesc, { color: theme.textSecondary }]}>
+              Bergabung dengan grup untuk berbagi progres makanan, chat, dan bersaing di leaderboard bersama teman-teman.
+            </Text>
+
+            <View style={styles.noGroupActions}>
+              <TouchableOpacity
+                style={[styles.joinGroupBtn, { backgroundColor: theme.primary }]}
+                onPress={handleJoinGroup}
+                activeOpacity={0.8}
+                testID="community-join-group"
+              >
+                <Search size={18} color="#FFFFFF" strokeWidth={2.5} />
+                <Text style={styles.joinGroupBtnText}>Cari & Gabung Grup</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.createGroupBtn, { borderColor: theme.border, backgroundColor: theme.card }]}
+                onPress={handleCreateGroup}
+                activeOpacity={0.8}
+                testID="community-create-group"
+              >
+                <Plus size={18} color={theme.primary} strokeWidth={2.5} />
+                <Text style={[styles.createGroupBtnText, { color: theme.text }]}>Buat Grup Baru</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.noGroupFeatures, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <Text style={[styles.featuresTitle, { color: theme.text }]}>Apa yang bisa kamu lakukan</Text>
+              {[
+                { icon: <Globe size={16} color={theme.primary} />, text: 'Lihat feed makanan anggota grup' },
+                { icon: <MessageCircle size={16} color={theme.primary} />, text: 'Chat dan diskusi nutrisi' },
+                { icon: <Trophy size={16} color={theme.primary} />, text: 'Bersaing di leaderboard streak' },
+                { icon: <UserPlus size={16} color={theme.primary} />, text: 'Undang teman ke grup kamu' },
+              ].map((feature, i) => (
+                <View key={i} style={styles.featureRow}>
+                  <View style={[styles.featureIconWrap, { backgroundColor: theme.primary + '12' }]}>
+                    {feature.icon}
+                  </View>
+                  <Text style={[styles.featureText, { color: theme.textSecondary }]}>{feature.text}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      </>
+    );
+  }
 
   return (
     <>
@@ -839,5 +939,95 @@ const styles = StyleSheet.create({
   leaderStreakText: {
     fontSize: 12,
     fontWeight: '700' as const,
+  },
+  noGroupContainer: {
+    flex: 1,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    paddingTop: 40,
+  },
+  noGroupIconWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  noGroupTitle: {
+    fontSize: 22,
+    fontWeight: '800' as const,
+    letterSpacing: -0.5,
+    marginBottom: 8,
+  },
+  noGroupDesc: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginBottom: 28,
+    paddingHorizontal: 8,
+  },
+  noGroupActions: {
+    width: '100%',
+    gap: 12,
+    marginBottom: 28,
+  },
+  joinGroupBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 14,
+    gap: 10,
+  },
+  joinGroupBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700' as const,
+    letterSpacing: -0.2,
+  },
+  createGroupBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
+  },
+  createGroupBtnText: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    letterSpacing: -0.2,
+  },
+  noGroupFeatures: {
+    width: '100%',
+    borderRadius: 14,
+    padding: 18,
+    borderWidth: 1,
+    gap: 14,
+  },
+  featuresTitle: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    letterSpacing: -0.2,
+    marginBottom: 2,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  featureIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureText: {
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 18,
   },
 });
