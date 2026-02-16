@@ -1023,41 +1023,37 @@ export default function HomeScreen() {
                       <View style={styles.heroRingWrap}>
                         <ProgressRing
                           progress={Math.min((progress?.caloriesProgress || 0), 100)}
-                          size={100}
-                          strokeWidth={11}
-                          color={(progress?.isOver || false) ? '#C53030' : '#4CAF7D'}
+                          size={120}
+                          strokeWidth={8}
+                          color={(progress?.isOver || false) ? '#C53030' : '#A78BFA'}
                           backgroundColor={theme.border}
                         >
                           <View style={styles.heroRingContent}>
-                            <Flame size={16} color={theme.textTertiary} />
-                            <Text style={[styles.heroCalValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
+                            <Flame size={18} color={theme.textTertiary} />
+                            <Text style={[styles.heroCalValue, { color: theme.text }]}>
                               {todayTotals.calories}
                             </Text>
                             <Text style={[styles.heroCalLabel, { color: theme.textSecondary }]}>kalori</Text>
+                            <Text style={[styles.heroCalSubLabel, { color: theme.textTertiary }]}>{progress?.isOver ? 'Berlebih' : 'Tersisa'}</Text>
                           </View>
                         </ProgressRing>
                       </View>
                       <View style={styles.heroDetailsCol}>
-                        <View style={styles.heroStatRow}>
-                          <Target size={13} color="#4CAF7D" />
-                          <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Target</Text>
-                          <Text style={[styles.heroStatValue, { color: theme.text }]}>{dailyTargets.calories.toLocaleString()}</Text>
+                        <View style={styles.heroSimpleRow}>
+                          <Text style={[styles.heroSimpleLabel, { color: theme.textSecondary }]}>Target</Text>
+                          <Text style={[styles.heroSimpleSeparator, { color: theme.textTertiary }]}> · </Text>
+                          <Text style={[styles.heroSimpleValue, { color: theme.text }]}>{dailyTargets.calories.toLocaleString()}</Text>
                         </View>
-                        <View style={styles.heroStatRow}>
-                          <Utensils size={13} color="#F59E0B" />
-                          <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Makan</Text>
-                          <Text style={[styles.heroStatValue, { color: '#F59E0B' }]}>-{todayTotals.calories.toLocaleString()}</Text>
+                        <View style={styles.heroSimpleRow}>
+                          <Text style={[styles.heroSimpleLabel, { color: theme.textSecondary }]}>Makan</Text>
+                          <Text style={[styles.heroSimpleSeparator, { color: theme.textTertiary }]}> · </Text>
+                          <Text style={[styles.heroSimpleValue, { color: theme.text }]}>{todayTotals.calories.toLocaleString()}</Text>
                         </View>
-                        <View style={styles.heroStatRow}>
-                          <Dumbbell size={13} color="#4CAF7D" />
-                          <Text style={[styles.heroStatLabel, { color: theme.textSecondary }]}>Olahraga</Text>
-                          <Text style={[styles.heroStatValue, { color: '#4CAF7D' }]}>+{totalCaloriesBurned}</Text>
+                        <View style={styles.heroSimpleRow}>
+                          <Text style={[styles.heroSimpleLabel, { color: theme.textSecondary }]}>Olahraga</Text>
+                          <Text style={[styles.heroSimpleSeparator, { color: theme.textTertiary }]}> · </Text>
+                          <Text style={[styles.heroSimpleValue, { color: theme.text }]}>{totalCaloriesBurned}</Text>
                         </View>
-                        <View style={[styles.heroRemainingDivider, { backgroundColor: theme.border }]} />
-                        <Text style={[styles.heroRemainingLabel, { color: theme.textSecondary }]}>{progress?.isOver ? 'BERLEBIH' : 'TERSISA'}</Text>
-                        <Text style={[styles.heroRemainingValue, { color: progress?.isOver ? theme.destructive : theme.text }]}>
-                          {progress?.isOver ? `+${Math.abs(progress?.caloriesRemaining || 0).toLocaleString()}` : Math.max(0, progress?.caloriesRemaining || 0).toLocaleString()}
-                        </Text>
                       </View>
                     </View>
                     </View>
@@ -3298,20 +3294,43 @@ const styles = StyleSheet.create({
     justifyContent: 'center' as const,
   },
   heroCalValue: {
-    fontSize: 22,
+    fontSize: 28,
     fontWeight: '800' as const,
     letterSpacing: -1,
-    lineHeight: 24,
+    lineHeight: 32,
     marginTop: 2,
   },
   heroCalLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '500' as const,
     marginTop: 1,
   },
+  heroCalSubLabel: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+    marginTop: 2,
+  },
   heroDetailsCol: {
     flex: 1,
-    gap: 7,
+    gap: 10,
+    justifyContent: 'center' as const,
+  },
+  heroSimpleRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'baseline' as const,
+    gap: 4,
+  },
+  heroSimpleLabel: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+  },
+  heroSimpleSeparator: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+  },
+  heroSimpleValue: {
+    fontSize: 14,
+    fontWeight: '700' as const,
   },
   heroStatRow: {
     flexDirection: 'row' as const,
