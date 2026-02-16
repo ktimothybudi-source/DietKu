@@ -1305,7 +1305,7 @@ export default function HomeScreen() {
                       <Dumbbell size={16} color="#F59E0B" />
                     </View>
                     <Text style={[styles.activitySeparateVal, { color: theme.text }]}>{todayExercises.length}</Text>
-                    <Text style={[styles.activitySeparateLabel, { color: theme.textSecondary }]}>Latihan</Text>
+                    <Text style={[styles.activitySeparateLabel, { color: theme.textSecondary }]}>Aktivitas</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -1348,8 +1348,8 @@ export default function HomeScreen() {
                               }}
                               activeOpacity={0.7}
                             >
-                              <Text style={{ fontSize: 14 }}>{ex.emoji}</Text>
-                              <Text style={[{ fontSize: 10, fontWeight: '500' as const }, { color: theme.text }]}>{ex.label}</Text>
+                              <Text style={{ fontSize: 20 }}>{ex.emoji}</Text>
+                              <Text style={[{ fontSize: 9, fontWeight: '500' as const }, { color: theme.text }]} numberOfLines={1}>{ex.label}</Text>
                             </TouchableOpacity>
                           ))}
                         </View>
@@ -2918,9 +2918,10 @@ const styles = StyleSheet.create({
   macroSeparateCard: {
     flex: 1,
     borderRadius: 14,
-    padding: 12,
+    padding: 14,
+    paddingVertical: 18,
     alignItems: 'center' as const,
-    gap: 6,
+    gap: 10,
   },
   macroCardEmoji: {
     fontSize: 15,
@@ -3169,19 +3170,17 @@ const styles = StyleSheet.create({
   },
   exQuickGridCompact: {
     flexDirection: 'row' as const,
-    flexWrap: 'wrap' as const,
     gap: 6,
   },
   exQuickGridChip: {
     alignItems: 'center' as const,
-    gap: 2,
-    paddingVertical: 7,
+    gap: 3,
+    paddingVertical: 10,
     paddingHorizontal: 0,
     borderRadius: 10,
     borderWidth: 1,
-    width: '22.5%' as unknown as number,
-    minWidth: 58,
-    flexGrow: 1,
+    flex: 1,
+    minWidth: 0,
   },
   exQuickInputRowCompact: {
     flexDirection: 'row' as const,
