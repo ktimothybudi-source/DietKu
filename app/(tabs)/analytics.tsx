@@ -644,12 +644,12 @@ export default function AnalyticsScreen() {
     const getWeightChangeColor = () => {
       if (stats.weightChange === 0) return theme.textSecondary;
       if (goal === 'lose') {
-        return stats.weightChange < 0 ? theme.primary : theme.destructive;
+        return stats.weightChange < 0 ? '#3B82F6' : theme.destructive;
       }
       if (goal === 'gain') {
-        return stats.weightChange > 0 ? theme.primary : theme.destructive;
+        return stats.weightChange > 0 ? '#3B82F6' : theme.destructive;
       }
-      return Math.abs(stats.weightChange) < 1 ? theme.primary : '#F59E0B';
+      return Math.abs(stats.weightChange) < 1 ? '#3B82F6' : '#F59E0B';
     };
 
     return (
@@ -703,8 +703,8 @@ export default function AnalyticsScreen() {
           <View style={[styles.weightStatDivider, { backgroundColor: theme.border }]} />
           <View style={styles.weightStatItem}>
             <View style={styles.weightChangeDisplay}>
-              <Target size={16} color={theme.primary} />
-              <Text style={[styles.weightStatValue, { color: theme.primary, fontSize: 22 }]}>
+              <Target size={16} color="#3B82F6" />
+              <Text style={[styles.weightStatValue, { color: '#3B82F6', fontSize: 22 }]}>
                 {targetWeight > 0 ? targetWeight.toFixed(1) : '-'}
               </Text>
             </View>
@@ -721,7 +721,7 @@ export default function AnalyticsScreen() {
               style={[
                 styles.weightTimeRangePill,
                 { backgroundColor: theme.background, borderColor: theme.border },
-                timeRange === range && { backgroundColor: theme.primary, borderColor: theme.primary },
+                timeRange === range && { backgroundColor: '#3B82F6', borderColor: '#3B82F6' },
               ]}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -747,7 +747,7 @@ export default function AnalyticsScreen() {
                 <Text style={[styles.projectionFriendlyText, { color: theme.text }]}>
                   🎯 Kamu akan mencapai berat impianmu sekitar
                 </Text>
-                <Text style={[styles.projectionDate, { color: theme.primary }]}>
+                <Text style={[styles.projectionDate, { color: '#3B82F6' }]}>
                   {goalProjection.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </Text>
                 <Text style={[styles.projectionSubtext, { color: theme.textSecondary }]}>
@@ -804,7 +804,7 @@ export default function AnalyticsScreen() {
           <View style={[styles.graphYLabels, { height: chartHeight }]}>
             <Text style={[styles.graphLabel, { color: theme.textTertiary }]}>{maxWeight.toFixed(0)} kg</Text>
             {targetWeight > 0 && (
-              <Text style={[styles.graphLabel, styles.targetLabel, { color: theme.primary }]}>
+              <Text style={[styles.graphLabel, styles.targetLabel, { color: '#3B82F6' }]}>
                 {targetWeight.toFixed(0)} kg
               </Text>
             )}
@@ -818,7 +818,7 @@ export default function AnalyticsScreen() {
                   styles.targetGraphLine, 
                   { 
                     top: targetY,
-                    backgroundColor: theme.primary + '40',
+                    backgroundColor: '#3B82F6' + '40',
                   }
                 ]} 
               />

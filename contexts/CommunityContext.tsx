@@ -6,6 +6,7 @@ import { CommunityProfile, FoodPost, PostComment, CommunityGroup, GroupMember, A
 import { MOCK_POSTS, MOCK_COMMENTS, MOCK_GROUPS } from '@/mocks/communityPosts';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { FoodEntry } from '@/types/nutrition';
+import { eventEmitter } from '@/utils/eventEmitter';
 
 const COMMUNITY_PROFILE_KEY = 'community_profile';
 const COMMUNITY_POSTS_KEY = 'community_posts';
@@ -453,10 +454,8 @@ export const [CommunityProvider, useCommunity] = createContextHook(() => {
   const isLoading = profileQuery.isLoading || postsQuery.isLoading || joinedGroupIdsQuery.isLoading;
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const handleFoodEntryAdded = (event: any) => {
-      const { foodEntry } = event.detail as { foodEntry: Omit<FoodEntry, 'id' | 'timestamp'> };
+    const handleFoodEntryAdded = (data: any) => {
+      const { foodEntry } = data as { foodEntry: Omit<FoodEntry, 'id' | 'timestamp'> };
       
       if (!communityProfile || !hasJoinedGroup) {
         console.log('Skipping auto-post: No profile or not in a group');
@@ -486,8 +485,8 @@ export const [CommunityProvider, useCommunity] = createContextHook(() => {
       savePostMutation.mutate(newPost);
     };
 
-    window.addEventListener('foodEntryAdded', handleFoodEntryAdded);
-    return () => window.removeEventListener('foodEntryAdded', handleFoodEntryAdded);
+    eventEmitter.on('foodEntryAdded', handleFoodEntryAdded);
+    return () => eventEmitter.off('foodEntryAdded', handleFoodEntryAdded);
   }, [communityProfile, hasJoinedGroup, activeGroupId, savePostMutation]);
 
   return {

@@ -10,6 +10,7 @@ import { supabase, SupabaseProfile, SupabaseFoodEntry, SupabaseWeightHistory } f
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { Session } from '@supabase/supabase-js';
+import { eventEmitter } from '@/utils/eventEmitter';
 
 interface FoodLog {
   [date: string]: FoodEntry[];
@@ -714,9 +715,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
         foodEntry: entry,
         timestamp: Date.now(),
       };
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('foodEntryAdded', { detail: eventData }));
-      }
+      eventEmitter.emit('foodEntryAdded', eventData);
     }
   }, [saveFoodEntryMutation, authState]);
 
