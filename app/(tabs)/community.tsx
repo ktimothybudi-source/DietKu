@@ -10,6 +10,7 @@ import {
   RefreshControl,
   Alert,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import {
@@ -19,18 +20,19 @@ import {
   Utensils,
   Trash2,
   Clock,
-  Link as LinkIcon,
   Trophy,
   Send,
   Users,
   UserPlus,
   Search,
   Globe,
+  Settings,
+  ChevronDown,
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCommunity } from '@/contexts/CommunityContext';
 import { useNutrition } from '@/contexts/NutritionContext';
-import { FoodPost, MEAL_TYPE_LABELS } from '@/types/community';
+import { FoodPost, MEAL_TYPE_LABELS, CommunityGroup } from '@/types/community';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -60,20 +62,6 @@ function Avatar({ name, color, size = 40 }: { name: string; color: string; size?
     </View>
   );
 }
-
-const copyToClipboard = async (text: string): Promise<boolean> => {
-  try {
-    const navigatorAny = (globalThis as { navigator?: { clipboard?: { writeText?: (value: string) => Promise<void> } } }).navigator;
-    if (navigatorAny?.clipboard?.writeText) {
-      await navigatorAny.clipboard.writeText(text);
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('Clipboard error:', error);
-    return false;
-  }
-};
 
 const PostCard = React.memo(({ post, onLike, onComment, onDelete, currentUserId, theme }: {
   post: FoodPost;
@@ -220,50 +208,48 @@ type LeaderEntry = {
 
 export default function CommunityScreen() {
   const { theme } = useTheme();
-  const { posts, toggleLike, deletePost, hasProfile, communityProfile, hasJoinedGroup, joinGroup } = useCommunity();
+  const {
+    posts, toggleLike, deletePost, hasProfile, communityProfile,
+    hasJoinedGroup, joinGroup, activeGroup, joinedGroups,
+    switchActiveGroup, joinedGroupIds,
+  } = useCommunity();
   const { authState } = useNutrition();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<GroupTab>('feed');
   const [chatInput, setChatInput] = useState('');
+  const [showGroupPicker, setShowGroupPicker] = useState(false);
 
   const currentUserId = communityProfile?.userId || authState.userId || null;
 
-  const inviteLink = 'dietku.app/invite/alpha-squad';
+  const chatMessages = useMemo<ChatMessage[]>(() => {
+    if (!activeGroup) return [];
+    const members = activeGroup.members.slice(0, 3);
+    return members.map((m, i) => ({
+      id: `c${i}`,
+      userId: m.userId,
+      displayName: m.userId === currentUserId ? 'Kamu' : m.displayName,
+      avatarColor: m.avatarColor,
+      message: [
+        'Target protein hari ini 120g. Siapa yang sudah tercapai?',
+        'Aku baru 85g, mau tambah snack tinggi protein.',
+        'Ada rekomendasi menu tinggi serat nggak?',
+      ][i % 3],
+      createdAt: Date.now() - 1000 * 60 * (6 - i * 2),
+    }));
+  }, [activeGroup, currentUserId]);
 
-  const chatMessages = useMemo<ChatMessage[]>(() => [
-    {
-      id: 'c1',
-      userId: 'u1',
-      displayName: 'Maya Putri',
-      avatarColor: '#2E7D5B',
-      message: 'Target protein hari ini 120g. Siapa yang sudah tercapai?',
-      createdAt: Date.now() - 1000 * 60 * 6,
-    },
-    {
-      id: 'c2',
-      userId: currentUserId || 'u2',
-      displayName: 'Kamu',
-      avatarColor: '#1F3D2A',
-      message: 'Aku baru 85g, mau tambah snack tinggi protein.',
-      createdAt: Date.now() - 1000 * 60 * 4,
-    },
-    {
-      id: 'c3',
-      userId: 'u3',
-      displayName: 'Rizky Adi',
-      avatarColor: '#3D5B6A',
-      message: 'Ada rekomendasi menu tinggi serat nggak?',
-      createdAt: Date.now() - 1000 * 60 * 2,
-    },
-  ], [currentUserId]);
-
-  const leaderboard = useMemo<LeaderEntry[]>(() => [
-    { id: 'l1', userId: 'u4', displayName: 'Nadia', avatarColor: '#3C4A62', streakDays: 26, caloriesAvg: 1880 },
-    { id: 'l2', userId: 'u1', displayName: 'Maya', avatarColor: '#2E7D5B', streakDays: 21, caloriesAvg: 2050 },
-    { id: 'l3', userId: 'u3', displayName: 'Rizky', avatarColor: '#3D5B6A', streakDays: 18, caloriesAvg: 1985 },
-    { id: 'l4', userId: 'u5', displayName: 'Fajar', avatarColor: '#6B4F3B', streakDays: 14, caloriesAvg: 2140 },
-  ], []);
+  const leaderboard = useMemo<LeaderEntry[]>(() => {
+    if (!activeGroup) return [];
+    return activeGroup.members.map((m, i) => ({
+      id: `l${i}`,
+      userId: m.userId,
+      displayName: m.displayName,
+      avatarColor: m.avatarColor,
+      streakDays: Math.max(1, 26 - i * 5),
+      caloriesAvg: 1880 + i * 70,
+    }));
+  }, [activeGroup]);
 
   const handleCreatePost = useCallback(() => {
     console.log('community:create-post');
@@ -307,23 +293,60 @@ export default function CommunityScreen() {
     setTimeout(() => setRefreshing(false), 800);
   }, []);
 
-  const handleCopyInvite = useCallback(async () => {
-    console.log('community:copy-invite');
-    const copied = await copyToClipboard(inviteLink);
-    if (copied) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Link Disalin', 'Bagikan link ini untuk mengundang anggota ke grup.');
-      return;
-    }
-    Alert.alert('Salin Manual', 'Tidak bisa menyalin otomatis. Silakan salin link di atas secara manual.');
-  }, [inviteLink]);
-
   const handleSendChat = useCallback(() => {
     console.log('community:send-chat', chatInput);
     if (!chatInput.trim()) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setChatInput('');
   }, [chatInput]);
+
+  const handleBrowseGroups = useCallback(() => {
+    console.log('community:browse-groups');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!authState.isSignedIn) {
+      Alert.alert('Masuk Diperlukan', 'Silakan masuk terlebih dahulu.', [
+        { text: 'Batal', style: 'cancel' },
+        { text: 'Masuk', onPress: () => router.push('/sign-in') },
+      ]);
+      return;
+    }
+    if (!hasProfile) {
+      router.push('/setup-community-profile');
+      return;
+    }
+    router.push('/browse-groups');
+  }, [authState.isSignedIn, hasProfile]);
+
+  const handleCreateGroup = useCallback(() => {
+    console.log('community:create-group');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!authState.isSignedIn) {
+      Alert.alert('Masuk Diperlukan', 'Silakan masuk terlebih dahulu.', [
+        { text: 'Batal', style: 'cancel' },
+        { text: 'Masuk', onPress: () => router.push('/sign-in') },
+      ]);
+      return;
+    }
+    if (!hasProfile) {
+      router.push('/setup-community-profile');
+      return;
+    }
+    router.push('/create-group');
+  }, [authState.isSignedIn, hasProfile]);
+
+  const handleGroupSettings = useCallback(() => {
+    if (!activeGroup) return;
+    console.log('community:group-settings', activeGroup.id);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push({ pathname: '/group-settings', params: { groupId: activeGroup.id } });
+  }, [activeGroup]);
+
+  const handleSwitchGroup = useCallback((groupId: string) => {
+    console.log('community:switch-group', groupId);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    switchActiveGroup(groupId);
+    setShowGroupPicker(false);
+  }, [switchActiveGroup]);
 
   const renderPost = useCallback(({ item }: { item: FoodPost }) => (
     <PostCard
@@ -351,7 +374,7 @@ export default function CommunityScreen() {
   }, [currentUserId, theme]);
 
   const renderLeader = useCallback(({ item, index }: { item: LeaderEntry; index: number }) => (
-    <View style={[styles.leaderRow, { borderColor: theme.border }]}> 
+    <View style={[styles.leaderRow, { borderColor: theme.border }]}>
       <View style={styles.leaderRankWrap}>
         <Text style={[styles.leaderRank, { color: theme.text }]}>{index + 1}</Text>
       </View>
@@ -360,7 +383,7 @@ export default function CommunityScreen() {
         <Text style={[styles.leaderName, { color: theme.text }]}>{item.displayName}</Text>
         <Text style={[styles.leaderMeta, { color: theme.textTertiary }]}>{item.caloriesAvg} kcal rata-rata</Text>
       </View>
-      <View style={[styles.leaderStreak, { backgroundColor: theme.primary + '18' }]}> 
+      <View style={[styles.leaderStreak, { backgroundColor: theme.primary + '18' }]}>
         <Trophy size={14} color={theme.primary} />
         <Text style={[styles.leaderStreakText, { color: theme.primary }]}>{item.streakDays} hari</Text>
       </View>
@@ -369,37 +392,85 @@ export default function CommunityScreen() {
 
   const keyExtractor = useCallback((item: FoodPost) => item.id, []);
 
-  const HeaderContent = (
-    <View style={styles.headerContent}>
-      <View style={[styles.groupCard, { backgroundColor: theme.card, borderColor: theme.border }]}> 
-        <View style={styles.groupHeaderRow}>
-          <View>
-            <Text style={[styles.groupTitle, { color: theme.text }]}>Alpha Squad</Text>
-            <Text style={[styles.groupSubtitle, { color: theme.textSecondary }]}>14 anggota · Feed otomatis dari log makanan</Text>
-          </View>
-          <Image
-            source={{ uri: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=200&q=80' }}
-            style={styles.groupCover}
-          />
-        </View>
+  const GroupPickerDropdown = showGroupPicker ? (
+    <View style={[styles.groupPickerOverlay]}>
+      <TouchableOpacity
+        style={styles.groupPickerBackdrop}
+        onPress={() => setShowGroupPicker(false)}
+        activeOpacity={1}
+      />
+      <View style={[styles.groupPickerDropdown, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        {joinedGroups.map(g => (
+          <TouchableOpacity
+            key={g.id}
+            style={[
+              styles.groupPickerItem,
+              { borderColor: theme.border },
+              g.id === activeGroup?.id && { backgroundColor: theme.primary + '10' },
+            ]}
+            onPress={() => handleSwitchGroup(g.id)}
+            activeOpacity={0.7}
+          >
+            <Image source={{ uri: g.coverImage }} style={styles.groupPickerThumb} />
+            <View style={styles.groupPickerInfo}>
+              <Text style={[styles.groupPickerName, { color: theme.text }]} numberOfLines={1}>{g.name}</Text>
+              <Text style={[styles.groupPickerMembers, { color: theme.textTertiary }]}>{g.members.length} anggota</Text>
+            </View>
+            {g.id === activeGroup?.id && (
+              <View style={[styles.groupPickerActive, { backgroundColor: theme.primary }]}>
+                <Text style={styles.groupPickerActiveText}>Aktif</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
         <TouchableOpacity
-          style={[styles.inviteButton, { borderColor: theme.border }]}
-          onPress={handleCopyInvite}
-          activeOpacity={0.8}
-          testID="group-invite"
+          style={[styles.groupPickerItem, { borderColor: theme.border }]}
+          onPress={() => {
+            setShowGroupPicker(false);
+            handleBrowseGroups();
+          }}
+          activeOpacity={0.7}
         >
-          <LinkIcon size={16} color={theme.text} />
-          <Text style={[styles.inviteText, { color: theme.text }]}>{inviteLink}</Text>
-          <Text style={[styles.inviteAction, { color: theme.primary }]}>Salin</Text>
+          <View style={[styles.groupPickerAddIcon, { backgroundColor: theme.primary + '12' }]}>
+            <Plus size={16} color={theme.primary} />
+          </View>
+          <Text style={[styles.groupPickerAddText, { color: theme.primary }]}>Gabung Grup Lain</Text>
         </TouchableOpacity>
       </View>
+    </View>
+  ) : null;
+
+  const HeaderContent = (
+    <View style={styles.headerContent}>
+      {activeGroup && (
+        <View style={[styles.groupCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.groupHeaderRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.groupTitle, { color: theme.text }]}>{activeGroup.name}</Text>
+              <Text style={[styles.groupSubtitle, { color: theme.textSecondary }]}>
+                {activeGroup.members.length} anggota · {activeGroup.privacy === 'public' ? 'Publik' : 'Privat'}
+              </Text>
+            </View>
+            <Image source={{ uri: activeGroup.coverImage }} style={styles.groupCover} />
+          </View>
+          <TouchableOpacity
+            style={[styles.settingsBtn, { borderColor: theme.border }]}
+            onPress={handleGroupSettings}
+            activeOpacity={0.8}
+            testID="group-settings-btn"
+          >
+            <Settings size={14} color={theme.textSecondary} />
+            <Text style={[styles.settingsBtnText, { color: theme.textSecondary }]}>Pengaturan & Undang</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={styles.tabRow}>
         {([
-          { key: 'feed', label: 'Feed' },
-          { key: 'chat', label: 'Chat' },
-          { key: 'leaderboard', label: 'Leaderboard' },
-        ] as { key: GroupTab; label: string }[]).map(tab => {
+          { key: 'feed' as const, label: 'Feed' },
+          { key: 'chat' as const, label: 'Chat' },
+          { key: 'leaderboard' as const, label: 'Leaderboard' },
+        ]).map(tab => {
           const isActive = activeTab === tab.key;
           return (
             <TouchableOpacity
@@ -417,40 +488,6 @@ export default function CommunityScreen() {
     </View>
   );
 
-  const handleJoinGroup = useCallback(() => {
-    console.log('community:join-group');
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (!authState.isSignedIn) {
-      Alert.alert('Masuk Diperlukan', 'Silakan masuk terlebih dahulu untuk bergabung grup.', [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Masuk', onPress: () => router.push('/sign-in') },
-      ]);
-      return;
-    }
-    if (!hasProfile) {
-      router.push('/setup-community-profile');
-      return;
-    }
-    joinGroup();
-  }, [authState.isSignedIn, hasProfile, joinGroup]);
-
-  const handleCreateGroup = useCallback(() => {
-    console.log('community:create-group');
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (!authState.isSignedIn) {
-      Alert.alert('Masuk Diperlukan', 'Silakan masuk terlebih dahulu untuk membuat grup.', [
-        { text: 'Batal', style: 'cancel' },
-        { text: 'Masuk', onPress: () => router.push('/sign-in') },
-      ]);
-      return;
-    }
-    if (!hasProfile) {
-      router.push('/setup-community-profile');
-      return;
-    }
-    joinGroup();
-  }, [authState.isSignedIn, hasProfile, joinGroup]);
-
   if (!hasJoinedGroup) {
     return (
       <>
@@ -460,7 +497,10 @@ export default function CommunityScreen() {
             <Text style={[styles.headerTitle, { color: theme.text }]}>Komunitas</Text>
           </View>
 
-          <View style={styles.noGroupContainer}>
+          <ScrollView
+            contentContainerStyle={styles.noGroupScroll}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={[styles.noGroupIconWrap, { backgroundColor: theme.primary + '12' }]}>
               <Users size={48} color={theme.primary} strokeWidth={1.5} />
             </View>
@@ -472,7 +512,7 @@ export default function CommunityScreen() {
             <View style={styles.noGroupActions}>
               <TouchableOpacity
                 style={[styles.joinGroupBtn, { backgroundColor: theme.primary }]}
-                onPress={handleJoinGroup}
+                onPress={handleBrowseGroups}
                 activeOpacity={0.8}
                 testID="community-join-group"
               >
@@ -507,7 +547,7 @@ export default function CommunityScreen() {
                 </View>
               ))}
             </View>
-          </View>
+          </ScrollView>
         </View>
       </>
     );
@@ -517,9 +557,28 @@ export default function CommunityScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <View style={[styles.container, { backgroundColor: theme.background }]}> 
-        <View style={[styles.header, { paddingTop: insets.top + 16 }]}> 
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Komunitas</Text>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+          {joinedGroups.length > 1 ? (
+            <TouchableOpacity
+              style={styles.groupSwitcher}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowGroupPicker(!showGroupPicker);
+              }}
+              activeOpacity={0.7}
+              testID="group-switcher"
+            >
+              <Text style={[styles.headerTitle, { color: theme.text }]}>
+                {activeGroup?.name || 'Komunitas'}
+              </Text>
+              <ChevronDown size={20} color={theme.textSecondary} />
+            </TouchableOpacity>
+          ) : (
+            <Text style={[styles.headerTitle, { color: theme.text }]}>
+              {activeGroup?.name || 'Komunitas'}
+            </Text>
+          )}
           <TouchableOpacity
             style={[styles.createBtn, { backgroundColor: theme.primary }]}
             onPress={handleCreatePost}
@@ -529,6 +588,8 @@ export default function CommunityScreen() {
             <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
+
+        {GroupPickerDropdown}
 
         {activeTab === 'feed' ? (
           <FlatList
@@ -574,7 +635,7 @@ export default function CommunityScreen() {
         ) : null}
 
         {activeTab === 'chat' ? (
-          <View style={[styles.chatInputWrap, { backgroundColor: theme.card, borderColor: theme.border }]}> 
+          <View style={[styles.chatInputWrap, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <TextInput
               style={[styles.chatInput, { color: theme.text }]}
               placeholder="Tulis pesan ke grup"
@@ -608,11 +669,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 14,
+    zIndex: 10,
   },
   headerTitle: {
     fontSize: 26,
     fontWeight: '800' as const,
     letterSpacing: -0.5,
+  },
+  groupSwitcher: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
   },
   createBtn: {
     width: 36,
@@ -620,6 +688,76 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  groupPickerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+  },
+  groupPickerBackdrop: {
+    flex: 1,
+  },
+  groupPickerDropdown: {
+    position: 'absolute',
+    top: 0,
+    left: 16,
+    right: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  groupPickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 10,
+    gap: 10,
+    borderBottomWidth: 0.5,
+  },
+  groupPickerThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+  },
+  groupPickerInfo: {
+    flex: 1,
+  },
+  groupPickerName: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  groupPickerMembers: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  groupPickerActive: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  groupPickerActiveText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700' as const,
+  },
+  groupPickerAddIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  groupPickerAddText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
   headerContent: {
     paddingTop: 12,
@@ -650,23 +788,20 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 12,
   },
-  inviteButton: {
-    marginTop: 16,
+  settingsBtn: {
+    marginTop: 14,
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
   },
-  inviteText: {
-    flex: 1,
+  settingsBtnText: {
     fontSize: 13,
-  },
-  inviteAction: {
-    fontSize: 13,
-    fontWeight: '700' as const,
+    fontWeight: '600' as const,
   },
   tabRow: {
     flexDirection: 'row',
@@ -940,11 +1075,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700' as const,
   },
-  noGroupContainer: {
-    flex: 1,
+  noGroupScroll: {
     paddingHorizontal: 24,
     alignItems: 'center',
     paddingTop: 40,
+    paddingBottom: 40,
   },
   noGroupIconWrap: {
     width: 96,

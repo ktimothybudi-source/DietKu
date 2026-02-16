@@ -28,6 +28,9 @@ function RootLayoutNav() {
       <Stack.Screen name="setup-community-profile" options={{ presentation: 'card' }} />
       <Stack.Screen name="create-post" options={{ presentation: 'card' }} />
       <Stack.Screen name="post-detail" options={{ presentation: 'card' }} />
+      <Stack.Screen name="create-group" options={{ presentation: 'card' }} />
+      <Stack.Screen name="browse-groups" options={{ presentation: 'card' }} />
+      <Stack.Screen name="group-settings" options={{ presentation: 'card' }} />
     </Stack>
   );
 }

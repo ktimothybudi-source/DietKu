@@ -1,7 +1,69 @@
-import { FoodPost, PostComment } from '@/types/community';
+import { FoodPost, PostComment, CommunityGroup } from '@/types/community';
 
 const now = Date.now();
 const HOUR = 3600000;
+const DAY = HOUR * 24;
+
+export const MOCK_GROUPS: CommunityGroup[] = [
+  {
+    id: 'group_alpha',
+    name: 'Alpha Squad',
+    description: 'Grup untuk yang serius soal nutrisi dan fitness. Berbagi meal prep, tips diet, dan motivasi harian.',
+    coverImage: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=400&q=80',
+    inviteCode: 'ALP2K6',
+    privacy: 'public',
+    creatorId: 'user_sarah',
+    members: [
+      { userId: 'user_sarah', displayName: 'Sarah W.', username: 'sarah.fit', avatarColor: '#2A9D8F', role: 'admin', joinedAt: now - DAY * 30 },
+      { userId: 'user_mike', displayName: 'Mike R.', username: 'mike.gains', avatarColor: '#264653', role: 'member', joinedAt: now - DAY * 28 },
+      { userId: 'user_ana', displayName: 'Ana K.', username: 'ana.healthy', avatarColor: '#E76F51', role: 'member', joinedAt: now - DAY * 25 },
+      { userId: 'user_dian', displayName: 'Dian P.', username: 'dian.nutrition', avatarColor: '#6D597A', role: 'member', joinedAt: now - DAY * 20 },
+      { userId: 'user_rafi', displayName: 'Rafi M.', username: 'rafi.bulk', avatarColor: '#355070', role: 'member', joinedAt: now - DAY * 15 },
+    ],
+    createdAt: now - DAY * 30,
+  },
+  {
+    id: 'group_clean',
+    name: 'Clean Eating ID',
+    description: 'Komunitas pecinta clean eating Indonesia. Share resep sehat dan tips belanja bahan makanan organik.',
+    coverImage: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=400&q=80',
+    inviteCode: 'CLN9R3',
+    privacy: 'public',
+    creatorId: 'user_ana',
+    members: [
+      { userId: 'user_ana', displayName: 'Ana K.', username: 'ana.healthy', avatarColor: '#E76F51', role: 'admin', joinedAt: now - DAY * 45 },
+      { userId: 'user_dian', displayName: 'Dian P.', username: 'dian.nutrition', avatarColor: '#6D597A', role: 'member', joinedAt: now - DAY * 40 },
+    ],
+    createdAt: now - DAY * 45,
+  },
+  {
+    id: 'group_bulk',
+    name: 'Bulking Season',
+    description: 'Buat yang lagi bulk! Target kalori tinggi, high protein meals, dan tracking progress bareng.',
+    coverImage: 'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=400&q=80',
+    inviteCode: 'BLK7T5',
+    privacy: 'public',
+    creatorId: 'user_rafi',
+    members: [
+      { userId: 'user_rafi', displayName: 'Rafi M.', username: 'rafi.bulk', avatarColor: '#355070', role: 'admin', joinedAt: now - DAY * 60 },
+      { userId: 'user_mike', displayName: 'Mike R.', username: 'mike.gains', avatarColor: '#264653', role: 'member', joinedAt: now - DAY * 55 },
+    ],
+    createdAt: now - DAY * 60,
+  },
+  {
+    id: 'group_keto',
+    name: 'Keto Warriors',
+    description: 'Grup khusus diet keto. Share pengalaman, resep rendah karbo, dan tips mengatasi keto flu.',
+    coverImage: 'https://images.unsplash.com/photo-1505576399279-0d754f0d7a04?auto=format&fit=crop&w=400&q=80',
+    inviteCode: 'KET4W8',
+    privacy: 'private',
+    creatorId: 'user_dian',
+    members: [
+      { userId: 'user_dian', displayName: 'Dian P.', username: 'dian.nutrition', avatarColor: '#6D597A', role: 'admin', joinedAt: now - DAY * 50 },
+    ],
+    createdAt: now - DAY * 50,
+  },
+];
 
 export const MOCK_POSTS: FoodPost[] = [
   {
