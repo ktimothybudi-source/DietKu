@@ -1442,6 +1442,7 @@ export default function OnboardingScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+        nestedScrollEnabled={true}
       >
         <View style={styles.finalPlanContainer}>
           <Text style={styles.finalPlanTitle}>Selamat! Rencana Anda Siap! 🎉</Text>
