@@ -246,28 +246,6 @@ export default function HomeScreen() {
       setShownPendingIds(prev => new Set(prev).add(donePending.id));
       
       const analysis = donePending.analysis;
-      const avgCalories = Math.round((analysis.totalCaloriesMin + analysis.totalCaloriesMax) / 2);
-      const avgProtein = Math.round((analysis.totalProteinMin + analysis.totalProteinMax) / 2);
-      const avgCarbs = Math.round(analysis.items.reduce((sum, item) => sum + (item.carbsMin + item.carbsMax) / 2, 0));
-      const avgFat = Math.round(analysis.items.reduce((sum, item) => sum + (item.fatMin + item.fatMax) / 2, 0));
-      const foodNames = analysis.items.map(item => item.name).join(', ');
-      
-      addFoodEntry({
-        name: foodNames,
-        calories: avgCalories,
-        protein: avgProtein,
-        carbs: avgCarbs,
-        fat: avgFat,
-        photoUri: donePending.photoUri,
-      });
-
-      const avgSugar = Math.round(analysis.items.reduce((sum, item) => sum + ((item.sugarMin ?? 0) + (item.sugarMax ?? 0)) / 2, 0));
-      const avgFiber = Math.round(analysis.items.reduce((sum, item) => sum + ((item.fiberMin ?? 0) + (item.fiberMax ?? 0)) / 2, 0));
-      const avgSodium = Math.round(analysis.items.reduce((sum, item) => sum + ((item.sodiumMin ?? 0) + (item.sodiumMax ?? 0)) / 2, 0));
-      if (avgSugar > 0) addSugarUnit(avgSugar);
-      if (avgFiber > 0) addFiberUnit(avgFiber);
-      if (avgSodium > 0) addSodiumUnit(avgSodium);
-      
       const items = analysis.items.map(item => ({
         name: item.name,
         portion: item.portion,
@@ -283,7 +261,7 @@ export default function HomeScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     setLastPendingCount(pendingEntries.length);
-  }, [pendingEntries, selectedPending, shownPendingIds, addFoodEntry]);
+  }, [pendingEntries, selectedPending, shownPendingIds]);
 
   const getFormattedDate = (dateKey: string) => {
     const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -735,17 +713,26 @@ export default function HomeScreen() {
         fat: totals.fat,
         photoUri: selectedPending.photoUri || undefined,
       });
-    } else if (hasEdited) {
+    } else {
       addFoodEntry({
         name: foodNames,
         calories: totals.calories,
         protein: totals.protein,
         carbs: totals.carbs,
         fat: totals.fat,
-        photoUri: selectedPending.photoUri,
+        photoUri: selectedPending.photoUri || selectedPending.permanentPhotoUri,
       });
-      removePendingEntry(selectedPending.id);
-    } else {
+      
+      if (selectedPending.analysis) {
+        const analysis = selectedPending.analysis;
+        const avgSugar = Math.round(analysis.items.reduce((sum, item) => sum + ((item.sugarMin ?? 0) + (item.sugarMax ?? 0)) / 2, 0));
+        const avgFiber = Math.round(analysis.items.reduce((sum, item) => sum + ((item.fiberMin ?? 0) + (item.fiberMax ?? 0)) / 2, 0));
+        const avgSodium = Math.round(analysis.items.reduce((sum, item) => sum + ((item.sodiumMin ?? 0) + (item.sodiumMax ?? 0)) / 2, 0));
+        if (avgSugar > 0) addSugarUnit(avgSugar);
+        if (avgFiber > 0) addFiberUnit(avgFiber);
+        if (avgSodium > 0) addSodiumUnit(avgSodium);
+      }
+      
       removePendingEntry(selectedPending.id);
     }
     
