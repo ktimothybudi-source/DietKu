@@ -29,6 +29,10 @@ export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
 
@@ -71,9 +75,24 @@ export default function SignInScreen() {
   }, []);
 
   const handleSignIn = async () => {
-    if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Mohon masukkan email dan password');
-      return;
+    if (isSignUp) {
+      if (!email.trim() || !password.trim() || !firstName.trim() || !lastName.trim()) {
+        Alert.alert('Error', 'Mohon isi semua field');
+        return;
+      }
+      if (password.length < 6) {
+        Alert.alert('Error', 'Password minimal 6 karakter');
+        return;
+      }
+      if (password !== passwordConfirm) {
+        Alert.alert('Error', 'Password tidak cocok');
+        return;
+      }
+    } else {
+      if (!email.trim() || !password.trim()) {
+        Alert.alert('Error', 'Mohon masukkan email dan password');
+        return;
+      }
     }
 
     setIsSigningIn(true);
@@ -246,11 +265,43 @@ export default function SignInScreen() {
                 />
               </Svg>
             </View>
-            <Text style={styles.title}>{t.signIn.title}</Text>
-            <Text style={styles.subtitle}>{t.signIn.subtitle}</Text>
+            <Text style={styles.title}>{isSignUp ? 'Daftar' : t.signIn.title}</Text>
+            <Text style={styles.subtitle}>{isSignUp ? 'Buat akun baru untuk mulai' : t.signIn.subtitle}</Text>
           </View>
 
           <View style={styles.form}>
+            {isSignUp && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Nama Depan</Text>
+                <TextInput
+                  style={styles.input}
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  placeholder="Nama depan"
+                  placeholderTextColor="#999999"
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  editable={!isSigningIn}
+                />
+              </View>
+            )}
+
+            {isSignUp && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Nama Belakang</Text>
+                <TextInput
+                  style={styles.input}
+                  value={lastName}
+                  onChangeText={setLastName}
+                  placeholder="Nama belakang"
+                  placeholderTextColor="#999999"
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  editable={!isSigningIn}
+                />
+              </View>
+            )}
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>{t.signIn.email}</Text>
               <TextInput
@@ -281,6 +332,23 @@ export default function SignInScreen() {
               />
             </View>
 
+            {isSignUp && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Ketik Ulang Password</Text>
+                <TextInput
+                  style={styles.input}
+                  value={passwordConfirm}
+                  onChangeText={setPasswordConfirm}
+                  placeholder="••••••••"
+                  placeholderTextColor="#999999"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isSigningIn}
+                />
+              </View>
+            )}
+
             <TouchableOpacity
               style={[styles.signInButton, isSigningIn && styles.signInButtonDisabled]}
               onPress={handleSignIn}
@@ -288,7 +356,7 @@ export default function SignInScreen() {
               disabled={isSigningIn}
             >
               <Text style={styles.signInButtonText}>
-                {isSigningIn ? 'Memproses...' : t.signIn.signIn}
+                {isSigningIn ? 'Memproses...' : (isSignUp ? 'Daftar' : t.signIn.signIn)}
               </Text>
               {!isSigningIn && <ArrowRight size={20} color="#FFFFFF" />}
             </TouchableOpacity>
@@ -329,15 +397,18 @@ export default function SignInScreen() {
             </TouchableOpacity>
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Belum punya akun? </Text>
+              <Text style={styles.footerText}>{isSignUp ? 'Sudah punya akun? ' : 'Belum punya akun? '}</Text>
               <TouchableOpacity
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.replace('/onboarding');
+                  setIsSignUp(!isSignUp);
+                  setFirstName('');
+                  setLastName('');
+                  setPasswordConfirm('');
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.footerLink}>Daftar Sekarang</Text>
+                <Text style={styles.footerLink}>{isSignUp ? 'Masuk' : 'Daftar Sekarang'}</Text>
               </TouchableOpacity>
             </View>
           </View>

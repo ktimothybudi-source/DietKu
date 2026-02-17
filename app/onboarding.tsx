@@ -77,12 +77,16 @@ export default function OnboardingScreen() {
   const introTextAnim = useRef(new Animated.Value(0)).current;
   const introCtaAnim = useRef(new Animated.Value(0)).current;
 
-  const [showSubscription, setShowSubscription] = useState(false);
-  const [selectedSubscription, setSelectedSubscription] = useState<'yearly' | 'monthly'>('yearly');
-  const subscriptionSlideAnim = useRef(new Animated.Value(1000)).current;
+  // HIDDEN: Subscription features
+  // const [showSubscription, setShowSubscription] = useState(false);
+  // const [selectedSubscription, setSelectedSubscription] = useState<'yearly' | 'monthly'>('yearly');
+  // const subscriptionSlideAnim = useRef(new Animated.Value(1000)).current;
 
   const [signInEmail, setSignInEmail] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
+  const [signInPasswordConfirm, setSignInPasswordConfirm] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [userName, setUserName] = useState('');
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
 
@@ -297,24 +301,30 @@ export default function OnboardingScreen() {
 
   const [isCreatingAccount, setIsCreatingAccount] = useState(false);
 
-  const openSubscription = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setShowSubscription(true);
-    Animated.spring(subscriptionSlideAnim, {
-      toValue: 0,
-      useNativeDriver: true,
-      ...SPRING_CONFIG.default,
-    }).start();
-  }, [subscriptionSlideAnim]);
+  // HIDDEN: Subscription features
+  // const openSubscription = useCallback(() => {
+  //   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  //   setShowSubscription(true);
+  //   Animated.spring(subscriptionSlideAnim, {
+  //     toValue: 0,
+  //     useNativeDriver: true,
+  //     ...SPRING_CONFIG.default,
+  //   }).start();
+  // }, [subscriptionSlideAnim]);
 
   const handleSignIn = useCallback(async () => {
-    if (!signInEmail.trim() || !signInPassword.trim()) {
-      Alert.alert('Error', 'Mohon masukkan email dan password');
+    if (!signInEmail.trim() || !signInPassword.trim() || !firstName.trim() || !lastName.trim()) {
+      Alert.alert('Error', 'Mohon isi semua field');
       return;
     }
 
     if (signInPassword.length < 6) {
       Alert.alert('Error', 'Password minimal 6 karakter');
+      return;
+    }
+
+    if (signInPassword !== signInPasswordConfirm) {
+      Alert.alert('Error', 'Password tidak cocok');
       return;
     }
 
@@ -330,6 +340,7 @@ export default function OnboardingScreen() {
       const calculatedGoal = dreamWeight < weight ? 'fat_loss' : dreamWeight > weight ? 'muscle_gain' : 'maintenance';
 
       await signUp(signInEmail.trim(), signInPassword, {
+        name: `${firstName.trim()} ${lastName.trim()}`,
         age,
         birthDate,
         sex: sex || 'male',
@@ -342,7 +353,9 @@ export default function OnboardingScreen() {
       });
 
       console.log('Account created successfully');
-      openSubscription();
+      // HIDDEN: Skip subscription, go directly to next step
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      handleNext();
     } catch (error) {
       console.error('Sign up error:', error);
       if (error instanceof Error) {
@@ -362,7 +375,7 @@ export default function OnboardingScreen() {
     } finally {
       setIsCreatingAccount(false);
     }
-  }, [signInEmail, signInPassword, signUp, birthDate, sex, height, weight, dreamWeight, activityLevel, weeklyWeightChange, openSubscription]);
+  }, [signInEmail, signInPassword, signInPasswordConfirm, firstName, lastName, signUp, birthDate, sex, height, weight, dreamWeight, activityLevel, weeklyWeightChange, handleNext]);
 
   const handleGoogleSignIn = useCallback(async () => {
     try {
@@ -420,7 +433,9 @@ export default function OnboardingScreen() {
                 Alert.alert('Error', 'Gagal masuk dengan Google');
               } else {
                 console.log('Google sign in successful');
-                openSubscription();
+                // HIDDEN: Skip subscription, go directly to next step
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                handleNext();
               }
             }
           }
@@ -434,11 +449,12 @@ export default function OnboardingScreen() {
     } finally {
       setIsGoogleSigningIn(false);
     }
-  }, [openSubscription]);
+  }, [handleNext]);
 
-  const handleSkipSignIn = useCallback(() => {
-    openSubscription();
-  }, [openSubscription]);
+  // HIDDEN: Subscription features
+  // const handleSkipSignIn = useCallback(() => {
+  //   openSubscription();
+  // }, [openSubscription]);
 
   const handleEnableHealthConnect = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -1252,6 +1268,8 @@ export default function OnboardingScreen() {
     );
   };
 
+  // HIDDEN: Third carousel step
+  /* 
   const renderThanks = () => (
     <View style={styles.stepContainer}>
       <View style={styles.reassuranceContainer}>
@@ -1275,6 +1293,7 @@ export default function OnboardingScreen() {
       </TouchableOpacity>
     </View>
   );
+  */
 
   const renderHealthConnect = () => (
     <View style={styles.stepContainer}>
@@ -1531,9 +1550,8 @@ export default function OnboardingScreen() {
     );
   };
 
-  // PRICING UPDATED HERE
-  // Yearly: 349k / tahun, shown as 29k / bulan
-  // Monthly: 59k / bulan
+  // HIDDEN: Subscription modal
+  /* 
   const renderSubscription = () => {
     const yearlyPrice = 'Rp 349.000 / tahun';
     const yearlyEquiv = 'Rp 29.000 / bulan';
@@ -1643,6 +1661,7 @@ export default function OnboardingScreen() {
       </View>
     );
   };
+  */
 
   const renderThankYouName = () => (
     <View style={styles.stepContainer}>
@@ -1717,6 +1736,34 @@ export default function OnboardingScreen() {
       </View>
 
       <View style={styles.signInForm}>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Nama Depan</Text>
+          <TextInput
+            style={styles.signInInput}
+            value={firstName}
+            onChangeText={setFirstName}
+            placeholder="Nama depan"
+            placeholderTextColor="#999999"
+            autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="next"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Nama Belakang</Text>
+          <TextInput
+            style={styles.signInInput}
+            value={lastName}
+            onChangeText={setLastName}
+            placeholder="Nama belakang"
+            placeholderTextColor="#999999"
+            autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="next"
+          />
+        </View>
+
         <View
           onLayout={(e) => {
             signInEmailY.current = e.nativeEvent.layout.y;
@@ -1758,6 +1805,21 @@ export default function OnboardingScreen() {
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
+            returnKeyType="next"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Ketik Ulang Password</Text>
+          <TextInput
+            style={styles.signInInput}
+            value={signInPasswordConfirm}
+            onChangeText={setSignInPasswordConfirm}
+            placeholder="••••••••"
+            placeholderTextColor="#999999"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
             returnKeyType="done"
             onSubmitEditing={() => Keyboard.dismiss()}
           />
@@ -1779,7 +1841,7 @@ export default function OnboardingScreen() {
           <View style={styles.dividerLine} />
         </View>
 
-        <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignIn} activeOpacity={0.7} disabled={isGoogleSigningIn}>
           <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
             <Path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -1798,11 +1860,7 @@ export default function OnboardingScreen() {
               fill="#EA4335"
             />
           </Svg>
-          <Text style={styles.googleButtonText}>Lanjutkan dengan Google</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.skipSignInButton} onPress={handleSkipSignIn} activeOpacity={0.7}>
-          <Text style={styles.skipSignInButtonText}>Lewati untuk sekarang</Text>
+          <Text style={styles.googleButtonText}>{isGoogleSigningIn ? 'Memproses...' : 'Lanjutkan dengan Google'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -1839,7 +1897,8 @@ export default function OnboardingScreen() {
       case 12:
         return renderDietType();
       case 13:
-        return renderThanks();
+        // HIDDEN: Third carousel (renderThanks)
+        return renderFinal();
       case 14:
         return renderFinal();
       case 15:
@@ -1909,7 +1968,8 @@ export default function OnboardingScreen() {
         </ScrollView>
       )}
 
-      {showSubscription && renderSubscription()}
+      {/* HIDDEN: Subscription modal */}
+      {/* {showSubscription && renderSubscription()} */}
     </ScreenWrapper>
   );
 }
