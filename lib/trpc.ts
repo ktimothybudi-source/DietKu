@@ -20,11 +20,15 @@ const getBaseUrl = (): string => {
   }
 
   const webOrigin =
-    typeof window !== "undefined" ? window.location.origin : undefined;
+    typeof globalThis !== "undefined" &&
+    typeof (globalThis as { location?: { origin?: string } }).location?.origin ===
+      "string"
+      ? (globalThis as { location?: { origin?: string } }).location?.origin
+      : undefined;
 
   if (webOrigin) {
     console.warn(
-      "[trpc] EXPO_PUBLIC_RORK_API_BASE_URL is missing. Falling back to window.location.origin.",
+      "[trpc] EXPO_PUBLIC_RORK_API_BASE_URL is missing. Falling back to web origin.",
     );
     return webOrigin;
   }

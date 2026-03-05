@@ -3,10 +3,30 @@ import { Flame, User, BarChart3, Users } from "lucide-react-native";
 import React from "react";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { Theme } from "@/contexts/ThemeContext";
 import { useTheme } from "@/contexts/ThemeContext";
 
+const fallbackTheme: Theme = {
+  background: "#FFFFFF",
+  card: "#FFFFFF",
+  text: "#1A1A2E",
+  textSecondary: "#6E6E82",
+  textTertiary: "#AEAEB8",
+  border: "#EEEDF2",
+  primary: "#6C63FF",
+  primaryMuted: "#8B85FF",
+  accent: "#6C63FF",
+  tabBar: "#FFFFFF",
+  tabBarInactive: "#AEAEB8",
+  surfaceElevated: "#F5F5F7",
+  destructive: "#E5544B",
+  success: "#4CAF7D",
+  warning: "#E5A84B",
+};
+
 export default function TabLayout() {
-  const { theme } = useTheme();
+  const themeContext = useTheme();
+  const theme = themeContext?.theme ?? fallbackTheme;
   const insets = useSafeAreaInsets();
   
   const tabBarHeight = Platform.select({
