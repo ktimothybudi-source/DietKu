@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { analyzeMealImageWithOpenAI } from "./lib/meal-analysis-service";
+import { buildLegacyOpenAIChatResponse } from "../utils/mealAnalysisCore";
 import { checkRateLimit } from "./lib/rate-limit";
 import { supabase } from "./lib/supabase";
 
@@ -204,7 +205,7 @@ app.post("/meal-analysis", async (c) => {
     const language = input.language === "en" ? "en" : "id";
     const apiKey = getOpenAIKey();
 
-    const { analysis, logs } = await analyzeMealImageWithOpenAI({
+    const { analysis, rawContent, logs } = await analyzeMealImageWithOpenAI({
       apiKey,
       dataUrl,
       language,
@@ -216,8 +217,10 @@ app.post("/meal-analysis", async (c) => {
     );
 
     const daily = await getDailyScanQuota(requestId, input.userId, true);
+    const legacy = buildLegacyOpenAIChatResponse(rawContent);
 
     return c.json({
+      ...legacy,
       analysis,
       quota: {
         unlimited: daily.unlimited,

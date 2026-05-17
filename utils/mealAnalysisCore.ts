@@ -233,9 +233,14 @@ export function systemPromptForMeal(language: 'id' | 'en'): string {
 }
 
 export type OpenAIChatResponse = {
+  id?: string;
+  object?: string;
+  created?: number;
+  model?: string;
   choices?: Array<{
+    index?: number;
     finish_reason?: string;
-    message?: { content?: string | null; refusal?: string | null };
+    message?: { role?: string; content?: string | null; refusal?: string | null };
   }>;
 };
 
@@ -250,5 +255,22 @@ export function extractOpenAIContent(data: OpenAIChatResponse): {
     content: typeof message?.content === 'string' ? message.content : null,
     refusal: typeof message?.refusal === 'string' ? message.refusal : null,
     finishReason: choice?.finish_reason ?? null,
+  };
+}
+
+/** Lets pre-1.0.16 app builds keep parsing `choices[0].message.content`. */
+export function buildLegacyOpenAIChatResponse(content: string): OpenAIChatResponse {
+  return {
+    id: 'chatcmpl-meal-analysis-compat',
+    object: 'chat.completion',
+    created: Math.floor(Date.now() / 1000),
+    model: 'gpt-4o-mini',
+    choices: [
+      {
+        index: 0,
+        message: { role: 'assistant', content },
+        finish_reason: 'stop',
+      },
+    ],
   };
 }

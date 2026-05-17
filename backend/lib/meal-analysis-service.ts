@@ -41,7 +41,7 @@ export async function analyzeMealImageWithOpenAI(options: {
   apiKey: string;
   dataUrl: string;
   language: "id" | "en";
-}): Promise<{ analysis: MealAnalysis; logs: MealAnalysisAttemptLog[] }> {
+}): Promise<{ analysis: MealAnalysis; rawContent: string; logs: MealAnalysisAttemptLog[] }> {
   const { apiKey, dataUrl, language } = options;
   const attempts: Array<{ compact: boolean; maxTokens: number }> = [
     { compact: false, maxTokens: MEAL_ANALYSIS_MAX_TOKENS },
@@ -100,7 +100,7 @@ export async function analyzeMealImageWithOpenAI(options: {
       log.ok = true;
       log.itemCount = validated.analysis.items.length;
       logs.push(log);
-      return { analysis: validated.analysis, logs };
+      return { analysis: validated.analysis, rawContent: content, logs };
     }
 
     lastError = validated.error;
