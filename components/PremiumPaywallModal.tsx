@@ -4,6 +4,7 @@ import {
   Image,
   Linking,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -189,7 +190,9 @@ export default function PremiumPaywallModal() {
 
             <Text style={styles.disclosure}>
               Langganan diperpanjang otomatis kecuali dibatalkan setidaknya 24 jam sebelum akhir periode berjalan.
-              Kelola langganan kapan saja di pengaturan App Store/Play Store.
+              {Platform.OS === 'ios'
+                ? ' Kelola langganan kapan saja di Pengaturan App Store.'
+                : ' Kelola langganan kapan saja di pengaturan Google Play.'}
             </Text>
 
             <View style={styles.footerRow}>

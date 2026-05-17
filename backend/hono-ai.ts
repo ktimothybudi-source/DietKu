@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import { analyzeMealImageWithOpenAI } from "./lib/meal-analysis-service";
 import { checkRateLimit } from "./lib/rate-limit";
 import { supabase } from "./lib/supabase";
 
@@ -154,23 +155,6 @@ app.post("/meal-analysis", async (c) => {
 
     const input = mealAnalysisInputSchema.parse(await c.req.json());
     const requestId = getRequesterId(c, input.userId);
-    const daily = await getDailyScanQuota(requestId, input.userId, true);
-
-    if (!daily.allowed) {
-      c.header("Retry-After", `${Math.max(1, daily.resetInSec)}`);
-      return c.json(
-        {
-          error: "Daily scan limit reached",
-          quota: {
-            unlimited: false,
-            limit: DAILY_SCAN_LIMIT,
-            remaining: 0,
-            resetInSec: daily.resetInSec,
-          },
-        },
-        429
-      );
-    }
 
     const hourly = checkRateLimit({
       key: `meal-hour:${requestId}`,
@@ -192,73 +176,49 @@ app.post("/meal-analysis", async (c) => {
       return c.json({ error: "Rate limit exceeded (burst)" }, 429);
     }
 
+    const peek = await getDailyScanQuota(requestId, input.userId, false);
+
+    if (!peek.allowed) {
+      c.header("Retry-After", `${Math.max(1, peek.resetInSec)}`);
+      return c.json(
+        {
+          error: "Daily scan limit reached",
+          code: "DAILY_SCAN_LIMIT",
+          quota: {
+            unlimited: false,
+            limit: DAILY_SCAN_LIMIT,
+            remaining: 0,
+            resetInSec: peek.resetInSec,
+          },
+        },
+        429
+      );
+    }
+
     const sanitized = input.base64Image.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
     if (sanitized.length > MAX_IMAGE_BASE64_LENGTH) {
-      return c.json({ error: "Image payload too large" }, 413);
+      return c.json({ error: "Image payload too large", code: "IMAGE_TOO_LARGE" }, 413);
     }
     const dataUrl = `data:image/jpeg;base64,${sanitized}`;
 
-    const language = input.language === 'en' ? 'en' : 'id';
-    const prompt = [
-      "Analyze this meal photo and estimate nutrition.",
-      language === 'en'
-        ? "IMPORTANT LANGUAGE RULE: All text output MUST be in English."
-        : "IMPORTANT LANGUAGE RULE: All text output MUST be in Indonesian (Bahasa Indonesia).",
-      language === 'en'
-        ? 'Food names in "items[].name" must be common English names.'
-        : 'Food names in "items[].name" must be Indonesian names commonly used in Indonesia (e.g., "fried chicken" -> "ayam goreng", "rice" -> "nasi").',
-      language === 'en'
-        ? 'Keep "portion" and "tips" in English as well.'
-        : 'Keep "portion" and "tips" in Indonesian as well.',
-      "Return ONLY valid JSON with this exact shape:",
-      "{",
-      '  "items": [{',
-      '    "name": string,',
-      '    "portion": string,',
-      '    "caloriesMin": number, "caloriesMax": number,',
-      '    "proteinMin": number, "proteinMax": number,',
-      '    "carbsMin": number, "carbsMax": number,',
-      '    "fatMin": number, "fatMax": number,',
-      '    "sugarMin": number, "sugarMax": number,',
-      '    "fiberMin": number, "fiberMax": number,',
-      '    "sodiumMin": number, "sodiumMax": number',
-      "  }],",
-      '  "totalCaloriesMin": number, "totalCaloriesMax": number,',
-      '  "totalProteinMin": number, "totalProteinMax": number,',
-      '  "confidence": "high" | "medium" | "low",',
-      '  "tips": string[]',
-      "}",
-      "Use realistic estimates and keep values non-negative.",
-      "Do not round values to coarse buckets like 25/50/100. Prefer precise estimates based on visible portions.",
-      "Example: use 487 instead of 500 when appropriate.",
-      "For EACH item you MUST estimate sugar (g), dietary fiber (g), and sodium (mg) from the actual foods visible (sauces, fruit, bread, noodles, cheese, processed meat, etc.).",
-      "Do not use 0 for sugar, fiber, and sodium on all items at once unless the meal is truly negligible (e.g. plain water). Ranges should reflect uncertainty (min < max).",
-    ].join("\n");
+    const language = input.language === "en" ? "en" : "id";
+    const apiKey = getOpenAIKey();
 
-    const openAIData = await callOpenAI({
-      model: "gpt-4o-mini",
-      temperature: 0.2,
-      max_tokens: 550,
-      messages: [
-        {
-          role: "system",
-          content:
-            language === 'en'
-              ? "You are a nutrition analysis assistant for English users. Return strict JSON only, and all output text must be in English."
-              : "You are a nutrition analysis assistant for Indonesian users. Return strict JSON only, and all output text must be in Indonesian.",
-        },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: dataUrl } },
-          ],
-        },
-      ],
+    const { analysis, logs } = await analyzeMealImageWithOpenAI({
+      apiKey,
+      dataUrl,
+      language,
     });
 
+    const lastLog = logs[logs.length - 1];
+    console.info(
+      `[meal-analysis] ok items=${analysis.items.length} attempt=${lastLog?.attempt ?? "?"} finish=${lastLog?.finishReason ?? "?"} len=${lastLog?.contentLength ?? 0}`
+    );
+
+    const daily = await getDailyScanQuota(requestId, input.userId, true);
+
     return c.json({
-      ...openAIData,
+      analysis,
       quota: {
         unlimited: daily.unlimited,
         limit: DAILY_SCAN_LIMIT,
@@ -268,8 +228,22 @@ app.post("/meal-analysis", async (c) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[meal-analysis]", message);
-    return c.json({ error: message, code: "MEAL_ANALYSIS_FAILED" }, 500);
+    const logs = (error as Error & { logs?: unknown }).logs;
+    if (logs) {
+      console.error("[meal-analysis] failed", message, JSON.stringify(logs));
+    } else {
+      console.error("[meal-analysis]", message);
+    }
+
+    const code =
+      message === "MEAL_ANALYSIS_PARSE_FAILED" ||
+      message === "MEAL_ANALYSIS_VALIDATION_FAILED" ||
+      message === "MEAL_ANALYSIS_TRUNCATED"
+        ? message
+        : "MEAL_ANALYSIS_FAILED";
+
+    const status = code === "MEAL_ANALYSIS_FAILED" ? 500 : 422;
+    return c.json({ error: message, code }, status);
   }
 });
 
@@ -319,6 +293,7 @@ app.post("/subscription-sync", async (c) => {
       throw new Error(`Failed to sync subscription: ${error.message}`);
     }
 
+    // Affiliate commissions: use RevenueCat webhook only (avoids marking paid on free trial).
     return c.json({ ok: true, unlimited: input.isPremium });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
@@ -377,6 +352,78 @@ app.post("/translate", async (c) => {
       max_tokens: 40,
     });
     return c.json(openAIData);
+  } catch (error) {
+    return c.json({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
+  }
+});
+
+function inferAffiliatePlanAndAmount(productId?: string, price?: number) {
+  const id = (productId ?? "").toLowerCase();
+  const isMonthly = id.includes("month") || id.includes("bulanan");
+  const plan = isMonthly ? "bulanan" : "tahunan";
+  const amount = price != null && price > 0 ? price : isMonthly ? 39000 : 129000;
+  return { plan, amount };
+}
+
+app.post("/webhooks/revenuecat", async (c) => {
+  try {
+    const secret = process.env.REVENUECAT_WEBHOOK_SECRET?.trim();
+    if (secret) {
+      const auth = c.req.header("authorization") ?? "";
+      if (auth !== `Bearer ${secret}`) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
+    }
+
+    const body = (await c.req.json()) as { event?: Record<string, unknown> };
+    const event = body?.event;
+    if (!event || typeof event !== "object") {
+      return c.json({ error: "Invalid payload" }, 400);
+    }
+
+    const type = String(event.type ?? "");
+    const appUserId = String(event.app_user_id ?? "");
+    if (!appUserId) {
+      return c.json({ ok: true, skipped: "no_app_user_id" });
+    }
+
+    const productId = String(event.product_id ?? "");
+    const periodType = String(event.period_type ?? "").toUpperCase();
+    const price = Number(event.price_in_purchased_currency ?? event.price ?? 0);
+
+    if (type === "EXPIRATION" || type === "CANCELLATION") {
+      if (periodType === "TRIAL" || price === 0) {
+        await supabase.rpc("mark_affiliate_referral_expired", {
+          p_redeemer_user_id: appUserId,
+        });
+      }
+      return c.json({ ok: true, handled: type });
+    }
+
+    // Trial start: INITIAL_PURCHASE + TRIAL → skip (affiliate already has trial_active from app redeem).
+    if (type === "INITIAL_PURCHASE" && periodType === "TRIAL") {
+      return c.json({ ok: true, skipped: "trial_start" });
+    }
+
+    const isPaidEvent =
+      type === "RENEWAL" ||
+      (type === "INITIAL_PURCHASE" && price > 0) ||
+      type === "NON_RENEWING_PURCHASE";
+
+    if (isPaidEvent) {
+      const { plan, amount } = inferAffiliatePlanAndAmount(productId, price);
+      const { data, error } = await supabase.rpc("mark_affiliate_referral_paid", {
+        p_redeemer_user_id: appUserId,
+        p_subscription_plan: plan,
+        p_amount_idr: amount,
+      });
+      if (error) {
+        console.warn("[revenuecat-webhook] mark paid:", error.message);
+      }
+      return c.json({ ok: true, affiliate: data });
+    }
+
+    return c.json({ ok: true, skipped: type });
   } catch (error) {
     return c.json({ error: error instanceof Error ? error.message : "Unknown error" }, 500);
   }

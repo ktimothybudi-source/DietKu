@@ -49,8 +49,9 @@ const ANDROID_BASEPLAN_YEARLY = (
   process.env.EXPO_PUBLIC_ANDROID_BASEPLAN_YEARLY ?? 'tahunan'
 ).trim();
 /** App Store subscription product IDs (must match App Store Connect / RevenueCat iOS mapping). */
-const IOS_SUB_MONTHLY = (process.env.EXPO_PUBLIC_IOS_SUBSCRIPTION_MONTHLY ?? 'dietku_monthly').trim();
-const IOS_SUB_YEARLY = (process.env.EXPO_PUBLIC_IOS_SUBSCRIPTION_YEARLY ?? 'dietku_yearly').trim();
+/** Must match App Store Connect subscription Product IDs exactly. */
+const IOS_SUB_MONTHLY = (process.env.EXPO_PUBLIC_IOS_SUBSCRIPTION_MONTHLY ?? 'bulanan').trim();
+const IOS_SUB_YEARLY = (process.env.EXPO_PUBLIC_IOS_SUBSCRIPTION_YEARLY ?? 'tahunan').trim();
 
 type RevenuePackage = any;
 type OfferingsResult = any;
@@ -612,7 +613,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
         if (!storeProduct) {
           Alert.alert(
             'Produk App Store belum tersedia',
-            'StoreKit tidak mengembalikan langganan ini. Di App Store Connect pastikan produk disetujui / siap sandbox, IAP terhubung ke versi app, dan perjanjian pembayaran aktif. Di RevenueCat, paket $rc_monthly harus memakai dietku_monthly (bukan dietku_yearly).'
+            'Langganan belum tersedia saat ini. Coba lagi sebentar lagi atau ketuk Pulihkan Pembayaran. Jika masalah berlanjut, hubungi dukungan.'
           );
           return false;
         }

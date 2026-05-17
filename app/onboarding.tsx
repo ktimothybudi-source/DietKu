@@ -356,7 +356,7 @@ export default function OnboardingScreen() {
   const handleNext = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Age gate: users must be at least 13 years old to continue onboarding.
+    // Age gate warning: inform users, but do not hard-block navigation.
     if (step === 1) {
       const today = new Date();
       const age = today.getFullYear() - birthDate.getFullYear() -
@@ -366,17 +366,8 @@ export default function OnboardingScreen() {
       if (age < MINIMUM_AGE) {
         Alert.alert(
           'Usia tidak memenuhi syarat',
-          `Anda harus berusia minimal ${MINIMUM_AGE} tahun untuk menggunakan aplikasi ini.`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                animateTransition(false, () => setStep(0));
-              },
-            },
-          ]
+          `Anda harus berusia minimal ${MINIMUM_AGE} tahun untuk menggunakan aplikasi ini.`
         );
-        return;
       }
     }
 
@@ -1660,8 +1651,8 @@ export default function OnboardingScreen() {
       <TouchableOpacity
         style={styles.primaryButton}
         onPress={async () => {
-          const ok = await referralRef.current?.redeemIfFilled('onboarding_continue');
-          if (ok === false) return;
+          // Best-effort redeem: users should still be able to continue onboarding.
+          await referralRef.current?.redeemIfFilled('onboarding_continue');
           handleNext();
         }}
         activeOpacity={0.8}
@@ -1879,9 +1870,9 @@ export default function OnboardingScreen() {
   // HIDDEN: Subscription modal
   /* 
   const renderSubscription = () => {
-    const yearlyPrice = 'Rp 279.999 / tahun';
-    const yearlyEquiv = 'Rp 23.333 / bulan';
-    const monthlyPrice = 'Rp 69.999 / bulan';
+    const yearlyPrice = 'Rp 129.000 / tahun';
+    const yearlyEquiv = 'Rp 10.750 / bulan';
+    const monthlyPrice = 'Rp 39.000 / bulan';
 
     return (
       <View style={styles.subscriptionOverlay}>

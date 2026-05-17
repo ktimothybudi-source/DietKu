@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ChevronLeft } from 'lucide-react-native';
@@ -10,7 +10,9 @@ const sections = [
   {
     title: '1. Ringkasan',
     body:
-      'Kebijakan Privasi ini menjelaskan bagaimana DietKu mengumpulkan, menggunakan, menyimpan, dan melindungi data pengguna sesuai kebutuhan layanan dan ketentuan Google Play.',
+      Platform.OS === 'ios'
+        ? 'Kebijakan Privasi ini menjelaskan bagaimana DietKu mengumpulkan, menggunakan, menyimpan, dan melindungi data pengguna sesuai kebutuhan layanan dan ketentuan App Store.'
+        : 'Kebijakan Privasi ini menjelaskan bagaimana DietKu mengumpulkan, menggunakan, menyimpan, dan melindungi data pengguna sesuai kebutuhan layanan dan ketentuan Google Play.',
   },
   {
     title: '2. Data yang Kami Kumpulkan',

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { setSessionCookie } from "@/lib/auth";
-import { getAffiliateCodeColumn } from "@/lib/affiliateCodeColumn";
+import { getAffiliateCodeColumn, getAffiliateCodeInfo } from "@/lib/affiliateCodeColumn";
 
 const schema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters."),
@@ -26,6 +26,7 @@ export async function POST(request) {
     }
 
     const codeColumn = await getAffiliateCodeColumn(supabase);
+    const codeInfo = await getAffiliateCodeInfo(supabase);
     const normalizedEmail = email.toLowerCase();
 
     const { data: existingEmail } = await supabase.from("affiliates").select("id").eq("email", normalizedEmail).maybeSingle();
@@ -52,6 +53,12 @@ export async function POST(request) {
       email: normalizedEmail,
       [codeColumn]: promoCode,
     };
+    if (codeInfo.hasPromoCode) {
+      insertPayload.promo_code = promoCode;
+    }
+    if (codeInfo.hasReferralCode) {
+      insertPayload.referral_code = promoCode;
+    }
 
     const { data: affiliate, error: insertError } = await supabase
       .from("affiliates")

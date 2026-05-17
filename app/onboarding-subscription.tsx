@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
+  Platform,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -12,6 +13,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Check, Circle } from 'lucide-react-native';
 import { ResizeMode, Video } from 'expo-av';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useNutrition } from '@/contexts/NutritionContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   SUBSCRIPTION_MONTHLY_IDR_FALLBACK,
@@ -19,6 +21,7 @@ import {
   SUBSCRIPTION_YEARLY_IDR_FALLBACK,
 } from '@/lib/subscriptionPricing';
 import { DIETKU_PRIVACY_URL, DIETKU_TERMS_URL } from '@/lib/legalLinks';
+import { supabase } from '@/lib/supabase';
 
 type PlanType = 'annual' | 'monthly';
 
@@ -38,8 +41,10 @@ export default function OnboardingSubscriptionScreen() {
     purchaseAnnual,
     restorePurchases,
   } = useSubscription();
+  const { authState } = useNutrition();
   const insets = useSafeAreaInsets();
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('annual');
+  const [annualTrialDays, setAnnualTrialDays] = useState(3);
   const from = typeof params.from === 'string' ? params.from : params.from?.[0];
 
   useEffect(() => {
@@ -47,6 +52,36 @@ export default function OnboardingSubscriptionScreen() {
     if (!isPremium) return;
     router.replace('/(tabs)');
   }, [subscriptionLoading, isPremium]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadTrialDaysFromInviteStatus() {
+      if (!authState.userId) {
+        if (!cancelled) setAnnualTrialDays(3);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('referral_redemptions')
+        .select('id')
+        .eq('redeemer_user_id', authState.userId)
+        .limit(1);
+
+      if (cancelled) return;
+      if (!error && Array.isArray(data) && data.length > 0) {
+        setAnnualTrialDays(7);
+        return;
+      }
+
+      setAnnualTrialDays(3);
+    }
+
+    loadTrialDaysFromInviteStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, [authState.userId]);
 
   const monthlyPrice = monthlyPackage?.product?.priceString ?? SUBSCRIPTION_MONTHLY_IDR_FALLBACK;
   const annualPrice = annualPackage?.product?.priceString ?? SUBSCRIPTION_YEARLY_IDR_FALLBACK;
@@ -114,14 +149,16 @@ export default function OnboardingSubscriptionScreen() {
             activeOpacity={0.85}
           >
             <View style={styles.trialBadge}>
-              <Text style={styles.trialBadgeText}>Coba Gratis 3 Hari</Text>
+              <Text style={styles.trialBadgeText}>Coba Gratis {annualTrialDays} Hari</Text>
             </View>
             <Text style={styles.planLabel}>Tahunan</Text>
             <Text style={styles.planPrice} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.82}>
               {annualPrice}/thn
             </Text>
             <Text style={styles.planSubtle}>Setara {annualEquivalent}</Text>
-            <Text style={styles.planTrialDisclosure}>Setelah trial, ditagih {annualPrice}/tahun dan diperpanjang otomatis.</Text>
+            <Text style={styles.planTrialDisclosure}>
+              Setelah trial {annualTrialDays} hari, ditagih {annualPrice}/tahun dan diperpanjang otomatis.
+            </Text>
             <View style={styles.checkWrap}>
               {selectedPlan === 'annual' ? (
                 <View style={styles.checkSelected}>
@@ -167,7 +204,9 @@ export default function OnboardingSubscriptionScreen() {
 
         <Text style={styles.disclosure}>
           Langganan diperpanjang otomatis kecuali dibatalkan setidaknya 24 jam sebelum akhir periode berjalan.
-          Kelola langganan kapan saja di pengaturan App Store/Play Store.
+          {Platform.OS === 'ios'
+            ? ' Kelola langganan kapan saja di Pengaturan App Store.'
+            : ' Kelola langganan kapan saja di pengaturan Google Play.'}
         </Text>
 
         <View style={styles.footerRow}>

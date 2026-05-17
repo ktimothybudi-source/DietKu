@@ -7,6 +7,7 @@ import AffiliateShell from "@/components/AffiliateShell";
 export default function SettingsPage() {
   const router = useRouter();
   const [promoCode, setPromoCode] = useState("");
+  const [email, setEmail] = useState("");
   const [status, setStatus] = useState("");
   const [availability, setAvailability] = useState(null);
 
@@ -18,6 +19,7 @@ export default function SettingsPage() {
       }
       const payload = await res.json();
       setPromoCode(payload.promoCode || "DIETKU10");
+      setEmail(payload.email || "");
     });
   }, [router]);
 
@@ -63,6 +65,8 @@ export default function SettingsPage() {
       <section className="card">
         <h3>Customize Promo Code</h3>
         <p className="helper">This promo code appears in your checkout referral link.</p>
+        <p className="helper">Current affiliate commission: 30% of each converted subscription.</p>
+        <p className="helper">Signed in as: {email || "Loading..."}</p>
         <form className="form-row" onSubmit={savePromoCode}>
           <input
             value={normalizedCode}

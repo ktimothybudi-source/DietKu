@@ -32,10 +32,17 @@ export default function DashboardPage() {
         <StatCard label="Paid" value={formatIdr(totals.paid)} />
       </section>
 
+      <section className="stats-grid">
+        <StatCard label="Active free trials" value={String(totals.trialSignups || 0)} />
+        <StatCard label="Paid conversions" value={String(totals.paidSignups || 0)} />
+      </section>
+
       <section className="card link-card">
         <div>
-          <p className="label">Paid Signups</p>
-          <h3>{totals.paidSignups || 0}</h3>
+          <p className="label">Your referral link</p>
+          <p className="helper">
+            Commission: 30% when a referred user pays after trial. Free trials appear under Referrals until they convert.
+          </p>
         </div>
         <CopyField value={data?.referralLink || "https://dietku.id/checkout?code=DIETKU10"} />
       </section>

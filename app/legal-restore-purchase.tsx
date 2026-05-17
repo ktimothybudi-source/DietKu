@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ChevronLeft } from 'lucide-react-native';
@@ -7,12 +7,20 @@ import * as Haptics from 'expo-haptics';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 
 const items = [
-  'Fitur Pulihkan Pembelian digunakan untuk memulihkan akses pembelian/langganan yang valid pada akun Google Play yang sama.',
+  Platform.OS === 'ios'
+    ? 'Fitur Pulihkan Pembelian digunakan untuk memulihkan akses pembelian/langganan yang valid pada Apple ID yang sama.'
+    : 'Fitur Pulihkan Pembelian digunakan untuk memulihkan akses pembelian/langganan yang valid pada akun Google Play yang sama.',
   'Pemulihan tidak membuat pembelian baru dan tidak melakukan penagihan ulang.',
-  'Pembelian harus berasal dari aplikasi DietKu resmi di Google Play.',
-  'Pastikan Anda login dengan akun Google yang sama saat melakukan pembelian sebelumnya.',
+  Platform.OS === 'ios'
+    ? 'Pembelian harus berasal dari aplikasi DietKu resmi di App Store.'
+    : 'Pembelian harus berasal dari aplikasi DietKu resmi di Google Play.',
+  Platform.OS === 'ios'
+    ? 'Pastikan Anda login dengan Apple ID yang sama saat melakukan pembelian sebelumnya.'
+    : 'Pastikan Anda login dengan akun Google yang sama saat melakukan pembelian sebelumnya.',
   'Jika status tidak langsung berubah, tunggu beberapa menit lalu coba lagi dengan koneksi internet stabil.',
-  'Jika tetap gagal, hubungi dukungan dengan menyertakan email akun, waktu transaksi, dan bukti pembelian dari Google Play.',
+  Platform.OS === 'ios'
+    ? 'Jika tetap gagal, hubungi dukungan dengan menyertakan email akun, waktu transaksi, dan bukti pembelian dari App Store.'
+    : 'Jika tetap gagal, hubungi dukungan dengan menyertakan email akun, waktu transaksi, dan bukti pembelian dari Google Play.',
 ];
 
 export default function LegalRestorePurchaseScreen() {
@@ -52,7 +60,9 @@ export default function LegalRestorePurchaseScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.title, { color: theme.text }]}>Pulihkan Pembelian DietKu</Text>
-        <Text style={[styles.meta, { color: theme.textTertiary }]}>Informasi untuk pengguna Google Play</Text>
+        <Text style={[styles.meta, { color: theme.textTertiary }]}>
+          {Platform.OS === 'ios' ? 'Informasi untuk pengguna App Store' : 'Informasi untuk pengguna Google Play'}
+        </Text>
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {items.map((item) => (
@@ -67,7 +77,9 @@ export default function LegalRestorePurchaseScreen() {
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Catatan Penting</Text>
           <Text style={[styles.text, { color: theme.textSecondary }]}>
             Saat ini, jika fitur langganan belum aktif di versi aplikasi Anda, tombol ini hanya menampilkan informasi.
-            Setelah langganan diaktifkan, proses pemulihan akan mengikuti sistem billing Google Play.
+            {Platform.OS === 'ios'
+              ? ' Setelah langganan diaktifkan, proses pemulihan akan mengikuti sistem billing App Store.'
+              : ' Setelah langganan diaktifkan, proses pemulihan akan mengikuti sistem billing Google Play.'}
           </Text>
           <Text style={[styles.text, { color: theme.textSecondary }]}>
             Butuh bantuan pembelian? Hubungi: {supportEmail}

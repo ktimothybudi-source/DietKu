@@ -241,6 +241,11 @@ input {
   color: #067647;
 }
 
+.pill.warn {
+  background: #fffaeb;
+  color: #b54708;
+}
+
 .positive {
   color: #067647;
   font-weight: 600;

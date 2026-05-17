@@ -67,9 +67,21 @@ export default function EarningsPage() {
                 <td>
                   <span className="pill">{row.type}</span>
                 </td>
-                <td className="positive">+{formatIdr(row.amount)}</td>
+                <td className={row.amount > 0 ? "positive" : ""}>
+                  {row.amount > 0 ? `+${formatIdr(row.amount)}` : "—"}
+                </td>
                 <td>
-                  <span className="pill success">{row.status}</span>
+                  <span
+                    className={
+                      row.status === "confirmed" || row.status === "paid"
+                        ? "pill success"
+                        : row.status === "trial_active"
+                          ? "pill warn"
+                          : "pill"
+                    }
+                  >
+                    {row.status === "trial_active" ? "trial" : row.status}
+                  </span>
                 </td>
               </tr>
             ))}

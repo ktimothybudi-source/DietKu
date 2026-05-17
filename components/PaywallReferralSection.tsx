@@ -18,11 +18,13 @@ import {
   redeemReferralCode,
   invalidateReferralProfile,
   redeemErrorMessageForUi,
+  DEFAULT_REFERRAL_STORE_PROMO_CODE,
+  googlePlayRedeemUrl,
+  appStoreRedeemUrl,
 } from '@/lib/referral';
 import { consumePendingReferralCode } from '@/lib/pendingReferralCode';
 
-const GOOGLE_PLAY_REFERRAL_PROMO_CODE = 'fm34dck3';
-const GOOGLE_PLAY_REDEEM_URL = `https://play.google.com/redeem?code=${GOOGLE_PLAY_REFERRAL_PROMO_CODE}`;
+const STORE_LABEL = Platform.OS === 'ios' ? 'App Store' : 'Play Store';
 
 export type PaywallReferralSectionHandle = {
   /** Current raw input value. */
@@ -80,6 +82,7 @@ const PaywallReferralSection = forwardRef<PaywallReferralSectionHandle, Props>(f
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successDays, setSuccessDays] = useState<number | null>(null);
+  const [storePromoCode, setStorePromoCode] = useState<string>(DEFAULT_REFERRAL_STORE_PROMO_CODE);
 
   const referralActive =
     referralTrialEndsAt != null && new Date(referralTrialEndsAt).getTime() > Date.now();
@@ -102,15 +105,27 @@ const PaywallReferralSection = forwardRef<PaywallReferralSectionHandle, Props>(f
           invalidateReferralProfile(queryClient);
           await refreshSubscription();
           setSuccessDays(res.trial_days);
+          const promoCode = (
+            Platform.OS === 'ios'
+              ? (res.app_store_offer_code ?? res.google_play_promo_code)
+              : (res.google_play_promo_code ?? res.app_store_offer_code)
+          ?? DEFAULT_REFERRAL_STORE_PROMO_CODE)
+            .trim()
+            .toUpperCase();
+          const redeemUrl =
+            Platform.OS === 'ios'
+              ? (res.app_store_redeem_url ?? appStoreRedeemUrl(promoCode))
+              : (res.google_play_redeem_url ?? googlePlayRedeemUrl(promoCode));
+          setStorePromoCode(promoCode);
           setCode('');
-          if (Platform.OS === 'android') {
+          if (Platform.OS === 'android' || Platform.OS === 'ios') {
             try {
-              const canOpen = await Linking.canOpenURL(GOOGLE_PLAY_REDEEM_URL);
+              const canOpen = await Linking.canOpenURL(redeemUrl);
               if (canOpen) {
-                await Linking.openURL(GOOGLE_PLAY_REDEEM_URL);
+                await Linking.openURL(redeemUrl);
               }
             } catch {
-              // Non-fatal: referral trial is already redeemed server-side.
+              // Non-fatal: referral redemption is already recorded server-side.
             }
           }
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -179,10 +194,13 @@ const PaywallReferralSection = forwardRef<PaywallReferralSectionHandle, Props>(f
         </View>
       ) : (
         <Text style={[styles.modalIntro, { color: textSecondary }]}>
-          {modalIntro ?? 'Punya kode undangan? Masukkan untuk dapat trial tambahan'}
+          {modalIntro ?? 'Punya kode undangan? Jika valid, Anda dapat free trial 7 hari untuk paket Tahunan.'}
         </Text>
       )}
       <Text style={[styles.label, { color: textSecondary }]}>Kode</Text>
+      <Text style={[styles.helper, { color: textSecondary }]}>
+        Kode valid akan mengaktifkan trial 7 hari untuk langganan Tahunan.
+      </Text>
       <TextInput
         style={[
           styles.input,
@@ -203,7 +221,8 @@ const PaywallReferralSection = forwardRef<PaywallReferralSectionHandle, Props>(f
       {errorMsg ? <Text style={styles.err}>{errorMsg}</Text> : null}
       {successDays != null ? (
         <Text style={[styles.ok, { color: accentColor }]}>
-          Anda mendapat {successDays} hari gratis. Gunakan kode Play Store fm34dck3 untuk trial 7 hari paket Tahunan.
+          Kode valid. Lanjutkan redeem di {STORE_LABEL} dengan kode {storePromoCode} untuk trial{' '}
+          {successDays} hari paket Tahunan.
         </Text>
       ) : null}
       {!hideRedeemButton ? (
@@ -313,6 +332,7 @@ const styles = StyleSheet.create({
   expandedTitle: { fontSize: 16, fontWeight: '800' },
   modalIntro: { fontSize: 15, fontWeight: '600', lineHeight: 22, textAlign: 'center', marginBottom: 4 },
   label: { fontSize: 13, fontWeight: '600' },
+  helper: { fontSize: 12, marginTop: 2, marginBottom: 8 },
   input: {
     borderWidth: 1,
     borderRadius: 12,

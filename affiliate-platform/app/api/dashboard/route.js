@@ -22,23 +22,35 @@ export async function GET() {
   if (!affiliateId) return NextResponse.json({ error: "Affiliate account not found." }, { status: 404 });
 
   const { data: commissions } = await supabase.from("commissions").select("amount_idr,status").eq("affiliate_id", affiliateId);
-  const { data: referrals } = await supabase.from("referrals").select("id").eq("affiliate_id", affiliateId).eq("status", "converted");
+  const { data: referrals } = await supabase
+    .from("referrals")
+    .select("id,status,commission_idr")
+    .eq("affiliate_id", affiliateId);
+
+  const referralList = referrals || [];
+  const paidReferrals = referralList.filter((row) => row.status === "converted");
+  const trialReferrals = referralList.filter((row) => row.status === "trial_active");
 
   const total = (commissions || []).reduce((sum, row) => sum + Number(row.amount_idr || 0), 0);
-  const pending = (commissions || [])
+  const pendingPayout = (commissions || [])
     .filter((row) => row.status === "pending")
     .reduce((sum, row) => sum + Number(row.amount_idr || 0), 0);
-  const paid = (commissions || [])
+  const paidOut = (commissions || [])
     .filter((row) => row.status === "paid")
+    .reduce((sum, row) => sum + Number(row.amount_idr || 0), 0);
+  const confirmed = (commissions || [])
+    .filter((row) => row.status === "confirmed")
     .reduce((sum, row) => sum + Number(row.amount_idr || 0), 0);
 
   return NextResponse.json({
     totals: {
       totalEarnings: total,
-      pending,
-      confirmed: Math.max(0, total - pending),
-      paid,
-      paidSignups: referrals?.length || 0,
+      pending: pendingPayout,
+      confirmed,
+      paid: paidOut,
+      paidSignups: paidReferrals.length,
+      trialSignups: trialReferrals.length,
+      pendingCommissionEstimate: trialReferrals.length * 0,
     },
     referralLink: `${process.env.NEXT_PUBLIC_APP_BASE_URL || "http://localhost:3000"}/checkout?code=${readAffiliateCode(affiliate)}`,
     chart: [],

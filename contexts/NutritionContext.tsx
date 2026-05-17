@@ -5,6 +5,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { UserProfile, FoodEntry, DailyTargets, MealAnalysis, FavoriteMeal, RecentMeal } from '@/types/nutrition';
 import { calculateDailyTargets, getTodayKey, sumMidpointMicrosFromItems } from '@/utils/nutritionCalculations';
 import { analyzeMealPhoto } from '@/utils/photoAnalysis';
+import { mapScanErrorToUserMessage } from '@/utils/scanErrorMessages';
 import { saveImagePermanently } from '@/utils/imageStorage';
 import {
   supabase,
@@ -2091,20 +2092,21 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     };
     setPendingEntries(prev => [...prev, newPending]);
 
-    saveImagePermanently(photoUri)
-      .then((permanentUri) => {
-        setPendingEntries(prev =>
-          prev.map(entry =>
-            entry.id === newPending.id
-              ? { ...entry, permanentPhotoUri: permanentUri }
-              : entry
-          )
-        );
-        console.log('Image saved permanently:', permanentUri);
-      })
-      .catch((error) => {
-        console.error('Error saving image:', error);
-      });
+    const persistPhoto = () => {
+      saveImagePermanently(photoUri)
+        .then((permanentUri) => {
+          setPendingEntries(prev =>
+            prev.map(entry =>
+              entry.id === newPending.id
+                ? { ...entry, permanentPhotoUri: permanentUri }
+                : entry
+            )
+          );
+        })
+        .catch((error) => {
+          console.error('Error saving image:', error);
+        });
+    };
 
     analyzeMealPhoto(base64, { userId: authState.userId, language })
       .then((analysis) => {
@@ -2118,9 +2120,9 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       })
       .catch((error) => {
-        console.warn('Photo analysis error:', error);
-        const message =
-          error instanceof Error && error.message ? error.message : 'Gagal menganalisis foto';
+        const raw = error instanceof Error && error.message ? error.message : 'Gagal menganalisis foto';
+        const message = mapScanErrorToUserMessage(raw, language);
+        console.warn('Photo analysis error:', { raw, message });
         setPendingEntries(prev =>
           prev.map(entry =>
             entry.id === newPending.id
@@ -2129,7 +2131,8 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
           )
         );
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      });
+      })
+      .finally(persistPhoto);
 
     return newPending.id;
   }, [authState.userId, language]);
@@ -2190,9 +2193,9 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       })
       .catch((error) => {
-        console.warn('Photo analysis error:', error);
-        const message =
-          error instanceof Error && error.message ? error.message : 'Gagal menganalisis foto';
+        const raw = error instanceof Error && error.message ? error.message : 'Gagal menganalisis foto';
+        const message = mapScanErrorToUserMessage(raw, language);
+        console.warn('Photo analysis error:', { raw, message });
         setPendingEntries(prev =>
           prev.map(entry =>
             entry.id === pendingId

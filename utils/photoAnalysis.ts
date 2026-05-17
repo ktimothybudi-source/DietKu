@@ -1,11 +1,19 @@
 import { z } from 'zod';
 import * as ImageManipulator from 'expo-image-manipulator';
+import {
+  MEAL_SCAN_JPEG_QUALITY,
+  MEAL_SCAN_MAX_BASE64_CHARS,
+  MEAL_SCAN_MAX_WIDTH,
+} from '@/constants/mealScanImage';
 import { MealAnalysis } from '@/types/nutrition';
+import {
+  extractOpenAIContent,
+  mealAnalysisSchema,
+  parseModelJsonContent,
+  validateMealAnalysisFromContent,
+} from '@/utils/mealAnalysisCore';
 import { AIProxyError, callAIProxy } from '@/utils/aiProxy';
-import { enrichMealAnalysisMicros } from '@/utils/nutritionCalculations';
-
-/** Target smaller payload for faster upload + inference. */
-const MAX_BASE64_CHARS = 1_000_000;
+import { mapScanErrorToUserMessage, type ScanLanguage } from '@/utils/scanErrorMessages';
 
 function stripDataUrlPrefix(b64: string): string {
   return b64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
@@ -13,15 +21,15 @@ function stripDataUrlPrefix(b64: string): string {
 
 async function ensureMealImageUnderLimit(rawBase64: string): Promise<string> {
   let sanitized = stripDataUrlPrefix(rawBase64);
-  if (sanitized.length <= MAX_BASE64_CHARS) {
+  if (sanitized.length <= MEAL_SCAN_MAX_BASE64_CHARS) {
     return sanitized;
   }
 
-  let width = 1120;
-  let quality = 0.68;
+  let width = MEAL_SCAN_MAX_WIDTH;
+  let quality = MEAL_SCAN_JPEG_QUALITY;
   let dataUri = `data:image/jpeg;base64,${sanitized}`;
 
-  for (let attempt = 0; attempt < 5 && sanitized.length > MAX_BASE64_CHARS; attempt += 1) {
+  for (let attempt = 0; attempt < 5 && sanitized.length > MEAL_SCAN_MAX_BASE64_CHARS; attempt += 1) {
     try {
       const result = await ImageManipulator.manipulateAsync(
         dataUri,
@@ -41,95 +49,110 @@ async function ensureMealImageUnderLimit(rawBase64: string): Promise<string> {
     quality = Math.max(0.4, quality - 0.08);
   }
 
-  if (sanitized.length > MAX_BASE64_CHARS) {
-    throw new Error('Gambar terlalu besar. Coba ambil foto dengan pencahayaan cukup dan jarak sedikit lebih jauh.');
+  if (sanitized.length > MEAL_SCAN_MAX_BASE64_CHARS) {
+    throw new Error('IMAGE_TOO_LARGE');
   }
 
   return sanitized;
 }
 
-const foodItemSchema = z.object({
-  name: z.string().describe('Name of the food item'),
-  portion: z.string().describe('Estimated portion size (e.g., "1 cup", "palm-sized", "150g")'),
-  caloriesMin: z.number().describe('Minimum estimated calories'),
-  caloriesMax: z.number().describe('Maximum estimated calories'),
-  proteinMin: z.number().describe('Minimum estimated protein in grams'),
-  proteinMax: z.number().describe('Maximum estimated protein in grams'),
-  carbsMin: z.number().describe('Minimum estimated carbs in grams'),
-  carbsMax: z.number().describe('Maximum estimated carbs in grams'),
-  fatMin: z.number().describe('Minimum estimated fat in grams'),
-  fatMax: z.number().describe('Maximum estimated fat in grams'),
-  sugarMin: z.number().describe('Minimum estimated sugar in grams'),
-  sugarMax: z.number().describe('Maximum estimated sugar in grams'),
-  fiberMin: z.number().describe('Minimum estimated dietary fiber in grams'),
-  fiberMax: z.number().describe('Maximum estimated dietary fiber in grams'),
-  sodiumMin: z.number().describe('Minimum estimated sodium in milligrams'),
-  sodiumMax: z.number().describe('Maximum estimated sodium in milligrams'),
-});
+type MealAnalysisApiResponse = {
+  analysis?: MealAnalysis;
+  choices?: unknown[];
+  error?: string;
+  code?: string;
+};
 
-const mealAnalysisSchema = z.object({
-  items: z.array(foodItemSchema).describe('Array of identified food items in the image'),
-  totalCaloriesMin: z.number().describe('Total minimum calories for the entire meal'),
-  totalCaloriesMax: z.number().describe('Total maximum calories for the entire meal'),
-  totalProteinMin: z.number().describe('Total minimum protein for the entire meal'),
-  totalProteinMax: z.number().describe('Total maximum protein for the entire meal'),
-  confidence: z.enum(['high', 'medium', 'low']).describe('Confidence level of the estimate'),
-  tips: z.array(z.string()).optional().describe('Tips to improve accuracy in future photos'),
-});
+function extractProxyError(err: unknown): { message: string; code?: string } {
+  if (err instanceof AIProxyError && err.data && typeof err.data === 'object' && err.data !== null) {
+    const data = err.data as { error?: unknown; code?: unknown };
+    const message = data.error != null ? String(data.error) : err.message;
+    const code = data.code != null ? String(data.code) : undefined;
+    return { message, code };
+  }
+  if (err instanceof Error) {
+    return { message: err.message };
+  }
+  return { message: 'Unknown error' };
+}
+
+function parseLegacyOpenAIEnvelope(json: MealAnalysisApiResponse, language: ScanLanguage): MealAnalysis {
+  const { content, refusal, finishReason } = extractOpenAIContent(json as Parameters<typeof extractOpenAIContent>[0]);
+  if (refusal) {
+    throw new Error(mapScanErrorToUserMessage(refusal, language));
+  }
+  if (!content?.trim()) {
+    const code = finishReason === 'length' ? 'MEAL_ANALYSIS_TRUNCATED' : 'MEAL_ANALYSIS_PARSE_FAILED';
+    throw new Error(mapScanErrorToUserMessage(code, language));
+  }
+  const validated = validateMealAnalysisFromContent(content, language);
+  if (!validated.ok) {
+    throw new Error(mapScanErrorToUserMessage(validated.error, language));
+  }
+  return validated.analysis;
+}
+
+function parseMealAnalysisResponse(json: MealAnalysisApiResponse, language: ScanLanguage): MealAnalysis {
+  if (json.analysis && typeof json.analysis === 'object') {
+    const parsed = mealAnalysisSchema.safeParse(json.analysis);
+    if (parsed.success) {
+      return parsed.data;
+    }
+    throw new Error(mapScanErrorToUserMessage('MEAL_ANALYSIS_VALIDATION_FAILED', language));
+  }
+
+  if (json.choices) {
+    return parseLegacyOpenAIEnvelope(json, language);
+  }
+
+  throw new Error(mapScanErrorToUserMessage('MEAL_ANALYSIS_PARSE_FAILED', language));
+}
 
 export type AnalyzeMealPhotoOptions = {
-  /** Supabase user id — required for correct daily scan quota + premium bypass on the server. */
   userId?: string | null;
-  /** Preferred response language for food names/tips. */
-  language?: 'id' | 'en';
+  language?: ScanLanguage;
 };
 
 export async function analyzeMealPhoto(
   base64Image: string,
   options?: AnalyzeMealPhotoOptions
 ): Promise<MealAnalysis> {
+  const language: ScanLanguage = options?.language === 'en' ? 'en' : 'id';
   const base64ForApi = await ensureMealImageUnderLimit(base64Image);
   const payload: Record<string, unknown> = { base64Image: base64ForApi };
   if (options?.userId) {
     payload.userId = options.userId;
   }
-  if (options?.language) {
-    payload.language = options.language;
-  }
-  let json: any;
-  try {
-    json = await callAIProxy<any>('meal-analysis', payload);
-  } catch (err) {
-    if (err instanceof AIProxyError && err.data && typeof err.data === 'object' && err.data !== null && 'error' in err.data) {
-      throw new Error(String((err.data as { error: unknown }).error));
-    }
-    throw err;
-  }
-  const content: string | undefined = json?.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error('OpenAI returned empty response');
-  }
+  payload.language = language;
 
-  const cleaned = content
-    .replace(/```json/g, '')
-    .replace(/```/g, '')
-    .trim();
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    throw new Error('Gagal membaca hasil analisis. Coba foto lagi dengan pencahayaan lebih terang.');
-  }
-  try {
-    const validated = mealAnalysisSchema.parse(parsed);
-    return enrichMealAnalysisMicros(validated);
-  } catch (zErr) {
-    if (zErr instanceof z.ZodError) {
-      const first = zErr.issues[0];
-      throw new Error(
-        first ? `Format analisis tidak valid: ${first.path.join('.') || 'data'}` : 'Format analisis tidak valid'
-      );
+  const runOnce = async (): Promise<MealAnalysis> => {
+    let json: MealAnalysisApiResponse;
+    try {
+      json = await callAIProxy<MealAnalysisApiResponse>('meal-analysis', payload);
+    } catch (err) {
+      const { message, code } = extractProxyError(err);
+      throw new Error(mapScanErrorToUserMessage(code ?? message, language));
     }
-    throw zErr;
+    return parseMealAnalysisResponse(json, language);
+  };
+
+  try {
+    return await runOnce();
+  } catch (firstError) {
+    const msg = firstError instanceof Error ? firstError.message : '';
+    const retryable =
+      msg.includes('Koneksi gagal') ||
+      msg.includes('Connection failed') ||
+      msg.includes('terpotong') ||
+      msg.includes('cut off') ||
+      msg.includes('Gagal membaca') ||
+      msg.includes('Could not read');
+
+    if (!retryable) {
+      throw firstError;
+    }
+
+    await new Promise((r) => setTimeout(r, 800));
+    return runOnce();
   }
 }

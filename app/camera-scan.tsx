@@ -22,7 +22,7 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ANIMATION_DURATION } from '@/constants/animations';
-import { callAIProxy } from '@/utils/aiProxy';
+import { callAIProxy, warmAiProxy } from '@/utils/aiProxy';
 import { optimizeImageForScan } from '@/utils/imageOptimization';
 import { DietKuWordmark } from '@/components/DietKuWordmark';
 
@@ -110,6 +110,7 @@ export default function CameraScanScreen() {
   }, [checkHelperText, startCornerPulse]);
 
   useEffect(() => {
+    warmAiProxy();
     refreshScanQuota();
   }, [refreshScanQuota]);
 
@@ -209,12 +210,12 @@ export default function CameraScanScreen() {
 
     try {
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.85,
-        base64: true,
+        quality: 0.75,
+        base64: false,
       });
 
-      if (!photo?.uri || !photo.base64) {
-        console.error('No photo or base64 returned from camera');
+      if (!photo?.uri) {
+        console.error('No photo returned from camera');
         return;
       }
 
@@ -222,8 +223,11 @@ export default function CameraScanScreen() {
         const optimized = await optimizeImageForScan(photo.uri);
         addPendingEntry(optimized.uri, optimized.base64);
       } catch (optimizationError) {
-        console.warn('Scan optimization failed, using original capture:', optimizationError);
-        addPendingEntry(photo.uri, photo.base64);
+        console.warn('Scan optimization failed:', optimizationError);
+        Alert.alert(
+          l('Gagal memproses foto', 'Could not process photo'),
+          l('Coba ambil foto lagi.', 'Please try taking the photo again.')
+        );
       }
       router.back();
     } catch (error) {
@@ -249,21 +253,24 @@ export default function CameraScanScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: false,
-        quality: 0.85,
-        base64: true,
+        quality: 0.75,
+        base64: false,
       });
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        if (asset.uri && asset.base64) {
+        if (asset.uri) {
           try {
             const optimized = await optimizeImageForScan(asset.uri);
             addPendingEntry(optimized.uri, optimized.base64);
+            router.back();
           } catch (optimizationError) {
-            console.warn('Gallery optimization failed, using original image:', optimizationError);
-            addPendingEntry(asset.uri, asset.base64);
+            console.warn('Gallery optimization failed:', optimizationError);
+            Alert.alert(
+              l('Gagal memproses foto', 'Could not process photo'),
+              l('Coba pilih gambar lain.', 'Please try another image.')
+            );
           }
-          router.back();
         }
       }
     } catch (error) {
@@ -299,7 +306,7 @@ export default function CameraScanScreen() {
               <Text style={styles.permissionSub}>
                 {permission?.status === 'denied'
                   ? 'Izin kamera ditolak. Aktifkan dari Settings.'
-                  : 'Izinkan kamera untuk memindai makanan.'}
+                  : 'Lanjutkan untuk memindai makanan dengan kamera.'}
               </Text>
 
               <View style={{ height: 18 }} />
@@ -326,7 +333,7 @@ export default function CameraScanScreen() {
                   }}
                   activeOpacity={0.9}
                 >
-                  <Text style={styles.permissionButtonText}>Izinkan</Text>
+                  <Text style={styles.permissionButtonText}>Lanjutkan</Text>
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity

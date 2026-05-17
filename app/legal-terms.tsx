@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ChevronLeft } from 'lucide-react-native';
@@ -40,7 +40,9 @@ const sections = [
   {
     title: '7. Pembelian dan Langganan',
     body:
-      'Jika ada fitur berbayar/langganan di masa depan, detail harga, penagihan, perpanjangan, dan pembatalan akan mengikuti ketentuan Google Play dan ditampilkan sebelum transaksi.',
+      Platform.OS === 'ios'
+        ? 'Jika ada fitur berbayar/langganan, detail harga, penagihan, perpanjangan, dan pembatalan mengikuti ketentuan App Store dan ditampilkan sebelum transaksi.'
+        : 'Jika ada fitur berbayar/langganan, detail harga, penagihan, perpanjangan, dan pembatalan mengikuti ketentuan Google Play dan ditampilkan sebelum transaksi.',
   },
   {
     title: '8. Pembatasan Tanggung Jawab',

@@ -1,13 +1,12 @@
 /**
  * IDR anchors when store / RevenueCat price strings are unavailable.
- * Use .999 endings intentionally: Google Play price tiers can show a rounded consumer
- * price (e.g. “Rp 70rb”) even when the micros price is 69.999 — that is store UI, not a bug in this app.
+ * Displayed store prices may round (Play/App Store UI).
  */
-const MONTHLY_IDR = 69999;
-const YEARLY_IDR = 279999;
+const MONTHLY_IDR = 39000;
+const YEARLY_IDR = 129000;
 
-export const SUBSCRIPTION_MONTHLY_IDR_FALLBACK = 'Rp 69.999';
-export const SUBSCRIPTION_YEARLY_IDR_FALLBACK = 'Rp 279.999';
+export const SUBSCRIPTION_MONTHLY_IDR_FALLBACK = 'Rp 39.000';
+export const SUBSCRIPTION_YEARLY_IDR_FALLBACK = 'Rp 129.000';
 
 /** Rounded monthly equivalent of the yearly price (for “setara / bulan” copy). */
 export const SUBSCRIPTION_YEARLY_EQUIV_MONTHLY_ROUNDED = Math.round(YEARLY_IDR / 12);

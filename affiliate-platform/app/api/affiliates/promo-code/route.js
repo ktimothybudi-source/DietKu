@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { getSessionAffiliateId } from "@/lib/auth";
-import { getAffiliateCodeColumn, readAffiliateCode } from "@/lib/affiliateCodeColumn";
+import { getAffiliateCodeColumn, getAffiliateCodeInfo, readAffiliateCode } from "@/lib/affiliateCodeColumn";
 
 const schema = z.object({
   promoCode: z
@@ -26,8 +26,8 @@ export async function GET() {
   }
 
   const codeColumn = await getAffiliateCodeColumn(supabase);
-  const { data } = await supabase.from("affiliates").select(codeColumn).eq("id", sessionAffiliateId).maybeSingle();
-  return NextResponse.json({ promoCode: readAffiliateCode(data) });
+  const { data } = await supabase.from("affiliates").select(`email,${codeColumn}`).eq("id", sessionAffiliateId).maybeSingle();
+  return NextResponse.json({ promoCode: readAffiliateCode(data), email: data?.email || "" });
 }
 
 export async function PATCH(request) {
@@ -44,6 +44,7 @@ export async function PATCH(request) {
     }
 
     const codeColumn = await getAffiliateCodeColumn(supabase);
+    const codeInfo = await getAffiliateCodeInfo(supabase);
     const { data: existing } = await supabase
       .from("affiliates")
       .select("id")
@@ -59,7 +60,15 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "Affiliate account not found." }, { status: 404 });
     }
 
-    const { error } = await supabase.from("affiliates").update({ [codeColumn]: promoCode }).eq("id", affiliate.id);
+    const updatePayload = { [codeColumn]: promoCode };
+    if (codeInfo.hasPromoCode) {
+      updatePayload.promo_code = promoCode;
+    }
+    if (codeInfo.hasReferralCode) {
+      updatePayload.referral_code = promoCode;
+    }
+
+    const { error } = await supabase.from("affiliates").update(updatePayload).eq("id", affiliate.id);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }

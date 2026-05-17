@@ -1,12 +1,37 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
+export const DEFAULT_REFERRAL_STORE_PROMO_CODE = (
+  process.env.EXPO_PUBLIC_GOOGLE_PLAY_REFERRAL_PROMO_CODE ??
+  process.env.EXPO_PUBLIC_APP_STORE_REFERRAL_OFFER_CODE ??
+  'FM34DCK3'
+).trim();
+
+export const DEFAULT_APP_STORE_APPLE_ID = (
+  process.env.EXPO_PUBLIC_APP_STORE_APPLE_ID ?? '6761396062'
+).trim();
+
+export function googlePlayRedeemUrl(promoCode: string): string {
+  return `https://play.google.com/redeem?code=${encodeURIComponent(promoCode.trim())}`;
+}
+
+export function appStoreRedeemUrl(
+  offerCode: string,
+  appleId: string = DEFAULT_APP_STORE_APPLE_ID,
+): string {
+  return `https://apps.apple.com/redeem?ctx=offercodes&id=${encodeURIComponent(appleId.trim())}&code=${encodeURIComponent(offerCode.trim())}`;
+}
+
 export type RedeemReferralResult =
   | {
       ok: true;
       trial_days: number;
       trial_ends_at: string;
       referral_code_id: string;
+      google_play_promo_code?: string;
+      google_play_redeem_url?: string;
+      app_store_offer_code?: string;
+      app_store_redeem_url?: string;
     }
   | { ok: false; error: string; message: string };
 
@@ -33,6 +58,14 @@ function mapRedeemPayload(data: unknown): RedeemReferralResult {
       trial_days: Number(o.trial_days),
       trial_ends_at: String(o.trial_ends_at ?? ''),
       referral_code_id: String(o.referral_code_id ?? ''),
+      google_play_promo_code:
+        o.google_play_promo_code != null ? String(o.google_play_promo_code) : undefined,
+      google_play_redeem_url:
+        o.google_play_redeem_url != null ? String(o.google_play_redeem_url) : undefined,
+      app_store_offer_code:
+        o.app_store_offer_code != null ? String(o.app_store_offer_code) : undefined,
+      app_store_redeem_url:
+        o.app_store_redeem_url != null ? String(o.app_store_redeem_url) : undefined,
     };
   }
   return {

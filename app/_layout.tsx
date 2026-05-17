@@ -44,7 +44,6 @@ function RootLayoutNav() {
       <Stack.Screen name="legal-terms" options={{ presentation: 'card' }} />
       <Stack.Screen name="legal-privacy" options={{ presentation: 'card' }} />
       <Stack.Screen name="legal-restore-purchase" options={{ presentation: 'card' }} />
-      <Stack.Screen name="playstore-checklist" options={{ presentation: 'card' }} />
       <Stack.Screen name="onboarding-subscription" options={{ headerShown: false }} />
     </Stack>
   );

@@ -1,4 +1,5 @@
 import * as ImageManipulator from 'expo-image-manipulator';
+import { MEAL_SCAN_JPEG_QUALITY, MEAL_SCAN_MAX_WIDTH } from '@/constants/mealScanImage';
 
 type OptimizeOptions = {
   maxWidth: number;
@@ -7,8 +8,8 @@ type OptimizeOptions = {
 };
 
 const DEFAULT_SCAN_OPTIONS: OptimizeOptions = {
-  maxWidth: 1280,
-  compress: 0.72,
+  maxWidth: MEAL_SCAN_MAX_WIDTH,
+  compress: MEAL_SCAN_JPEG_QUALITY,
   includeBase64: true,
 };
 

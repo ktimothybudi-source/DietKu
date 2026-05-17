@@ -31,6 +31,8 @@ import { FoodEntry, MealAnalysis } from '@/types/nutrition';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { analyzeMealPhoto } from '@/utils/photoAnalysis';
+import { warmAiProxy } from '@/utils/aiProxy';
+import { optimizeImageForScan } from '@/utils/imageOptimization';
 import {
   getTodayKey,
   calculateSugarTargetFromCalories,
@@ -539,15 +541,20 @@ export default function HomeScreen() {
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 0.8,
-      base64: true,
+      quality: 0.75,
+      base64: false,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
+    if (!result.canceled && result.assets[0]?.uri) {
+      const assetUri = result.assets[0].uri;
+      setPhotoUri(assetUri);
       setModalVisible(true);
-      if (result.assets[0].base64) {
-        await analyzePhoto(result.assets[0].base64);
+      try {
+        const optimized = await optimizeImageForScan(assetUri);
+        setPhotoUri(optimized.uri);
+        await analyzePhoto(optimized.base64);
+      } catch {
+        Alert.alert(l('Analisis gagal', 'Analysis failed'), l('Foto tidak dapat diproses. Silakan coba lagi.', 'Could not process the photo. Please try again.'));
       }
     }
   };
@@ -559,8 +566,12 @@ export default function HomeScreen() {
       setAnalysis(result);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
+      const detail =
+        error instanceof Error && error.message
+          ? error.message
+          : l('Foto tidak dapat dianalisis. Silakan coba lagi.', 'Could not analyze the photo. Please try again.');
       console.warn('Photo analysis error:', error);
-      Alert.alert(l('Analisis gagal', 'Analysis failed'), l('Foto tidak dapat dianalisis. Silakan coba lagi.', 'Could not analyze the photo. Please try again.'));
+      Alert.alert(l('Analisis gagal', 'Analysis failed'), detail);
     } finally {
       setAnalyzing(false);
     }
@@ -1462,6 +1473,7 @@ export default function HomeScreen() {
                   style={[styles.tab, activeTab === 'scan' && styles.tabActive, activeTab === 'scan' && { backgroundColor: theme.card }]}
                   onPress={() => {
                     setAddFoodModalVisible(false);
+                    warmAiProxy();
                     router.push('/camera-scan');
                   }}
                 >
