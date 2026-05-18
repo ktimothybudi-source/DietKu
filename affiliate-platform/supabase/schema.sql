@@ -14,7 +14,9 @@ create table if not exists affiliates (
 create table if not exists referrals (
   id uuid primary key default gen_random_uuid(),
   affiliate_id uuid not null references affiliates(id) on delete cascade,
-  referred_user_id text not null,
+  referred_user_id uuid not null references auth.users(id) on delete cascade,
+  referred_email text not null,
+  ip_address text not null default '0.0.0.0',
   subscription_plan text,
   amount_idr numeric(12,2) not null default 0,
   commission_idr numeric(12,2) not null default 0,
@@ -35,6 +37,8 @@ create table if not exists commissions (
 alter table if exists affiliates add column if not exists promo_code text;
 alter table if exists referrals add column if not exists amount_idr numeric(12,2) not null default 0;
 alter table if exists referrals add column if not exists commission_idr numeric(12,2) not null default 0;
+alter table if exists referrals add column if not exists referred_email text;
+alter table if exists referrals add column if not exists ip_address text;
 alter table if exists referrals add column if not exists subscription_plan text;
 alter table if exists commissions add column if not exists amount_idr numeric(12,2) not null default 0;
 alter table if exists commissions add column if not exists referral_id uuid;

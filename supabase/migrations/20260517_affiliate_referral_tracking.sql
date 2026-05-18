@@ -17,7 +17,9 @@ CREATE TABLE IF NOT EXISTS public.affiliates (
 CREATE TABLE IF NOT EXISTS public.referrals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   affiliate_id UUID NOT NULL REFERENCES public.affiliates(id) ON DELETE CASCADE,
-  referred_user_id TEXT NOT NULL,
+  referred_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  referred_email TEXT NOT NULL,
+  ip_address TEXT NOT NULL DEFAULT '0.0.0.0',
   subscription_plan TEXT,
   amount_idr NUMERIC(12,2) NOT NULL DEFAULT 0,
   commission_idr NUMERIC(12,2) NOT NULL DEFAULT 0,
@@ -37,12 +39,45 @@ CREATE TABLE IF NOT EXISTS public.commissions (
 ALTER TABLE public.affiliates ADD COLUMN IF NOT EXISTS promo_code TEXT;
 ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS amount_idr NUMERIC(12,2) NOT NULL DEFAULT 0;
 ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS commission_idr NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS referred_email TEXT;
+ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS ip_address TEXT;
 ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS subscription_plan TEXT;
 ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS app_redemption_id UUID;
 ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS referral_code_id UUID;
 ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMPTZ;
 ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS converted_at TIMESTAMPTZ;
 ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+-- Normalize referred_user_id to UUID (older affiliate schemas used TEXT).
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'referrals'
+      AND column_name = 'referred_user_id'
+      AND udt_name = 'text'
+  ) THEN
+    ALTER TABLE public.referrals
+      ALTER COLUMN referred_user_id TYPE UUID USING referred_user_id::UUID;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'referrals_referred_user_id_fkey'
+  ) THEN
+    ALTER TABLE public.referrals
+      ADD CONSTRAINT referrals_referred_user_id_fkey
+      FOREIGN KEY (referred_user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+  END IF;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_referrals_referred_user_id
   ON public.referrals (referred_user_id);
@@ -125,12 +160,27 @@ AS $$
   LIMIT 1;
 $$;
 
+-- Extract IP from redeem RPC client_meta (app may send ip, ip_address, or client_ip).
+CREATE OR REPLACE FUNCTION public.extract_client_ip_from_meta(p_meta JSONB)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT COALESCE(
+    NULLIF(trim(p_meta->>'ip_address'), ''),
+    NULLIF(trim(p_meta->>'ip'), ''),
+    NULLIF(trim(p_meta->>'client_ip'), ''),
+    '0.0.0.0'
+  );
+$$;
+
 -- Called when a buyer successfully redeems an affiliate referral code in the app.
 CREATE OR REPLACE FUNCTION public.record_affiliate_referral_trial(
   p_referral_code_id UUID,
   p_redeemer_user_id UUID,
   p_redemption_id UUID,
-  p_trial_days INTEGER DEFAULT 7
+  p_trial_days INTEGER DEFAULT 7,
+  p_client_meta JSONB DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -139,15 +189,31 @@ SET search_path = public
 AS $$
 DECLARE
   v_affiliate_id UUID;
+  v_referred_email TEXT;
+  v_ip_address TEXT;
 BEGIN
   v_affiliate_id := public.resolve_affiliate_id_for_referral_code(p_referral_code_id);
   IF v_affiliate_id IS NULL THEN
     RETURN;
   END IF;
 
+  SELECT COALESCE(
+    NULLIF(trim(u.email), ''),
+    NULLIF(trim(p.email), ''),
+    p_redeemer_user_id::TEXT || '@unknown.dietku.app'
+  )
+  INTO v_referred_email
+  FROM (SELECT p_redeemer_user_id AS id) AS redeemer
+  LEFT JOIN auth.users u ON u.id = redeemer.id
+  LEFT JOIN public.profiles p ON p.id = redeemer.id;
+
+  v_ip_address := public.extract_client_ip_from_meta(p_client_meta);
+
   INSERT INTO public.referrals (
     affiliate_id,
     referred_user_id,
+    referred_email,
+    ip_address,
     subscription_plan,
     amount_idr,
     status,
@@ -156,7 +222,9 @@ BEGIN
     trial_started_at
   ) VALUES (
     v_affiliate_id,
-    p_redeemer_user_id::TEXT,
+    p_redeemer_user_id,
+    v_referred_email,
+    v_ip_address,
     'tahunan',
     0,
     'trial_active',
@@ -167,6 +235,7 @@ BEGIN
   ON CONFLICT (referred_user_id)
   DO UPDATE SET
     affiliate_id = EXCLUDED.affiliate_id,
+    referred_email = COALESCE(NULLIF(trim(EXCLUDED.referred_email), ''), public.referrals.referred_email),
     referral_code_id = EXCLUDED.referral_code_id,
     app_redemption_id = EXCLUDED.app_redemption_id,
     trial_started_at = COALESCE(public.referrals.trial_started_at, EXCLUDED.trial_started_at),
@@ -176,6 +245,27 @@ BEGIN
     END,
     updated_at = NOW();
 END;
+$$;
+
+-- PL/pgSQL does not apply DEFAULT args on PERFORM; keep a 4-arg overload for older callers.
+CREATE OR REPLACE FUNCTION public.record_affiliate_referral_trial(
+  p_referral_code_id UUID,
+  p_redeemer_user_id UUID,
+  p_redemption_id UUID,
+  p_trial_days INTEGER
+)
+RETURNS VOID
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.record_affiliate_referral_trial(
+    p_referral_code_id,
+    p_redeemer_user_id,
+    p_redemption_id,
+    p_trial_days,
+    NULL::jsonb
+  );
 $$;
 
 -- Called when store billing reports a paid subscription (webhook or app sync).
@@ -211,7 +301,7 @@ BEGIN
     amount_idr = v_amount,
     converted_at = COALESCE(r.converted_at, NOW()),
     updated_at = NOW()
-  WHERE r.referred_user_id = p_redeemer_user_id::TEXT
+  WHERE r.referred_user_id = p_redeemer_user_id
     AND r.status IN ('trial_active', 'expired', 'cancelled')
   RETURNING * INTO v_row;
 
@@ -240,7 +330,7 @@ DECLARE
 BEGIN
   UPDATE public.referrals
   SET status = 'expired', updated_at = NOW()
-  WHERE referred_user_id = p_redeemer_user_id::TEXT
+  WHERE referred_user_id = p_redeemer_user_id
     AND status = 'trial_active';
 
   GET DIAGNOSTICS v_updated = ROW_COUNT;
@@ -248,9 +338,11 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.record_affiliate_referral_trial(UUID, UUID, UUID, INTEGER, JSONB) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.record_affiliate_referral_trial(UUID, UUID, UUID, INTEGER) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.mark_affiliate_referral_paid(UUID, TEXT, NUMERIC) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.mark_affiliate_referral_expired(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.record_affiliate_referral_trial(UUID, UUID, UUID, INTEGER, JSONB) TO service_role;
 GRANT EXECUTE ON FUNCTION public.record_affiliate_referral_trial(UUID, UUID, UUID, INTEGER) TO service_role;
 GRANT EXECUTE ON FUNCTION public.mark_affiliate_referral_paid(UUID, TEXT, NUMERIC) TO service_role;
 GRANT EXECUTE ON FUNCTION public.mark_affiliate_referral_expired(UUID) TO service_role;
@@ -259,6 +351,8 @@ GRANT EXECUTE ON FUNCTION public.mark_affiliate_referral_expired(UUID) TO servic
 INSERT INTO public.referrals (
   affiliate_id,
   referred_user_id,
+  referred_email,
+  ip_address,
   subscription_plan,
   amount_idr,
   status,
@@ -269,7 +363,13 @@ INSERT INTO public.referrals (
 )
 SELECT
   public.resolve_affiliate_id_for_referral_code(r.referral_code_id),
-  r.redeemer_user_id::TEXT,
+  r.redeemer_user_id,
+  COALESCE(
+    NULLIF(trim(u.email), ''),
+    NULLIF(trim(p.email), ''),
+    r.redeemer_user_id::TEXT || '@unknown.dietku.app'
+  ),
+  public.extract_client_ip_from_meta(r.client_meta),
   'tahunan',
   0,
   'trial_active',
@@ -278,6 +378,8 @@ SELECT
   r.redeemed_at,
   r.redeemed_at
 FROM public.referral_redemptions r
+LEFT JOIN auth.users u ON u.id = r.redeemer_user_id
+LEFT JOIN public.profiles p ON p.id = r.redeemer_user_id
 WHERE public.resolve_affiliate_id_for_referral_code(r.referral_code_id) IS NOT NULL
 ON CONFLICT (referred_user_id) DO NOTHING;
 
@@ -381,7 +483,7 @@ BEGIN
   )
   RETURNING id INTO v_redemption_id;
 
-  PERFORM public.record_affiliate_referral_trial(v_row.id, v_uid, v_redemption_id, v_row.trial_days);
+  PERFORM public.record_affiliate_referral_trial(v_row.id, v_uid, v_redemption_id, v_row.trial_days, p_client_meta);
   PERFORM public.log_referral_attempt(v_uid, p_raw_code, v_norm, 'success', NULL, p_client_meta);
 
   RETURN jsonb_build_object(
