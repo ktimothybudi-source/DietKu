@@ -10,11 +10,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import { User, Settings as SettingsIcon, LogIn, LogOut, Globe, Moon, Sun, ChevronRight, UserCircle, Target, Flame, FileText, Shield, RefreshCw, Gift, UserX } from 'lucide-react-native';
+import { User, Settings as SettingsIcon, LogIn, LogOut, Globe, Moon, Sun, ChevronRight, UserCircle, Target, Flame, FileText, Shield, RefreshCw, Gift, UserX, Bell } from 'lucide-react-native';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCommunity } from '@/contexts/CommunityContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { deleteAccountViaBackend } from '@/utils/accountDeletion';
@@ -24,6 +25,12 @@ export default function ProfileScreen() {
   const { theme, themeMode, toggleTheme } = useTheme();
   const { language, t, l } = useLanguage();
   const { communityProfile, hasProfile } = useCommunity();
+  const {
+    settings: notificationSettings,
+    enableNotifications,
+    disableNotifications,
+    isLoading: notificationsLoading,
+  } = useNotifications();
   const insets = useSafeAreaInsets();
   const [deletingAccount, setDeletingAccount] = useState(false);
 
@@ -293,6 +300,37 @@ export default function ProfileScreen() {
                   thumbColor="#FFFFFF"
                 />
               </View>
+            </View>
+
+            <View style={[styles.row, { borderTopColor: theme.border }]}>
+              <View style={styles.rowLeft}>
+                <Bell size={20} color={theme.textSecondary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.rowLabel, { color: theme.text }]}>
+                    {l('Notifikasi', 'Notifications')}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
+                    {l(
+                      'Pengingat scan harian & update grup',
+                      'Daily scan reminders & group updates'
+                    )}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={notificationSettings.enabled && notificationSettings.permissionGranted}
+                disabled={notificationsLoading}
+                onValueChange={(value) => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  if (value) {
+                    void enableNotifications();
+                  } else {
+                    void disableNotifications();
+                  }
+                }}
+                trackColor={{ false: theme.border, true: theme.primary }}
+                thumbColor="#FFFFFF"
+              />
             </View>
           </View>
 

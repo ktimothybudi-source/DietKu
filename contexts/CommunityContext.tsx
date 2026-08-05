@@ -6,6 +6,7 @@ import { useNutrition } from '@/contexts/NutritionContext';
 import { FoodEntry } from '@/types/nutrition';
 import { eventEmitter } from '@/utils/eventEmitter';
 import { supabase } from '@/lib/supabase';
+import { notifyGroupFoodScanned } from '@/utils/pushNotifications';
 import { deleteImageFromSupabase, resolveMealPhotoForDatabase } from '@/utils/supabaseStorage';
 import { fetchPremiumBypassUserIdSet } from '@/utils/communityPremium';
 
@@ -498,6 +499,26 @@ export const [CommunityProvider, useCommunity] = createContextHook(() => {
     },
   });
 
+  const updateGroupNameMutation = useMutation({
+    mutationFn: async ({ groupId, name }: { groupId: string; name: string }) => {
+      if (!userId) throw new Error('Not authenticated');
+      const trimmed = name.trim();
+      if (trimmed.length < 3) throw new Error('GROUP_NAME_TOO_SHORT');
+      if (trimmed.length > 60) throw new Error('GROUP_NAME_TOO_LONG');
+      const { error } = await supabase
+        .from('community_groups')
+        .update({ name: trimmed })
+        .eq('id', groupId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['community_groups_joined'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update group name:', error);
+    },
+  });
+
   const createPostMutation = useMutation({
     mutationFn: async (post: Omit<FoodPost, 'id' | 'createdAt' | 'likes' | 'commentCount'>) => {
       if (!userId || !activeGroupId) throw new Error('Missing auth or active group');
@@ -551,7 +572,7 @@ export const [CommunityProvider, useCommunity] = createContextHook(() => {
       );
       return { optimisticId };
     },
-    onSuccess: (savedPost, _post, context) => {
+    onSuccess: (savedPost, post, context) => {
       if (context?.optimisticId) {
         queryClient.setQueriesData(
           { queryKey: ['community_posts'] },
@@ -563,6 +584,36 @@ export const [CommunityProvider, useCommunity] = createContextHook(() => {
         );
       }
       queryClient.invalidateQueries({ queryKey: ['community_posts'] });
+
+      // Notify other group members (Indonesian “baru scan makanan” push).
+      void (async () => {
+        try {
+          const groupId = savedPost.group_id || activeGroupId;
+          if (!groupId) return;
+
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (!session?.access_token) return;
+
+          const displayName =
+            post.displayName ||
+            post.username ||
+            communityProfile?.displayName ||
+            communityProfile?.username ||
+            'Teman grup';
+
+          await notifyGroupFoodScanned({
+            accessToken: session.access_token,
+            groupId,
+            foodName: post.foodName || savedPost.food_name || 'makanan',
+            calories: post.calories ?? savedPost.calories ?? 0,
+            displayName,
+          });
+        } catch (err) {
+          console.warn('Community food-scan push skipped:', err);
+        }
+      })();
     },
     onError: (_error, _post, context) => {
       if (context?.optimisticId) {
@@ -728,9 +779,10 @@ export const [CommunityProvider, useCommunity] = createContextHook(() => {
     },
   });
 
-  const saveCommunityProfile = useCallback((newProfile: CommunityProfile) => {
-    saveProfileMutation.mutate(newProfile);
-  }, [saveProfileMutation]);
+  const saveCommunityProfile = useCallback(async (newProfile: CommunityProfile) => {
+    await saveProfileMutation.mutateAsync(newProfile);
+    await queryClient.invalidateQueries({ queryKey: ['community_profile'] });
+  }, [saveProfileMutation, queryClient]);
 
   const createPost = useCallback((post: Omit<FoodPost, 'id' | 'createdAt' | 'likes' | 'commentCount'>) => {
     createPostMutation.mutate(post);
@@ -755,6 +807,12 @@ export const [CommunityProvider, useCommunity] = createContextHook(() => {
     return await joinGroupMutation.mutateAsync(groupId);
   }, [joinGroupMutation]);
   const leaveGroup = useCallback((groupId: string) => leaveGroupMutation.mutate(groupId), [leaveGroupMutation]);
+  const updateGroupName = useCallback(
+    async (groupId: string, name: string) => {
+      await updateGroupNameMutation.mutateAsync({ groupId, name });
+    },
+    [updateGroupNameMutation]
+  );
   const createGroup = useCallback(async (group: Omit<CommunityGroup, 'id' | 'createdAt' | 'inviteCode' | 'members'>) => {
     await createGroupMutation.mutateAsync(group);
   }, [createGroupMutation]);
@@ -811,6 +869,7 @@ export const [CommunityProvider, useCommunity] = createContextHook(() => {
     joinGroup,
     joinGroupAsync,
     leaveGroup,
+    updateGroupName,
     createGroup,
     switchActiveGroup,
     findGroupByInviteCode,

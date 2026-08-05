@@ -163,6 +163,30 @@ CREATE TABLE IF NOT EXISTS community_comments (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Daily progress shares (group-visible day aggregates for goal status)
+CREATE TABLE IF NOT EXISTS daily_progress_shares (
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  calories_eaten NUMERIC(8,2) NOT NULL DEFAULT 0,
+  protein_eaten NUMERIC(8,2) NOT NULL DEFAULT 0,
+  carbs_eaten NUMERIC(8,2) NOT NULL DEFAULT 0,
+  fat_eaten NUMERIC(8,2) NOT NULL DEFAULT 0,
+  calories_target NUMERIC(8,2) NOT NULL DEFAULT 0,
+  protein_target NUMERIC(8,2) NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, date)
+);
+
+-- Expo push tokens (remote community + device registration)
+CREATE TABLE IF NOT EXISTS user_push_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  expo_push_token TEXT NOT NULL,
+  platform TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_id, expo_push_token)
+);
+
 -- Favorites table
 CREATE TABLE IF NOT EXISTS favorites (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -235,6 +259,8 @@ CREATE INDEX IF NOT EXISTS idx_community_posts_group_id ON community_posts(group
 CREATE INDEX IF NOT EXISTS idx_community_posts_user_id ON community_posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_community_group_members_group_id ON community_group_members(group_id);
 CREATE INDEX IF NOT EXISTS idx_community_group_members_user_id ON community_group_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_progress_shares_date ON daily_progress_shares(date);
+CREATE INDEX IF NOT EXISTS idx_daily_progress_shares_user_date ON daily_progress_shares(user_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_food_name ON food(name);
 
 -- Create function to update updated_at timestamp

@@ -1671,7 +1671,7 @@ export default function OnboardingScreen() {
         </View>
         <Text style={styles.reassuranceTitle}>{l('Tetap konsisten\ndengan reminder', 'Stay consistent\nwith reminders')}</Text>
         <Text style={styles.reassuranceSubtitle}>
-          {l('Izinkan notifikasi untuk pengingat harian yang membantu Anda tetap on track.', 'Enable notifications for daily reminders that keep you on track.')}
+          {l('Izinkan notifikasi untuk pengingat scan makanan harian dan update saat teman grup log makanan.', 'Enable notifications for daily food-scan reminders and alerts when group mates log meals.')}
         </Text>
       </View>
 

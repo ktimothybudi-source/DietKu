@@ -1,16 +1,17 @@
 // template
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import * as Notifications from "expo-notifications";
+import React, { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { NutritionProvider } from "@/contexts/NutritionContext";
+import { NutritionProvider, useNutrition } from "@/contexts/NutritionContext";
 import { MealDraftProvider } from "@/contexts/MealDraftContext";
 import { ExerciseProvider } from "@/contexts/ExerciseContext";
 import { CommunityProvider } from "@/contexts/CommunityContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
-import { NotificationProvider } from "@/contexts/NotificationContext";
+import { NotificationProvider, useNotifications } from "@/contexts/NotificationContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { trpc, trpcClient } from "@/lib/trpc";
 
@@ -18,6 +19,68 @@ import { trpc, trpcClient } from "@/lib/trpc";
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+
+function SplashController() {
+  const { authInitialized } = useNutrition();
+
+  useEffect(() => {
+    if (authInitialized) {
+      SplashScreen.hideAsync();
+    }
+  }, [authInitialized]);
+
+  return null;
+}
+
+/** Keeps Expo push token in sync with the signed-in user. */
+function PushTokenSync() {
+  const { authState } = useNutrition();
+  const { syncPushTokenForUser, settings } = useNotifications();
+  const userId = authState.userId ?? null;
+
+  useEffect(() => {
+    if (!userId || !settings.enabled || !settings.permissionGranted) return;
+    void syncPushTokenForUser(userId);
+  }, [userId, settings.enabled, settings.permissionGranted, syncPushTokenForUser]);
+
+  return null;
+}
+
+/** Open camera or community tab when the user taps a notification. */
+function NotificationResponseHandler() {
+  const router = useRouter();
+  const handled = useRef<string | null>(null);
+
+  useEffect(() => {
+    const handleResponse = (response: Notifications.NotificationResponse) => {
+      const id = response.notification.request.identifier;
+      if (handled.current === id) return;
+      handled.current = id;
+
+      const data = response.notification.request.content.data as
+        | { type?: string }
+        | undefined;
+
+      if (data?.type === 'community_scan') {
+        router.push('/(tabs)/community');
+        return;
+      }
+      if (data?.type === 'meal_reminder') {
+        router.push('/camera-scan');
+      }
+    };
+
+    const sub = Notifications.addNotificationResponseReceivedListener(handleResponse);
+
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) handleResponse(response);
+    });
+
+    return () => sub.remove();
+  }, [router]);
+
+  return null;
+}
 
 function RootLayoutNav() {
   return (
@@ -50,10 +113,6 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
-
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
@@ -61,6 +120,9 @@ export default function RootLayout() {
           <ThemeProvider>
             <NotificationProvider>
               <NutritionProvider>
+                <SplashController />
+                <PushTokenSync />
+                <NotificationResponseHandler />
                 <MealDraftProvider>
                   <SubscriptionProvider>
                     <ExerciseProvider>
