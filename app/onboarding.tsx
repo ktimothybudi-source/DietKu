@@ -18,18 +18,23 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { Goal, ActivityLevel, Sex } from '@/types/nutrition';
+import { Goal, ActivityLevel, Sex, UserProfile } from '@/types/nutrition';
 import { ArrowRight, ArrowLeft, Eye, EyeOff, Sparkles, Gift } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { Svg, Path, Circle, G } from 'react-native-svg';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ResizeMode, Video } from 'expo-av';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 import { ANIMATION_DURATION, SPRING_CONFIG } from '@/constants/animations';
 import { onboardingStyles as styles } from '@/styles/onboardingStyles';
-import { calculateTDEE } from '@/utils/nutritionCalculations';
+import { calculateDailyTargets, calculateTDEE } from '@/utils/nutritionCalculations';
 import PaywallReferralSection, { type PaywallReferralSectionHandle } from '@/components/PaywallReferralSection';
 import { stashPendingReferralCode } from '@/lib/pendingReferralCode';
+import { supabase } from '@/lib/supabase';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const WEEKLY_DEFAULT_LOSS_KG = 0.5;
 const WEEKLY_DEFAULT_GAIN_KG = 0.3;
@@ -97,11 +102,9 @@ export default function OnboardingScreen() {
 
   const [signInEmail, setSignInEmail] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
-  const [signInPasswordConfirm, setSignInPasswordConfirm] = useState('');
   const [showSignInPassword, setShowSignInPassword] = useState(false);
-  const [showSignInPasswordConfirm, setShowSignInPasswordConfirm] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
   const totalSteps = 20;
 
   const referralRef = useRef<PaywallReferralSectionHandle | null>(null);
@@ -178,7 +181,7 @@ export default function OnboardingScreen() {
                 (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate()) ? 1 : 0);
               const calculatedGoal = dreamWeight < weight ? 'fat_loss' : dreamWeight > weight ? 'muscle_gain' : 'maintenance';
               
-              const nameFromSignUp = `${firstName.trim()} ${lastName.trim()}`.trim();
+              const nameFromSignUp = fullName.trim();
               saveProfile({
                 name: nameFromSignUp || profile?.name || undefined,
                 age,
@@ -207,7 +210,7 @@ export default function OnboardingScreen() {
     return () => {
       timeouts.forEach(t => clearTimeout(t));
     };
-  }, [showLoading, circularProgress, isCompleteMode, authState.isSignedIn, birthDate, dreamWeight, weight, sex, height, activityLevel, weeklyWeightChange, firstName, lastName, profile?.name, saveProfile]);
+  }, [showLoading, circularProgress, isCompleteMode, authState.isSignedIn, birthDate, dreamWeight, weight, sex, height, activityLevel, weeklyWeightChange, fullName, profile?.name, saveProfile]);
 
   useEffect(() => {
     if (step !== 0) return;
@@ -426,35 +429,21 @@ export default function OnboardingScreen() {
   //   }).start();
   // }, [subscriptionSlideAnim]);
 
-  const handleSignIn = useCallback(async () => {
-    if (!signInEmail.trim() || !signInPassword.trim() || !firstName.trim() || !lastName.trim()) {
-      Alert.alert(l('Error', 'Error'), l('Mohon isi semua field', 'Please fill in all fields'));
-      return;
-    }
-
-    if (signInPassword.length < 6) {
-      Alert.alert(l('Error', 'Error'), l('Password minimal 6 karakter', 'Password must be at least 6 characters'));
-      return;
-    }
-
-    if (signInPassword !== signInPasswordConfirm) {
-      Alert.alert(l('Error', 'Error'), l('Password tidak cocok', 'Passwords do not match'));
-      return;
-    }
-
-    setIsCreatingAccount(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    try {
+  const buildOnboardingProfile = useCallback(
+    (name: string): UserProfile & { birthDate: Date } => {
       const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear() -
+      const age =
+        today.getFullYear() -
+        birthDate.getFullYear() -
         (today.getMonth() < birthDate.getMonth() ||
-        (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate()) ? 1 : 0);
+        (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate())
+          ? 1
+          : 0);
+      const calculatedGoal =
+        dreamWeight < weight ? 'fat_loss' : dreamWeight > weight ? 'muscle_gain' : 'maintenance';
 
-      const calculatedGoal = dreamWeight < weight ? 'fat_loss' : dreamWeight > weight ? 'muscle_gain' : 'maintenance';
-
-      await signUp(signInEmail.trim(), signInPassword, {
-        name: `${firstName.trim()} ${lastName.trim()}`,
+      return {
+        name: name.trim() || undefined,
         age,
         birthDate,
         sex: sex || 'male',
@@ -464,7 +453,72 @@ export default function OnboardingScreen() {
         goal: calculatedGoal,
         activityLevel: activityLevel || 'moderate',
         weeklyWeightChange,
+      };
+    },
+    [birthDate, sex, height, weight, dreamWeight, activityLevel, weeklyWeightChange]
+  );
+
+  const persistOnboardingProfile = useCallback(
+    async (userId: string, email: string | undefined, profileData: UserProfile & { birthDate?: Date }) => {
+      let birthDateStr: string | null = null;
+      if (profileData.birthDate) {
+        birthDateStr = profileData.birthDate.toISOString().split('T')[0];
+      } else if (profileData.age) {
+        const d = new Date();
+        d.setFullYear(d.getFullYear() - profileData.age);
+        birthDateStr = d.toISOString().split('T')[0];
+      }
+
+      const targets = calculateDailyTargets(profileData);
+      const { error } = await supabase.from('profiles').upsert({
+        id: userId,
+        email: email || null,
+        name: profileData.name || null,
+        gender: profileData.sex || null,
+        birth_date: birthDateStr,
+        height: profileData.height || null,
+        weight: profileData.weight || null,
+        target_weight: profileData.goalWeight || null,
+        activity_level: profileData.activityLevel || null,
+        goal: profileData.goal || null,
+        weekly_weight_change: profileData.weeklyWeightChange ?? null,
+        daily_calories: targets.calories,
+        protein_target: targets.protein,
+        carbs_target: Math.round((targets.carbsMin + targets.carbsMax) / 2),
+        fat_target: Math.round((targets.fatMin + targets.fatMax) / 2),
+        updated_at: new Date().toISOString(),
       });
+
+      if (error) {
+        console.error('Error saving onboarding profile after Google auth:', error);
+      }
+
+      // Prefer local state update when auth is ready; otherwise upsert already persisted data.
+      try {
+        saveProfile(profileData);
+      } catch (e) {
+        console.warn('saveProfile after Google auth failed (will refresh from server):', e);
+      }
+    },
+    [saveProfile]
+  );
+
+  const handleSignIn = useCallback(async () => {
+    if (!signInEmail.trim() || !signInPassword.trim() || !fullName.trim()) {
+      Alert.alert(l('Error', 'Error'), l('Mohon isi semua field', 'Please fill in all fields'));
+      return;
+    }
+
+    if (signInPassword.length < 6) {
+      Alert.alert(l('Error', 'Error'), l('Password minimal 6 karakter', 'Password must be at least 6 characters'));
+      return;
+    }
+
+    setIsCreatingAccount(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    try {
+      await signUp(signInEmail.trim(), signInPassword, buildOnboardingProfile(fullName));
 
       console.log('Account created successfully');
       // HIDDEN: Skip subscription, go directly to next step
@@ -489,7 +543,108 @@ export default function OnboardingScreen() {
     } finally {
       setIsCreatingAccount(false);
     }
-  }, [signInEmail, signInPassword, signInPasswordConfirm, firstName, lastName, signUp, birthDate, sex, height, weight, dreamWeight, activityLevel, weeklyWeightChange, handleNext]);
+  }, [signInEmail, signInPassword, fullName, signUp, buildOnboardingProfile, handleNext, l]);
+
+  const handleGoogleSignUp = useCallback(async () => {
+    try {
+      setIsGoogleSigningIn(true);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      console.log('Starting Google OAuth flow from onboarding');
+
+      const redirectUrl = makeRedirectUri({
+        scheme: 'rork-app',
+        path: 'auth/callback',
+      });
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: false,
+        },
+      });
+
+      if (error) {
+        console.error('Google OAuth error:', error);
+        Alert.alert(
+          l('Error', 'Error'),
+          l('Gagal memulai login Google. Silakan coba lagi.', 'Failed to start Google login. Please try again.')
+        );
+        return;
+      }
+
+      if (!data.url) {
+        Alert.alert(
+          l('Error', 'Error'),
+          l('URL login Google tidak tersedia.', 'Google login URL is unavailable.')
+        );
+        return;
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+      console.log('WebBrowser result:', result);
+
+      if (result.type === 'success' && result.url && result.url.includes('#access_token=')) {
+        const params = new URLSearchParams(result.url.split('#')[1]);
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+
+        if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (sessionError) {
+            console.error('Error setting session:', sessionError);
+            Alert.alert(
+              l('Error', 'Error'),
+              l('Gagal masuk dengan Google', 'Failed to sign in with Google')
+            );
+            return;
+          }
+
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          if (!user) {
+            Alert.alert(
+              l('Error', 'Error'),
+              l('Gagal masuk dengan Google', 'Failed to sign in with Google')
+            );
+            return;
+          }
+
+          const meta = user.user_metadata ?? {};
+          const googleName =
+            [meta.full_name, meta.name, meta.given_name].find(
+              (v) => typeof v === 'string' && v.trim()
+            ) || fullName.trim() || undefined;
+
+          const profileData = buildOnboardingProfile(String(googleName || ''));
+          await persistOnboardingProfile(user.id, user.email, profileData);
+
+          console.log('Google sign up successful during onboarding');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          handleNext();
+          return;
+        }
+      }
+
+      if (result.type === 'cancel') {
+        console.log('User cancelled Google OAuth from onboarding');
+      }
+    } catch (error) {
+      console.error('Google sign up error:', error);
+      Alert.alert(
+        l('Error', 'Error'),
+        l('Gagal masuk dengan Google. Silakan coba lagi.', 'Failed to sign in with Google. Please try again.')
+      );
+    } finally {
+      setIsGoogleSigningIn(false);
+    }
+  }, [buildOnboardingProfile, persistOnboardingProfile, handleNext, fullName, l]);
 
   // HIDDEN: Subscription features
   // const handleSkipSignIn = useCallback(() => {
@@ -1980,6 +2135,8 @@ export default function OnboardingScreen() {
   };
   */
 
+  const formBusy = isCreatingAccount || isGoogleSigningIn;
+
   const renderSignIn = () => (
     <View style={[styles.stepContainer, styles.stepContainerSignIn]}>
       <View style={styles.header}>
@@ -1992,35 +2149,65 @@ export default function OnboardingScreen() {
           </Svg>
         </View>
         <Text style={styles.signInTitle}>{l('Simpan Progress Anda', 'Save Your Progress')}</Text>
-        <Text style={styles.signInSubtitle}>{l('Masuk untuk menyinkronkan data di semua perangkat', 'Sign in to sync data across all devices')}</Text>
+        <Text style={styles.signInSubtitle}>
+          {l(
+            'Masuk cepat dengan Google, atau daftar dengan email',
+            'Sign in quickly with Google, or create an account with email'
+          )}
+        </Text>
       </View>
 
       <View style={[styles.signInForm, styles.signInFormNatural]}>
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>{l('Nama Depan', 'First Name')}</Text>
-          <TextInput
-            style={styles.signInInput}
-            value={firstName}
-            onChangeText={setFirstName}
-            placeholder={l('Nama depan', 'First name')}
-            placeholderTextColor="#999999"
-            autoCapitalize="words"
-            autoCorrect={false}
-            returnKeyType="next"
-          />
+        <TouchableOpacity
+          style={[styles.googleButton, formBusy && styles.googleButtonDisabled]}
+          onPress={handleGoogleSignUp}
+          activeOpacity={0.7}
+          disabled={formBusy}
+          testID="onboarding-google-button"
+        >
+          <Svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <Path
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              fill="#4285F4"
+            />
+            <Path
+              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              fill="#34A853"
+            />
+            <Path
+              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              fill="#FBBC05"
+            />
+            <Path
+              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              fill="#EA4335"
+            />
+          </Svg>
+          <Text style={styles.googleButtonText}>
+            {isGoogleSigningIn
+              ? l('Memproses...', 'Processing...')
+              : t.signIn.googleSignIn}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>{l('atau daftar dengan email', 'or sign up with email')}</Text>
+          <View style={styles.dividerLine} />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>{l('Nama Belakang', 'Last Name')}</Text>
+          <Text style={styles.inputLabel}>{l('Nama', 'Name')}</Text>
           <TextInput
             style={styles.signInInput}
-            value={lastName}
-            onChangeText={setLastName}
-            placeholder={l('Nama belakang', 'Last name')}
+            value={fullName}
+            onChangeText={setFullName}
+            placeholder={l('Nama lengkap', 'Full name')}
             placeholderTextColor="#999999"
             autoCapitalize="words"
             autoCorrect={false}
             returnKeyType="next"
+            editable={!formBusy}
           />
         </View>
 
@@ -2036,6 +2223,7 @@ export default function OnboardingScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="next"
+            editable={!formBusy}
           />
         </View>
 
@@ -2046,18 +2234,19 @@ export default function OnboardingScreen() {
               style={styles.signInPasswordInput}
               value={signInPassword}
               onChangeText={setSignInPassword}
-              placeholder={l('••••••••', '••••••••')}
+              placeholder={l('Minimal 6 karakter', 'At least 6 characters')}
               placeholderTextColor="#999999"
               secureTextEntry={!showSignInPassword}
               autoCapitalize="none"
               autoCorrect={false}
-              returnKeyType="next"
-              editable={!isCreatingAccount}
+              returnKeyType="done"
+              onSubmitEditing={() => Keyboard.dismiss()}
+              editable={!formBusy}
             />
             <TouchableOpacity
               style={styles.signInPasswordToggle}
               onPress={() => setShowSignInPassword((v) => !v)}
-              disabled={isCreatingAccount}
+              disabled={formBusy}
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel={
@@ -2073,57 +2262,33 @@ export default function OnboardingScreen() {
           </View>
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>{l('Ketik Ulang Password', 'Re-enter Password')}</Text>
-          <View style={styles.signInPasswordRow}>
-            <TextInput
-              style={styles.signInPasswordInput}
-              value={signInPasswordConfirm}
-              onChangeText={setSignInPasswordConfirm}
-              placeholder={l('••••••••', '••••••••')}
-              placeholderTextColor="#999999"
-              secureTextEntry={!showSignInPasswordConfirm}
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={() => Keyboard.dismiss()}
-              editable={!isCreatingAccount}
-            />
-            <TouchableOpacity
-              style={styles.signInPasswordToggle}
-              onPress={() => setShowSignInPasswordConfirm((v) => !v)}
-              disabled={isCreatingAccount}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={
-                showSignInPasswordConfirm ? t.signIn.hidePassword : t.signIn.showPassword
-              }
-            >
-              {showSignInPasswordConfirm ? (
-                <EyeOff size={22} color="#666666" />
-              ) : (
-                <Eye size={22} color="#666666" />
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <TouchableOpacity 
-          style={[styles.primaryButton, isCreatingAccount && styles.primaryButtonDisabled]} 
-          onPress={handleSignIn} 
+        <TouchableOpacity
+          style={[styles.primaryButton, formBusy && styles.primaryButtonDisabled]}
+          onPress={handleSignIn}
           activeOpacity={0.8}
-          disabled={isCreatingAccount}
+          disabled={formBusy}
         >
-          <Text style={styles.primaryButtonText}>{isCreatingAccount ? l('Membuat akun...', 'Creating account...') : l('Daftar', 'Sign Up')}</Text>
+          <Text style={styles.primaryButtonText}>
+            {isCreatingAccount
+              ? l('Membuat akun...', 'Creating account...')
+              : l('Daftar', 'Sign Up')}
+          </Text>
           {!isCreatingAccount && <ArrowRight size={20} color="#FFFFFF" />}
         </TouchableOpacity>
 
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>{l('atau', 'or')}</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
+        <TouchableOpacity
+          style={styles.skipSignInButton}
+          onPress={() => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.replace('/sign-in');
+          }}
+          activeOpacity={0.7}
+          disabled={formBusy}
+        >
+          <Text style={styles.skipSignInButtonText}>
+            {l('Sudah punya akun? Masuk', 'Already have an account? Sign in')}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );

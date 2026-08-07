@@ -30,6 +30,11 @@ export const communityStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   groupPickerOverlay: {
     position: 'absolute',
     top: 0,
@@ -180,11 +185,11 @@ export const communityStyles = StyleSheet.create({
     minHeight: 0,
   },
   listContent: {
-    paddingVertical: 8,
+    paddingVertical: 12,
   },
   postCard: {
     marginHorizontal: 16,
-    marginVertical: 6,
+    marginVertical: 8,
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
@@ -343,7 +348,12 @@ export const communityStyles = StyleSheet.create({
   chatRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 10,
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 10,
+  },
+  chatRowGrouped: {
+    marginTop: 3,
   },
   chatRowMe: {
     justifyContent: 'flex-end',
@@ -351,35 +361,56 @@ export const communityStyles = StyleSheet.create({
   chatRowOther: {
     justifyContent: 'flex-start',
   },
+  chatAvatarSpacer: {
+    width: 30,
+  },
   chatBubble: {
-    maxWidth: '78%',
-    padding: 12,
-    borderRadius: 12,
+    maxWidth: '76%',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
     borderWidth: 1,
   },
+  chatBubbleMeTail: {
+    borderBottomRightRadius: 5,
+  },
+  chatBubbleOtherTail: {
+    borderBottomLeftRadius: 5,
+  },
+  chatBubbleMeContinue: {
+    borderTopRightRadius: 10,
+  },
+  chatBubbleOtherContinue: {
+    borderTopLeftRadius: 10,
+  },
+  chatBubbleMeSoftEnd: {
+    borderBottomRightRadius: 10,
+  },
+  chatBubbleOtherSoftEnd: {
+    borderBottomLeftRadius: 10,
+  },
   chatName: {
-    fontSize: 12,
-    fontWeight: '700' as const,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   chatMessage: {
     fontSize: 14,
-    lineHeight: 19,
+    lineHeight: 20,
   },
   chatTime: {
-    fontSize: 11,
-    marginTop: 6,
+    fontSize: 10,
+    marginTop: 5,
+    alignSelf: 'flex-end',
   },
   chatInputWrap: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 16,
-    borderRadius: 16,
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 10,
+    borderRadius: 20,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     gap: 10,
   },
   chatInput: {
@@ -437,6 +468,74 @@ export const communityStyles = StyleSheet.create({
   leaderStreakText: {
     fontSize: 12,
     fontWeight: '700' as const,
+  },
+  goalTabHint: {
+    marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 4,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  goalProgressList: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
+    gap: 10,
+  },
+  goalCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
+  },
+  goalCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  goalCardInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  goalCardName: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    letterSpacing: -0.2,
+  },
+  goalCardUsername: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  goalStatusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  goalStatusText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+  },
+  goalBarTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  goalBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  goalMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  goalMetaText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  goalMetaSecondary: {
+    fontSize: 12,
   },
   noGroupScroll: {
     paddingHorizontal: 24,

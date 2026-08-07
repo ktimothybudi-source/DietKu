@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCommunity } from '@/contexts/CommunityContext';
@@ -27,6 +28,7 @@ export default function CreateGroupScreen() {
   const { l } = useLanguage();
   const { createGroup, hasProfile } = useCommunity();
   const { authState } = useNutrition();
+  const headerHeight = useHeaderHeight();
 
   const [name, setName] = useState('');
   const [privacy, setPrivacy] = useState<Privacy>('private');
@@ -102,11 +104,13 @@ export default function CreateGroupScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={headerHeight}
       >
         <ScrollView
           style={[styles.container, { backgroundColor: theme.background }]}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           <View style={styles.coverSection}>
             <Image source={{ uri: selectedCover }} style={styles.coverPreview} />

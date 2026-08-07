@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Alert,
   Animated,
 } from 'react-native';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCommunity } from '@/contexts/CommunityContext';
@@ -65,6 +67,7 @@ export default function PostDetailScreen() {
   const { l } = useLanguage();
   const { posts, toggleLike, addComment, getPostComments, deletePost, communityProfile } = useCommunity();
   const { authState } = useNutrition();
+  const headerHeight = useHeaderHeight();
   const [commentText, setCommentText] = useState('');
   const scrollRef = useRef<ScrollView>(null);
 
@@ -75,6 +78,14 @@ export default function PostDetailScreen() {
   const isOwn = currentUserId === post?.userId;
 
   const likeScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const event = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const sub = Keyboard.addListener(event, () => {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+    });
+    return () => sub.remove();
+  }, []);
 
   const handleLike = useCallback(() => {
     if (!postId) return;
@@ -167,7 +178,7 @@ export default function PostDetailScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        keyboardVerticalOffset={headerHeight}
       >
         <View style={[styles.container, { backgroundColor: theme.background }]}>
           <ScrollView
@@ -175,6 +186,8 @@ export default function PostDetailScreen() {
             style={styles.scrollView}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
           >
             <View style={[styles.postSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <View style={styles.postHeader}>

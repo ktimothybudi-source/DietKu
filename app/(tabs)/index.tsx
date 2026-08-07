@@ -53,7 +53,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getTimeBasedMessage, getProgressMessage, getCalorieFeedback, MotivationalMessage } from '@/constants/motivationalMessages';
 
 export default function HomeScreen() {
-  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isLoading, streakData, selectedDate, setSelectedDate, pendingEntries, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, removeFromRecent, shouldSuggestFavorite, addWaterCup, removeWaterCup, getTodayWaterCups, authState } = useNutrition();
+  const { profile, dailyTargets, todayEntries, todayTotals, addFoodEntry, deleteFoodEntry, isDashboardLoading, streakData, selectedDate, setSelectedDate, pendingEntries, favorites, recentMeals, addToFavorites, removeFromFavorites, isFavorite, logFromFavorite, logFromRecent, removeFromRecent, shouldSuggestFavorite, addWaterCup, removeWaterCup, getTodayWaterCups, authState } = useNutrition();
   const { todaySteps, totalCaloriesBurned } = useExercise();
   const { theme } = useTheme();
   const { language, l } = useLanguage();
@@ -397,7 +397,7 @@ export default function HomeScreen() {
   );
 
   React.useEffect(() => {
-    if (isLoading) return;
+    if (isDashboardLoading) return;
     if (profile) return;
     // Guard against transient profile/auth fetch gaps so signed-in users are not bounced to onboarding.
     if (authState.isSignedIn) return;
@@ -412,30 +412,15 @@ export default function HomeScreen() {
       }
     }, 1200);
     return () => clearTimeout(timer);
-  }, [profile, isLoading, authState.isSignedIn]);
+  }, [profile, isDashboardLoading, authState.isSignedIn]);
 
-  if (isLoading) {
+  if (isDashboardLoading || !dailyTargets) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.dashboardLoadingContainer}>
           <ActivityIndicator size="small" color={theme.primary} />
           <Text style={[styles.dashboardLoadingText, { color: theme.textSecondary }]}>
             {l('Memuat dashboard...', 'Loading dashboard...')}
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-
-
-  if (!profile || !dailyTargets) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <View style={styles.dashboardLoadingContainer}>
-          <ActivityIndicator size="small" color={theme.primary} />
-          <Text style={[styles.dashboardLoadingText, { color: theme.textSecondary }]}>
-            {l('Menyiapkan data...', 'Preparing data...')}
           </Text>
         </View>
       </View>
@@ -1032,6 +1017,7 @@ export default function HomeScreen() {
                   const isAnalyzing = pending.status === 'analyzing';
                   const hasError = pending.status === 'error';
                   const isDone = pending.status === 'done';
+                  const displayPhotoUri = pending.permanentPhotoUri ?? pending.photoUri;
                   
                   return (
                     <TouchableOpacity
@@ -1041,16 +1027,53 @@ export default function HomeScreen() {
                       activeOpacity={0.7}
                     >
                       <View style={styles.pendingThumbnailContainer}>
-                        <ExpoImage
-                          source={{ uri: pending.photoUri }}
-                          style={styles.pendingThumbnail}
-                          contentFit="cover"
-                          cachePolicy="memory-disk"
-                          transition={0}
-                        />
+                        {displayPhotoUri ? (
+                          <ExpoImage
+                            source={{ uri: displayPhotoUri }}
+                            style={styles.pendingThumbnail}
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
+                            transition={0}
+                            recyclingKey={pending.id}
+                          />
+                        ) : (
+                          <View style={[styles.pendingThumbnail, styles.pendingThumbnailPlaceholder, { backgroundColor: theme.background }]}>
+                            <Camera size={18} color={theme.textSecondary} />
+                          </View>
+                        )}
                         {isAnalyzing && (
-                          <View style={styles.pendingOverlay}>
-                            <ActivityIndicator size="small" color={theme.primary} />
+                          <View
+                            pointerEvents="none"
+                            style={[
+                              styles.pendingScanFill,
+                              {
+                                height: `${Math.min(100, Math.round(pending.progress ?? 0))}%`,
+                                /** ~30% opacity of theme primary #22C55E */
+                                backgroundColor: 'rgba(34, 197, 94, 0.3)',
+                              },
+                            ]}
+                          />
+                        )}
+                        {isAnalyzing && (
+                          <View
+                            style={[
+                              styles.pendingOverlay,
+                              styles.pendingAnalyzingOverlay,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.pendingProgressText,
+                                {
+                                  color: theme.primary,
+                                  textShadowColor: 'rgba(0,0,0,0.55)',
+                                  textShadowOffset: { width: 0, height: 1 },
+                                  textShadowRadius: 3,
+                                },
+                              ]}
+                            >
+                              {Math.round(pending.progress ?? 0)}%
+                            </Text>
                           </View>
                         )}
                         {hasError && (

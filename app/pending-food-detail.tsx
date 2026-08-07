@@ -85,6 +85,8 @@ export default function PendingFoodDetailScreen() {
     return null;
   }, [entryForView, pendingId, pendingEntries]);
 
+  const displayPhotoUri = resolvedPending?.permanentPhotoUri ?? resolvedPending?.photoUri;
+
   const [editedItems, setEditedItems] = useState<EditedFoodItem[]>([]);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
   const [editItemName, setEditItemName] = useState('');
@@ -538,9 +540,9 @@ export default function PendingFoodDetailScreen() {
                   }
                 : {})}
             >
-              {resolvedPending.photoUri && resolvedPending.status !== 'done' ? (
+              {displayPhotoUri && resolvedPending.status !== 'done' ? (
                 <ExpoImage
-                  source={{ uri: resolvedPending.photoUri }}
+                  source={{ uri: displayPhotoUri }}
                   style={styles.pendingModalImage}
                   contentFit="cover"
                   cachePolicy="memory-disk"
@@ -597,9 +599,9 @@ export default function PendingFoodDetailScreen() {
                     return (
                       <>
                         <View style={styles.pendingHeroImageWrap}>
-                          {resolvedPending.photoUri ? (
+                          {displayPhotoUri ? (
                             <ExpoImage
-                              source={{ uri: resolvedPending.photoUri }}
+                              source={{ uri: displayPhotoUri }}
                               style={styles.pendingHeroImage}
                               contentFit="cover"
                               cachePolicy="memory-disk"

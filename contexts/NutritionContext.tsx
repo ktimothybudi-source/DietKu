@@ -1,9 +1,10 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { UserProfile, FoodEntry, DailyTargets, MealAnalysis, FavoriteMeal, RecentMeal } from '@/types/nutrition';
 import { calculateDailyTargets, getTodayKey, sumMidpointMicrosFromItems } from '@/utils/nutritionCalculations';
+import { upsertDailyProgressShare } from '@/utils/dailyProgressShare';
 import { analyzeMealPhoto } from '@/utils/photoAnalysis';
 import { mapScanErrorToUserMessage } from '@/utils/scanErrorMessages';
 import { saveImagePermanently } from '@/utils/imageStorage';
@@ -24,8 +25,16 @@ import {
   MEAL_PHOTOS_BUCKET,
   resolveMealPhotoForDatabase,
   getMealPhotoStoragePathFromValue,
+  isRemoteMealPhotoUri,
+  isMealPhotoStorageObjectPath,
 } from '@/utils/supabaseStorage';
 import { cleanupExpiredMealPhotoCache, getCachedMealPhotoUri } from '@/utils/mealPhotoCache';
+import {
+  loadDashboardCache,
+  saveDashboardCache,
+  clearDashboardCache,
+  type DashboardFoodLog,
+} from '@/utils/dashboardCache';
 import type { DbMealType } from '@/lib/mealDefaults';
 import { getPremiumWriteGate } from '@/lib/premiumWriteGate';
 import * as Haptics from 'expo-haptics';
@@ -125,6 +134,20 @@ const mapFavoriteRow = (f: Record<string, unknown>): FavoriteMeal => ({
   logCount: Number(f.log_count ?? 0),
 });
 
+/** Wait before persisting so UI stays instant and quick undos can cancel the write. */
+const DEBOUNCED_SYNC_DELAY_MS = 2000;
+
+type PendingFavoriteInsert = {
+  timeoutId: ReturnType<typeof setTimeout>;
+  tempId: string;
+  meal: Omit<FavoriteMeal, 'id' | 'createdAt' | 'logCount'>;
+};
+
+type PendingFavoriteDelete = {
+  timeoutId: ReturnType<typeof setTimeout>;
+  favorite: FavoriteMeal;
+};
+
 export const [NutritionProvider, useNutrition] = createContextHook(() => {
   const { language } = useLanguage();
   const queryClient = useQueryClient();
@@ -133,6 +156,10 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   const [weightHistory, setWeightHistory] = useState<WeightEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayKey());
   const [pendingEntries, setPendingEntries] = useState<PendingFoodEntry[]>([]);
+  const foodPhotoEnrichmentKeyRef = useRef('');
+  /** Last userId we finished loading AsyncStorage bootstrap for (or determined empty). */
+  const localCacheUserRef = useRef<string | null>(null);
+  const [localCacheReady, setLocalCacheReady] = useState(false);
   const [streakData, setStreakData] = useState<StreakData>({
     currentStreak: 0,
     bestStreak: 0,
@@ -141,6 +168,25 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   });
   const [favorites, setFavorites] = useState<FavoriteMeal[]>([]);
   const [recentMeals, setRecentMeals] = useState<RecentMeal[]>([]);
+  const pendingFavoriteInsertsRef = useRef(new Map<string, PendingFavoriteInsert>());
+  const pendingFavoriteDeletesRef = useRef(new Map<string, PendingFavoriteDelete>());
+  /** Latest water map waiting for debounced network save; null when fully synced. */
+  const waterPendingRef = useRef<{ [date: string]: number } | null>(null);
+  const waterSyncedRef = useRef<{ [date: string]: number }>({});
+  const waterSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      pendingFavoriteInsertsRef.current.forEach((p) => clearTimeout(p.timeoutId));
+      pendingFavoriteDeletesRef.current.forEach((p) => clearTimeout(p.timeoutId));
+      pendingFavoriteInsertsRef.current.clear();
+      pendingFavoriteDeletesRef.current.clear();
+      if (waterSyncTimeoutRef.current) {
+        clearTimeout(waterSyncTimeoutRef.current);
+        waterSyncTimeoutRef.current = null;
+      }
+    };
+  }, []);
   const [authState, setAuthState] = useState<AuthState>({ isSignedIn: false, email: null, userId: null });
   const [, setSession] = useState<Session | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
@@ -385,6 +431,65 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Cold-start: restore last-known dashboard from disk so UI doesn't wait on Supabase.
+  useEffect(() => {
+    if (!authState.isSignedIn || !authState.userId) {
+      localCacheUserRef.current = null;
+      setLocalCacheReady(true);
+      return;
+    }
+
+    const userId = authState.userId;
+    if (localCacheUserRef.current === userId) {
+      setLocalCacheReady(true);
+      return;
+    }
+
+    let cancelled = false;
+    setLocalCacheReady(false);
+
+    void (async () => {
+      const cached = await loadDashboardCache(userId);
+      if (cancelled) return;
+
+      if (cached?.profile) {
+        setProfile((prev) => prev ?? cached.profile);
+      }
+      if (cached?.foodLog && Object.keys(cached.foodLog).length > 0) {
+        setFoodLog((prev) => (Object.keys(prev).length > 0 ? prev : (cached.foodLog as FoodLog)));
+      }
+      if (cached?.streak) {
+        setStreakData((prev) =>
+          prev.currentStreak > 0 || prev.lastLoggedDate ? prev : cached.streak!
+        );
+      }
+      if (cached?.waterCups && Object.keys(cached.waterCups).length > 0) {
+        setWaterCups((prev) => (Object.keys(prev).length > 0 ? prev : cached.waterCups));
+      }
+
+      localCacheUserRef.current = userId;
+      setLocalCacheReady(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authState.isSignedIn, authState.userId]);
+
+  // Persist a compact snapshot so the next launch is instant.
+  useEffect(() => {
+    if (!authState.userId || !profile) return;
+    const handle = setTimeout(() => {
+      void saveDashboardCache(authState.userId!, {
+        profile,
+        foodLog: foodLog as DashboardFoodLog,
+        streak: streakData,
+        waterCups,
+      });
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [authState.userId, profile, foodLog, streakData, waterCups]);
+
   const profileQuery = useQuery({
     queryKey: ['supabase_profile', authState.userId],
     queryFn: async () => {
@@ -404,6 +509,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       return data as SupabaseProfile;
     },
     enabled: authState.isSignedIn && !!authState.userId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const foodEntriesQuery = useQuery({
@@ -411,7 +517,6 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     queryFn: async () => {
       if (!authState.userId) return [];
       console.log('Fetching food entries from Supabase');
-      await cleanupExpiredMealPhotoCache();
       const { data, error } = await supabase
         .from('food_entries')
         .select('*')
@@ -422,41 +527,10 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
         console.error('Error fetching food entries:', error);
         return [];
       }
-      const rows = (data || []) as SupabaseFoodEntry[];
-      const signedTtlSec = 60 * 60 * 24 * 30;
-      const withPhotoUrls = await Promise.all(
-        rows.map(async (row) => {
-          const raw = row.photo_uri;
-          if (!raw) return row;
-          const path = getMealPhotoStoragePathFromValue(raw);
-          if (!path) return row;
-          const { data: signedData, error: signedError } = await supabase.storage
-            .from(MEAL_PHOTOS_BUCKET)
-            .createSignedUrl(path, signedTtlSec);
-          const remoteUrl = (!signedError && signedData?.signedUrl)
-            ? signedData.signedUrl
-            : supabase.storage.from(MEAL_PHOTOS_BUCKET).getPublicUrl(path).data.publicUrl;
-          if (!remoteUrl) return row;
-          try {
-            const cachedLocalUri = await getCachedMealPhotoUri(path, remoteUrl);
-            return { ...row, photo_uri: cachedLocalUri };
-          } catch (cacheError) {
-            console.warn('Food entry photo local cache failed:', path, cacheError);
-          }
-          if (!signedError && signedData?.signedUrl) {
-            return { ...row, photo_uri: signedData.signedUrl };
-          }
-          console.warn('Food entry photo signed URL failed:', path, signedError?.message);
-          const { data: publicData } = supabase.storage.from(MEAL_PHOTOS_BUCKET).getPublicUrl(path);
-          if (publicData?.publicUrl) {
-            return { ...row, photo_uri: publicData.publicUrl };
-          }
-          return row;
-        })
-      );
-      return withPhotoUrls;
+      return ((data || []) as SupabaseFoodEntry[]).map(resolveFoodEntryPhotoUriSync);
     },
     enabled: authState.isSignedIn && !!authState.userId,
+    staleTime: 2 * 60 * 1000,
   });
 
   const weightHistoryQuery = useQuery({
@@ -649,16 +723,24 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
 
   useEffect(() => {
     if (foodEntriesQuery.data) {
-      const grouped: FoodLog = {};
-      foodEntriesQuery.data.forEach(entry => {
-        const rawDate = entry.date as unknown as string;
-        const dateKey = rawDate.split('T')[0];
-        if (!grouped[dateKey]) grouped[dateKey] = [];
-        grouped[dateKey].push(mapSupabaseFoodEntryToFoodEntry(entry));
-      });
-      setFoodLog(grouped);
+      setFoodLog(groupFoodEntriesByDate(foodEntriesQuery.data));
       console.log('Food log updated from Supabase');
     }
+  }, [foodEntriesQuery.data]);
+
+  useEffect(() => {
+    const rows = foodEntriesQuery.data;
+    if (!rows?.length) return;
+
+    const enrichmentKey = rows.map((row) => `${row.id}:${row.photo_uri ?? ''}`).join('|');
+    if (foodPhotoEnrichmentKeyRef.current === enrichmentKey) return;
+    foodPhotoEnrichmentKeyRef.current = enrichmentKey;
+
+    void (async () => {
+      void cleanupExpiredMealPhotoCache();
+      const enriched = await enrichFoodEntryPhotos(rows);
+      setFoodLog(groupFoodEntriesByDate(enriched));
+    })();
   }, [foodEntriesQuery.data]);
 
   useEffect(() => {
@@ -680,9 +762,33 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   }, [streakQuery.data]);
 
   useEffect(() => {
-    if (favoritesQuery.data !== undefined) {
-      setFavorites(favoritesQuery.data);
-    }
+    if (favoritesQuery.data === undefined) return;
+    const serverFavorites = favoritesQuery.data;
+
+    setFavorites(() => {
+      const pendingDeleteIds = new Set(pendingFavoriteDeletesRef.current.keys());
+      let next = serverFavorites.filter((f) => !pendingDeleteIds.has(f.id));
+
+      for (const pending of pendingFavoriteInsertsRef.current.values()) {
+        const nameKey = pending.meal.name.toLowerCase().trim();
+        if (next.some((f) => f.name.toLowerCase().trim() === nameKey)) continue;
+        next = [
+          {
+            id: pending.tempId,
+            name: pending.meal.name,
+            calories: pending.meal.calories,
+            protein: pending.meal.protein,
+            carbs: pending.meal.carbs,
+            fat: pending.meal.fat,
+            createdAt: Date.now(),
+            logCount: 0,
+          },
+          ...next,
+        ];
+      }
+
+      return next;
+    });
   }, [favoritesQuery.data]);
 
   useEffect(() => {
@@ -692,10 +798,18 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
   }, [recentMealsQuery.data]);
 
   useEffect(() => {
-    if (waterQuery.data) {
-      setWaterCups(waterQuery.data);
+    if (waterQuery.data === undefined) return;
+    const serverWater = waterQuery.data;
+    waterSyncedRef.current = serverWater;
+
+    // Don't clobber cups the user is still adjusting (pending debounced save).
+    if (waterPendingRef.current) {
+      setWaterCups(waterPendingRef.current);
+      queryClient.setQueryData(['nutrition_water', authState.userId], waterPendingRef.current);
+      return;
     }
-  }, [waterQuery.data]);
+    setWaterCups(serverWater);
+  }, [waterQuery.data, authState.userId, queryClient]);
 
   useEffect(() => {
     if (sugarQuery.data) {
@@ -1187,10 +1301,15 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       return mapFavoriteRow(data as Record<string, unknown>);
     },
     onSuccess: (row) => {
-      queryClient.setQueryData(
-        ['nutrition_favorites', authState.userId],
-        (old: FavoriteMeal[] | undefined) => [row, ...(old ?? []).filter((f) => f.id !== row.id)],
-      );
+      const nameKey = row.name.toLowerCase().trim();
+      setFavorites((prev) => {
+        const next = [
+          row,
+          ...prev.filter((f) => f.id !== row.id && f.name.toLowerCase().trim() !== nameKey),
+        ];
+        queryClient.setQueryData(['nutrition_favorites', authState.userId], next);
+        return next;
+      });
     },
     onError: (e) => console.error('Insert favorite failed:', e),
   });
@@ -1207,10 +1326,11 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       return id;
     },
     onSuccess: (removedId) => {
-      queryClient.setQueryData(
-        ['nutrition_favorites', authState.userId],
-        (old: FavoriteMeal[] | undefined) => (old ?? []).filter((f) => f.id !== removedId),
-      );
+      setFavorites((prev) => {
+        const next = prev.filter((f) => f.id !== removedId);
+        queryClient.setQueryData(['nutrition_favorites', authState.userId], next);
+        return next;
+      });
     },
     onError: (e) => console.error('Delete favorite failed:', e),
   });
@@ -1300,9 +1420,25 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       return newWater;
     },
     onSuccess: (data) => {
+      waterSyncedRef.current = data;
+      // Keep a newer optimistic edit if user kept tapping after this save started.
+      if (waterPendingRef.current) {
+        const pending = waterPendingRef.current;
+        const same =
+          Object.keys({ ...pending, ...data }).every(
+            (k) => (pending[k] || 0) === (data[k] || 0)
+          );
+        if (same) {
+          waterPendingRef.current = null;
+          setWaterCups(data);
+          queryClient.setQueryData(['nutrition_water', authState.userId], data);
+        }
+        return;
+      }
       setWaterCups(data);
       queryClient.setQueryData(['nutrition_water', authState.userId], data);
     },
+    onError: (e) => console.error('Save water failed:', e),
   });
 
   const saveSugarMutation = useMutation({
@@ -1669,20 +1805,121 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     [saveComposedMealMutation, authState, selectedDate, updateRecentMeals]
   );
 
-  const addToFavorites = useCallback((meal: Omit<FavoriteMeal, 'id' | 'createdAt' | 'logCount'>) => {
-    const normalizedName = meal.name.toLowerCase().trim();
-    const exists = favorites.some(f => f.name.toLowerCase().trim() === normalizedName);
-    if (exists) return false;
+  const writeFavoritesLocal = useCallback(
+    (updater: (prev: FavoriteMeal[]) => FavoriteMeal[]) => {
+      setFavorites((prev) => {
+        const next = updater(prev);
+        if (authState.userId) {
+          queryClient.setQueryData(['nutrition_favorites', authState.userId], next);
+        }
+        return next;
+      });
+    },
+    [authState.userId, queryClient],
+  );
 
-    insertFavoriteMutation.mutate(meal);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    return true;
-  }, [favorites, insertFavoriteMutation]);
+  const addToFavorites = useCallback(
+    (meal: Omit<FavoriteMeal, 'id' | 'createdAt' | 'logCount'>) => {
+      const normalizedName = meal.name.toLowerCase().trim();
 
-  const removeFromFavorites = useCallback((favoriteId: string) => {
-    deleteFavoriteMutation.mutate(favoriteId);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  }, [deleteFavoriteMutation]);
+      // Undo a pending delete of the same meal before network runs.
+      for (const [id, pending] of pendingFavoriteDeletesRef.current.entries()) {
+        if (pending.favorite.name.toLowerCase().trim() !== normalizedName) continue;
+        clearTimeout(pending.timeoutId);
+        pendingFavoriteDeletesRef.current.delete(id);
+        writeFavoritesLocal((prev) => {
+          if (prev.some((f) => f.id === pending.favorite.id)) return prev;
+          return [pending.favorite, ...prev];
+        });
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        return true;
+      }
+
+      if (favorites.some((f) => f.name.toLowerCase().trim() === normalizedName)) {
+        return false;
+      }
+      if (pendingFavoriteInsertsRef.current.has(normalizedName)) {
+        return false;
+      }
+
+      const tempId = `local-fav-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const optimistic: FavoriteMeal = {
+        id: tempId,
+        name: meal.name,
+        calories: meal.calories,
+        protein: meal.protein,
+        carbs: meal.carbs,
+        fat: meal.fat,
+        createdAt: Date.now(),
+        logCount: 0,
+      };
+
+      writeFavoritesLocal((prev) => [
+        optimistic,
+        ...prev.filter((f) => f.name.toLowerCase().trim() !== normalizedName),
+      ]);
+
+      const timeoutId = setTimeout(() => {
+        pendingFavoriteInsertsRef.current.delete(normalizedName);
+        insertFavoriteMutation.mutate(meal, {
+          onError: () => {
+            writeFavoritesLocal((prev) => prev.filter((f) => f.id !== tempId));
+          },
+        });
+      }, DEBOUNCED_SYNC_DELAY_MS);
+
+      pendingFavoriteInsertsRef.current.set(normalizedName, { timeoutId, tempId, meal });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      return true;
+    },
+    [favorites, insertFavoriteMutation, writeFavoritesLocal],
+  );
+
+  const removeFromFavorites = useCallback(
+    (favoriteId: string) => {
+      // Cancel a pending insert before network runs — no server row to delete.
+      for (const [nameKey, pending] of pendingFavoriteInsertsRef.current.entries()) {
+        if (pending.tempId !== favoriteId) continue;
+        clearTimeout(pending.timeoutId);
+        pendingFavoriteInsertsRef.current.delete(nameKey);
+        writeFavoritesLocal((prev) => prev.filter((f) => f.id !== favoriteId));
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        return;
+      }
+
+      const favorite =
+        favorites.find((f) => f.id === favoriteId) ??
+        pendingFavoriteDeletesRef.current.get(favoriteId)?.favorite;
+
+      writeFavoritesLocal((prev) => prev.filter((f) => f.id !== favoriteId));
+
+      if (!favorite || favoriteId.startsWith('local-fav-')) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        return;
+      }
+
+      if (pendingFavoriteDeletesRef.current.has(favoriteId)) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        return;
+      }
+
+      const timeoutId = setTimeout(() => {
+        pendingFavoriteDeletesRef.current.delete(favoriteId);
+        deleteFavoriteMutation.mutate(favoriteId, {
+          onError: () => {
+            writeFavoritesLocal((prev) => {
+              if (prev.some((f) => f.id === favoriteId)) return prev;
+              return [favorite, ...prev];
+            });
+          },
+        });
+      }, DEBOUNCED_SYNC_DELAY_MS);
+
+      pendingFavoriteDeletesRef.current.set(favoriteId, { timeoutId, favorite });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    },
+    [favorites, deleteFavoriteMutation, writeFavoritesLocal],
+  );
 
   const updateFavorite = useCallback(
     (favoriteId: string, updates: Partial<Omit<FavoriteMeal, 'id' | 'createdAt'>>) => {
@@ -1879,6 +2116,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
 
   const signOut = useCallback(async () => {
     console.log('Signing out user');
+    const previousUserId = authState.userId;
     setExpectUserInitiatedSignOut(true);
     try {
       await supabase.auth.signOut();
@@ -1887,6 +2125,8 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       console.error('signOut failed:', e);
       return;
     }
+    localCacheUserRef.current = null;
+    void clearDashboardCache(previousUserId);
     setProfile(null);
     setFoodLog({});
     setWeightHistory([]);
@@ -1903,16 +2143,19 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       clearExpectUserInitiatedSignOut();
       router.replace('/onboarding');
     }, 100);
-  }, [queryClient]);
+  }, [queryClient, authState.userId]);
 
   /** After server-side account deletion, Supabase signOut may fail — still clear local session. */
   const signOutAfterAccountDeleted = useCallback(async () => {
+    const previousUserId = authState.userId;
     setExpectUserInitiatedSignOut(true);
     try {
       await supabase.auth.signOut();
     } catch {
       // User may already be removed server-side
     }
+    localCacheUserRef.current = null;
+    void clearDashboardCache(previousUserId);
     setProfile(null);
     setFoodLog({});
     setWeightHistory([]);
@@ -1929,26 +2172,82 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
       clearExpectUserInitiatedSignOut();
       router.replace('/onboarding');
     }, 100);
-  }, [queryClient]);
+  }, [queryClient, authState.userId]);
+
+  const writeWaterLocal = useCallback(
+    (updater: (prev: { [date: string]: number }) => { [date: string]: number }) => {
+      setWaterCups((prev) => {
+        const next = updater(prev);
+        waterPendingRef.current = next;
+        if (authState.userId) {
+          queryClient.setQueryData(['nutrition_water', authState.userId], next);
+        }
+        return next;
+      });
+    },
+    [authState.userId, queryClient],
+  );
+
+  const scheduleWaterSync = useCallback(() => {
+    if (waterSyncTimeoutRef.current) {
+      clearTimeout(waterSyncTimeoutRef.current);
+    }
+    waterSyncTimeoutRef.current = setTimeout(() => {
+      waterSyncTimeoutRef.current = null;
+      const pending = waterPendingRef.current;
+      if (!pending) return;
+
+      const synced = waterSyncedRef.current;
+      const unchanged = Object.keys({ ...pending, ...synced }).every(
+        (k) => (pending[k] || 0) === (synced[k] || 0)
+      );
+      if (unchanged) {
+        // User ended at the last saved value — nothing to write.
+        waterPendingRef.current = null;
+        return;
+      }
+
+      const snapshot = { ...pending };
+      saveWaterMutation.mutate(snapshot, {
+        onError: () => {
+          // Roll back only if the user has not made further edits.
+          if (waterPendingRef.current && Object.keys({ ...waterPendingRef.current, ...snapshot }).every(
+            (k) => (waterPendingRef.current![k] || 0) === (snapshot[k] || 0)
+          )) {
+            waterPendingRef.current = null;
+            setWaterCups(waterSyncedRef.current);
+            if (authState.userId) {
+              queryClient.setQueryData(
+                ['nutrition_water', authState.userId],
+                waterSyncedRef.current
+              );
+            }
+          }
+        },
+      });
+    }, DEBOUNCED_SYNC_DELAY_MS);
+  }, [saveWaterMutation, authState.userId, queryClient]);
 
   const addWaterCup = useCallback(() => {
     if (!getPremiumWriteGate()) return;
     const dateKey = selectedDate || getTodayKey();
-    const current = waterCups[dateKey] || 0;
-    const updated = { ...waterCups, [dateKey]: current + 1 };
-    saveWaterMutation.mutate(updated);
+    writeWaterLocal((prev) => ({ ...prev, [dateKey]: (prev[dateKey] || 0) + 1 }));
+    scheduleWaterSync();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [waterCups, saveWaterMutation, selectedDate]);
+  }, [writeWaterLocal, scheduleWaterSync, selectedDate]);
 
   const removeWaterCup = useCallback(() => {
     if (!getPremiumWriteGate()) return;
     const dateKey = selectedDate || getTodayKey();
-    const current = waterCups[dateKey] || 0;
-    if (current <= 0) return;
-    const updated = { ...waterCups, [dateKey]: current - 1 };
-    saveWaterMutation.mutate(updated);
+    if ((waterCups[dateKey] || 0) <= 0) return;
+    writeWaterLocal((prev) => {
+      const current = prev[dateKey] || 0;
+      if (current <= 0) return prev;
+      return { ...prev, [dateKey]: current - 1 };
+    });
+    scheduleWaterSync();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [waterCups, saveWaterMutation, selectedDate]);
+  }, [waterCups, writeWaterLocal, scheduleWaterSync, selectedDate]);
 
   const getTodayWaterCups = useCallback(() => {
     return waterCups[selectedDate] || 0;
@@ -2240,15 +2539,21 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
 
   const referralTrialEndsAt = profileQuery.data?.referral_trial_ends_at ?? null;
 
+  const effectiveProfile = useMemo(() => {
+    if (profile) return profile;
+    if (profileQuery.data) return mapSupabaseProfileToUserProfile(profileQuery.data);
+    return null;
+  }, [profile, profileQuery.data]);
+
   const dailyTargets: DailyTargets | null = useMemo(() => {
-    if (!profile) {
+    if (!effectiveProfile) {
       console.log('No profile, cannot calculate dailyTargets');
       return null;
     }
-    const targets = calculateDailyTargets(profile);
+    const targets = calculateDailyTargets(effectiveProfile);
     console.log('Daily targets calculated:', targets);
     return targets;
-  }, [profile]);
+  }, [effectiveProfile]);
 
   const todayEntries = useMemo(() => {
     return foodLog[selectedDate] || [];
@@ -2266,8 +2571,43 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     );
   }, [todayEntries]);
 
+  // Publish day aggregates so group mates can see goal progress (not meal-level logs).
+  useEffect(() => {
+    if (!authState.isSignedIn || !authState.userId || !dailyTargets) return;
+
+    const todayKey = getTodayKey();
+    const entries = foodLog[todayKey] || [];
+    const totals = entries.reduce(
+      (acc, entry) => ({
+        calories: acc.calories + entry.calories,
+        protein: acc.protein + entry.protein,
+        carbs: acc.carbs + entry.carbs,
+        fat: acc.fat + entry.fat,
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    );
+
+    const timer = setTimeout(() => {
+      void upsertDailyProgressShare(
+        authState.userId!,
+        {
+          caloriesEaten: totals.calories,
+          proteinEaten: totals.protein,
+          carbsEaten: totals.carbs,
+          fatEaten: totals.fat,
+          caloriesTarget: dailyTargets.calories,
+          proteinTarget: dailyTargets.protein,
+        },
+        todayKey
+      );
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [authState.isSignedIn, authState.userId, foodLog, dailyTargets]);
+
   const clearAllData = useCallback(async () => {
     try {
+      const previousUserId = authState.userId;
       setExpectUserInitiatedSignOut(true);
       try {
         await supabase.auth.signOut();
@@ -2275,6 +2615,8 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
         setExpectUserInitiatedSignOut(false);
         throw new Error('signOut failed');
       }
+      localCacheUserRef.current = null;
+      void clearDashboardCache(previousUserId);
       setProfile(null);
       setFoodLog({});
       setWeightHistory([]);
@@ -2292,7 +2634,7 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     } catch (error) {
       console.error('Error clearing data:', error);
     }
-  }, [queryClient]);
+  }, [queryClient, authState.userId]);
 
   return {
     profile,
@@ -2353,6 +2695,11 @@ export const [NutritionProvider, useNutrition] = createContextHook(() => {
     deleteWeightEntry,
     clearAllData,
     isLoading: profileQuery.isLoading || foodEntriesQuery.isLoading || weightHistoryQuery.isLoading || streakQuery.isLoading || favoritesQuery.isLoading || recentMealsQuery.isLoading || waterQuery.isLoading || sugarQuery.isLoading || fiberQuery.isLoading || sodiumQuery.isLoading,
+    isDashboardLoading:
+      authState.isSignedIn &&
+      !profile &&
+      !profileQuery.data &&
+      (!localCacheReady || profileQuery.isLoading),
     isSaving:
       saveProfileMutation.isPending ||
       saveFoodEntryMutation.isPending ||

@@ -22,11 +22,12 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { supabase } from '@/lib/supabase';
 import { stashPendingReferralCode } from '@/lib/pendingReferralCode';
+import { peekPendingGroupInviteCode } from '@/lib/pendingGroupInviteCode';
 
 WebBrowser.maybeCompleteAuthSession();
 
 /** Toggle to show Google OAuth on the sign-in screen. */
-const SHOW_GOOGLE_SIGN_IN = false;
+const SHOW_GOOGLE_SIGN_IN = true;
 
 const FORM_MAX_WIDTH = 440;
 
@@ -96,6 +97,15 @@ export default function SignInScreen() {
 
       if (isProfileComplete) {
         console.log('Profile is complete, navigating to tabs');
+        try {
+          const pendingGroupCode = await peekPendingGroupInviteCode();
+          if (pendingGroupCode) {
+            router.replace(`/browse-groups?code=${encodeURIComponent(pendingGroupCode)}`);
+            return;
+          }
+        } catch {
+          // fall through to tabs
+        }
         router.replace('/(tabs)');
         return;
       }
@@ -376,7 +386,11 @@ export default function SignInScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.signInButton, isSigningIn && styles.signInButtonDisabled]}
+              style={[
+                styles.signInButton,
+                isSigningIn && styles.signInButtonDisabled,
+                styles.signInButtonElevated,
+              ]}
               onPress={handleSignIn}
               activeOpacity={0.8}
               disabled={isSigningIn}
@@ -569,6 +583,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     marginTop: 8,
+  },
+  signInButtonElevated: {
+    zIndex: 20,
+    elevation: 20,
+    position: 'relative',
   },
   signInButtonDisabled: {
     opacity: 0.6,

@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCommunity } from '@/contexts/CommunityContext';
@@ -26,6 +27,7 @@ export default function CreatePostScreen() {
   const { l } = useLanguage();
   const { communityProfile, createPost } = useCommunity();
   const { todayEntries } = useNutrition();
+  const headerHeight = useHeaderHeight();
 
   const [caption, setCaption] = useState('');
   const [foodName, setFoodName] = useState('');
@@ -129,11 +131,13 @@ export default function CreatePostScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={headerHeight}
       >
         <ScrollView
           style={[styles.container, { backgroundColor: theme.background }]}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>{l('Caption', 'Caption')}</Text>

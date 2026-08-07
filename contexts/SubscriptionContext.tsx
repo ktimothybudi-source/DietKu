@@ -18,6 +18,7 @@ import { callAIProxy } from '@/utils/aiProxy';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { supabase } from '@/lib/supabase';
 import { setPremiumWriteGate } from '@/lib/premiumWriteGate';
+import { FREE_FOR_NOW } from '@/lib/appAccess';
 
 const REVENUECAT_ANDROID_API_KEY =
   process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY ||
@@ -270,25 +271,27 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     return new Date(referralTrialEndsAt).getTime() > Date.now();
   }, [referralTrialEndsAt]);
 
-  const isPremium = rcPremium || allowlistPremium || referralTrialActive;
+  const isPremium = FREE_FOR_NOW || rcPremium || allowlistPremium || referralTrialActive;
   setPremiumWriteGate(isPremium);
 
   useEffect(() => {
     if (!authState.userId) return;
 
-    const unlocked = rcPremium || allowlistPremium || referralTrialActive;
+    const unlocked = FREE_FOR_NOW || rcPremium || allowlistPremium || referralTrialActive;
     // Do not clear server-side premium / community gold when we cannot know (no RC in build).
     if (!unlocked && !isConfigured && !allowlistPremium && !referralTrialActive) return;
     // Do not clear until RevenueCat has refreshed for this Supabase user (prevents race before logIn finishes).
     if (!unlocked && isConfigured && premiumSyncUserIdRef.current !== authState.userId) return;
 
-    const source = rcPremium
-      ? 'revenuecat'
-      : allowlistPremium
-        ? 'email_allowlist'
-        : referralTrialActive
-          ? 'referral_trial'
-          : 'revenuecat';
+    const source = FREE_FOR_NOW
+      ? 'free_for_now'
+      : rcPremium
+        ? 'revenuecat'
+        : allowlistPremium
+          ? 'email_allowlist'
+          : referralTrialActive
+            ? 'referral_trial'
+            : 'revenuecat';
     let cancelled = false;
     (async () => {
       try {
@@ -488,7 +491,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
   const openPaywall = useCallback(
     (reason?: string, opts?: { dismissible?: boolean }) => {
-      if (isPremium) return;
+      if (FREE_FOR_NOW || isPremium) return;
       setPaywallReason(reason || null);
       setPaywallDismissible(opts?.dismissible !== false);
       setShowPaywall(true);

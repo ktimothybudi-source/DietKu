@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ANIMATION_DURATION } from '@/constants/animations';
 import { callAIProxy, warmAiProxy } from '@/utils/aiProxy';
 import { optimizeImageForScan } from '@/utils/imageOptimization';
+import { saveImagePermanently } from '@/utils/imageStorage';
 import { DietKuWordmark } from '@/components/DietKuWordmark';
 
 type FlashMode = 'off' | 'auto' | 'on';
@@ -221,7 +222,13 @@ export default function CameraScanScreen() {
 
       try {
         const optimized = await optimizeImageForScan(photo.uri);
-        addPendingEntry(optimized.uri, optimized.base64);
+        let localUri = optimized.uri;
+        try {
+          localUri = await saveImagePermanently(optimized.uri);
+        } catch (persistError) {
+          console.warn('Local meal photo save failed, using optimized cache URI:', persistError);
+        }
+        addPendingEntry(localUri, optimized.base64);
       } catch (optimizationError) {
         console.warn('Scan optimization failed:', optimizationError);
         Alert.alert(
@@ -262,7 +269,13 @@ export default function CameraScanScreen() {
         if (asset.uri) {
           try {
             const optimized = await optimizeImageForScan(asset.uri);
-            addPendingEntry(optimized.uri, optimized.base64);
+            let localUri = optimized.uri;
+            try {
+              localUri = await saveImagePermanently(optimized.uri);
+            } catch (persistError) {
+              console.warn('Local meal photo save failed, using optimized cache URI:', persistError);
+            }
+            addPendingEntry(localUri, optimized.base64);
             router.back();
           } catch (optimizationError) {
             console.warn('Gallery optimization failed:', optimizationError);

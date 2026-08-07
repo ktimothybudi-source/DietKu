@@ -1611,6 +1611,18 @@ export const indexStyles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  pendingThumbnailPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  /** Bottom-up progress tint while analyzing (paired with %); keep subtle */
+  pendingScanFill: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
+  },
   pendingOverlay: {
     position: 'absolute',
     top: 0,
@@ -1620,6 +1632,16 @@ export const indexStyles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 2,
+  },
+  pendingAnalyzingOverlay: {
+    /** Dark scrim with a green tint (matches theme primary ~#22C55E) */
+    backgroundColor: 'rgba(12, 36, 22, 0.58)',
+  },
+  pendingProgressText: {
+    fontSize: 12,
+    fontWeight: '800' as const,
+    letterSpacing: -0.2,
   },
   pendingErrorOverlay: {
     backgroundColor: 'rgba(197, 48, 48, 0.2)',

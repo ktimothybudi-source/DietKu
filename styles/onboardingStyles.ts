@@ -569,6 +569,7 @@ export const onboardingStyles = StyleSheet.create({
   dividerText: { fontSize: 14, color: '#999999', marginHorizontal: 16 },
 
   googleButton: { backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#EEEDF2', borderRadius: 28, padding: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
+  googleButtonDisabled: { opacity: 0.6 },
   googleButtonText: { fontSize: 16, fontWeight: '600' as const, color: '#000000' },
 
   skipSignInButton: { padding: 16, alignItems: 'center', marginTop: 16 },

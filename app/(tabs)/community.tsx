@@ -11,6 +11,7 @@ import {
   TextInput,
   ScrollView,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
@@ -29,18 +30,29 @@ import {
   Globe,
   Settings,
   ChevronDown,
+  Share2,
+  Target,
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCommunity } from '@/contexts/CommunityContext';
 import { useNutrition } from '@/contexts/NutritionContext';
-import { FoodPost, MEAL_TYPE_LABELS, CommunityGroup } from '@/types/community';
+import { FoodPost, MEAL_TYPE_LABELS, GroupMember } from '@/types/community';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { communityStyles as styles } from '@/styles/communityStyles';
 import { PremiumDisplayName } from '@/components/PremiumDisplayName';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+import { shareGroupInvite } from '@/lib/shareGroupInvite';
+import { getTodayKey } from '@/utils/nutritionCalculations';
+import {
+  DailyGoalStatus,
+  DailyProgressShare,
+  getCaloriesProgressPercent,
+  getDailyGoalStatus,
+  mapDailyProgressRow,
+} from '@/utils/dailyProgressShare';
 
 function timeAgo(timestamp: number): string {
   const diff = Date.now() - timestamp;
@@ -67,6 +79,51 @@ function Avatar({ name, color, size = 40 }: { name: string; color: string; size?
       <Text style={[styles.avatarText, { fontSize: size * 0.38 }]}>{initials}</Text>
     </View>
   );
+}
+
+type CommunityView = 'feed' | 'goals';
+
+type MemberGoalRow = {
+  member: GroupMember;
+  isMe: boolean;
+  caloriesEaten: number;
+  caloriesTarget: number;
+  proteinEaten: number;
+  proteinTarget: number;
+  status: DailyGoalStatus;
+  caloriesPercent: number;
+};
+
+function goalStatusLabel(
+  status: DailyGoalStatus,
+  l: (idText: string, enText: string) => string
+): string {
+  switch (status) {
+    case 'hit':
+      return l('Goal tercapai', 'Goal hit');
+    case 'over':
+      return l('Melebihi target', 'Over target');
+    case 'in_progress':
+      return l('Masih jalan', 'In progress');
+    default:
+      return l('Belum log', 'Not started');
+  }
+}
+
+function goalStatusColor(
+  status: DailyGoalStatus,
+  theme: ReturnType<typeof useTheme>['theme']
+): string {
+  switch (status) {
+    case 'hit':
+      return theme.success;
+    case 'over':
+      return theme.warning;
+    case 'in_progress':
+      return theme.primary;
+    default:
+      return theme.textTertiary;
+  }
 }
 
 const PostCard = React.memo(({ post, onLike, onComment, onDelete, currentUserId, theme, l }: {
@@ -212,6 +269,69 @@ const PostCard = React.memo(({ post, onLike, onComment, onDelete, currentUserId,
 
 PostCard.displayName = 'PostCard';
 
+const MemberGoalCard = React.memo(({
+  row,
+  theme,
+  l,
+}: {
+  row: MemberGoalRow;
+  theme: ReturnType<typeof useTheme>['theme'];
+  l: (idText: string, enText: string) => string;
+}) => {
+  const statusColor = goalStatusColor(row.status, theme);
+  const barWidth = Math.min(100, row.caloriesPercent);
+
+  return (
+    <View
+      style={[styles.goalCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+      testID={`goal-row-${row.member.userId}`}
+    >
+      <View style={styles.goalCardHeader}>
+        <Avatar name={row.member.displayName} color={row.member.avatarColor} size={40} />
+        <View style={styles.goalCardInfo}>
+          <Text style={[styles.goalCardName, { color: theme.text }]} numberOfLines={1}>
+            {row.member.displayName}
+            {row.isMe ? ` ${l('(kamu)', '(you)')}` : ''}
+          </Text>
+          <Text style={[styles.goalCardUsername, { color: theme.textTertiary }]} numberOfLines={1}>
+            @{row.member.username}
+          </Text>
+        </View>
+        <View style={[styles.goalStatusBadge, { backgroundColor: statusColor + '20' }]}>
+          <Text style={[styles.goalStatusText, { color: statusColor }]}>
+            {goalStatusLabel(row.status, l)}
+          </Text>
+        </View>
+      </View>
+
+      <View style={[styles.goalBarTrack, { backgroundColor: theme.surfaceElevated }]}>
+        <View
+          style={[
+            styles.goalBarFill,
+            {
+              width: `${barWidth}%`,
+              backgroundColor: statusColor,
+            },
+          ]}
+        />
+      </View>
+
+      <View style={styles.goalMetaRow}>
+        <Text style={[styles.goalMetaText, { color: theme.text }]}>
+          {Math.round(row.caloriesEaten)} / {Math.round(row.caloriesTarget) || '—'} kcal
+        </Text>
+        <Text style={[styles.goalMetaSecondary, { color: theme.textSecondary }]}>
+          {row.proteinTarget > 0
+            ? `${Math.round(row.proteinEaten)}/${Math.round(row.proteinTarget)}g P`
+            : l('Protein belum di-share', 'Protein not shared yet')}
+        </Text>
+      </View>
+    </View>
+  );
+});
+
+MemberGoalCard.displayName = 'MemberGoalCard';
+
 type ChatMessage = {
   id: string;
   groupId: string;
@@ -229,25 +349,148 @@ type TimelineItem =
 export default function CommunityScreen() {
   const { theme } = useTheme();
   const { l } = useLanguage();
+  const timelineListRef = useRef<FlatList<TimelineItem>>(null);
   const {
     posts, toggleLike, deletePost, hasProfile, communityProfile,
     hasJoinedGroup, activeGroup, joinedGroups,
-    switchActiveGroup, joinedGroupIds,
+    switchActiveGroup,
   } = useCommunity();
-  const { authState } = useNutrition();
+  const { authState, dailyTargets, foodLog } = useNutrition();
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [showGroupPicker, setShowGroupPicker] = useState(false);
+  const [communityView, setCommunityView] = useState<CommunityView>('feed');
   const queryClient = useQueryClient();
+
+  const scrollTimelineToLatest = useCallback(() => {
+    timelineListRef.current?.scrollToEnd({ animated: false });
+  }, []);
+
+  /** After opening Komunitas / switching group, allow a short window where layout/image loads snap to latest */
+  const snapToBottomUntilRef = useRef(0);
 
   useFocusEffect(
     useCallback(() => {
-      return () => setShowGroupPicker(false);
-    }, []),
+      /** Timeline is oldest → newest; snap to bottom when opening Komunitas or switching grup */
+      snapToBottomUntilRef.current = Date.now() + 2500;
+      const timers: ReturnType<typeof setTimeout>[] = [0, 80, 250, 600].map((ms) =>
+        setTimeout(scrollTimelineToLatest, ms)
+      );
+      return () => {
+        timers.forEach(clearTimeout);
+        setShowGroupPicker(false);
+      };
+    }, [activeGroup?.id, scrollTimelineToLatest]),
   );
 
+  useEffect(() => {
+    const event = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const sub = Keyboard.addListener(event, () => {
+      requestAnimationFrame(() => scrollTimelineToLatest());
+    });
+    return () => sub.remove();
+  }, [scrollTimelineToLatest]);
+
   const currentUserId = communityProfile?.userId || authState.userId || null;
+  const todayKey = getTodayKey();
+
+  const memberIds = useMemo(() => {
+    return (activeGroup?.members || []).map((m) => m.userId);
+  }, [activeGroup?.members]);
+
+  const groupProgressQuery = useQuery({
+    queryKey: ['community_group_progress', activeGroup?.id || 'none', todayKey, memberIds.join(',')],
+    enabled: !!activeGroup?.id && memberIds.length > 0 && communityView === 'goals',
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('daily_progress_shares')
+        .select(
+          'user_id, date, calories_eaten, protein_eaten, carbs_eaten, fat_eaten, calories_target, protein_target, updated_at'
+        )
+        .eq('date', todayKey)
+        .in('user_id', memberIds);
+      if (error) throw error;
+      return ((data || []) as Array<{
+        user_id: string;
+        date: string;
+        calories_eaten: number | string;
+        protein_eaten: number | string;
+        carbs_eaten: number | string;
+        fat_eaten: number | string;
+        calories_target: number | string;
+        protein_target: number | string;
+        updated_at: string;
+      }>).map(mapDailyProgressRow);
+    },
+    staleTime: 15_000,
+  });
+
+  const liveSelfTotals = useMemo(() => {
+    const entries = foodLog[todayKey] || [];
+    return entries.reduce(
+      (acc, entry) => ({
+        calories: acc.calories + entry.calories,
+        protein: acc.protein + entry.protein,
+        carbs: acc.carbs + entry.carbs,
+        fat: acc.fat + entry.fat,
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    );
+  }, [foodLog, todayKey]);
+
+  const memberGoalRows = useMemo<MemberGoalRow[]>(() => {
+    if (!activeGroup) return [];
+    const shareMap = new Map<string, DailyProgressShare>();
+    for (const share of groupProgressQuery.data || []) {
+      shareMap.set(share.userId, share);
+    }
+
+    const rows: MemberGoalRow[] = activeGroup.members.map((member) => {
+      const isMe = !!currentUserId && member.userId === currentUserId;
+      const share = shareMap.get(member.userId);
+
+      let caloriesEaten = share?.caloriesEaten ?? 0;
+      let caloriesTarget = share?.caloriesTarget ?? 0;
+      let proteinEaten = share?.proteinEaten ?? 0;
+      let proteinTarget = share?.proteinTarget ?? 0;
+
+      if (isMe && dailyTargets) {
+        caloriesEaten = liveSelfTotals.calories;
+        caloriesTarget = dailyTargets.calories;
+        proteinEaten = liveSelfTotals.protein;
+        proteinTarget = dailyTargets.protein;
+      }
+
+      const status = getDailyGoalStatus(caloriesEaten, caloriesTarget);
+      const caloriesPercent = getCaloriesProgressPercent(caloriesEaten, caloriesTarget);
+
+      return {
+        member,
+        isMe,
+        caloriesEaten,
+        caloriesTarget,
+        proteinEaten,
+        proteinTarget,
+        status,
+        caloriesPercent,
+      };
+    });
+
+    const statusRank: Record<DailyGoalStatus, number> = {
+      hit: 0,
+      in_progress: 1,
+      over: 2,
+      not_started: 3,
+    };
+
+    return rows.sort((a, b) => {
+      if (a.isMe !== b.isMe) return a.isMe ? -1 : 1;
+      const rankDiff = statusRank[a.status] - statusRank[b.status];
+      if (rankDiff !== 0) return rankDiff;
+      return b.caloriesPercent - a.caloriesPercent;
+    });
+  }, [activeGroup, groupProgressQuery.data, currentUserId, dailyTargets, liveSelfTotals]);
 
   const chatMessagesQuery = useQuery({
     queryKey: ['community_group_messages', activeGroup?.id || 'none'],
@@ -330,6 +573,20 @@ export default function CommunityScreen() {
     router.push({ pathname: '/group-settings', params: { groupId: activeGroup.id } });
   }, [activeGroup]);
 
+  const handleShareGroup = useCallback(async () => {
+    if (!activeGroup) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      await shareGroupInvite({
+        groupName: activeGroup.name,
+        inviteCode: activeGroup.inviteCode,
+        l,
+      });
+    } catch (e) {
+      console.log('community:share-group cancelled or failed', e);
+    }
+  }, [activeGroup, l]);
+
   const handleComment = useCallback((postId: string) => {
     console.log('community:comment', postId);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -358,6 +615,7 @@ export default function CommunityScreen() {
       queryClient.invalidateQueries({ queryKey: ['community_likes'] }),
       queryClient.invalidateQueries({ queryKey: ['community_group_messages', activeGroup?.id || 'none'] }),
       queryClient.invalidateQueries({ queryKey: ['community_premium_bypass_users'] }),
+      queryClient.invalidateQueries({ queryKey: ['community_group_progress'] }),
     ]);
     setTimeout(() => setRefreshing(false), 400);
   }, [queryClient, activeGroup?.id]);
@@ -368,7 +626,9 @@ export default function CommunityScreen() {
     sendChatMutation.mutate(chatInput.trim());
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setChatInput('');
-  }, [chatInput, activeGroup, sendChatMutation]);
+    snapToBottomUntilRef.current = Date.now() + 1500;
+    requestAnimationFrame(() => scrollTimelineToLatest());
+  }, [chatInput, activeGroup, sendChatMutation, scrollTimelineToLatest]);
 
   const handleCreateGroup = useCallback(() => {
     console.log('community:create-group');
@@ -387,13 +647,6 @@ export default function CommunityScreen() {
     router.push('/create-group');
   }, [authState.isSignedIn, hasProfile, l]);
 
-  const handleGroupSettings = useCallback(() => {
-    if (!activeGroup) return;
-    console.log('community:group-settings', activeGroup.id);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: '/group-settings', params: { groupId: activeGroup.id } });
-  }, [activeGroup]);
-
   const handleSwitchGroup = useCallback((groupId: string) => {
     console.log('community:switch-group', groupId);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -401,39 +654,72 @@ export default function CommunityScreen() {
     setShowGroupPicker(false);
   }, [switchActiveGroup]);
 
-  const renderPost = useCallback(({ item }: { item: FoodPost }) => (
-    <PostCard
-      post={item}
-      onLike={handleLike}
-      onComment={handleComment}
-      onDelete={deletePost}
-      currentUserId={currentUserId}
-      theme={theme}
-      l={l}
-    />
-  ), [handleLike, handleComment, deletePost, currentUserId, theme, l]);
+  const handleSelectView = useCallback((view: CommunityView) => {
+    if (view === communityView) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCommunityView(view);
+  }, [communityView]);
 
-  const renderChatMessage = useCallback(({ item }: { item: ChatMessage }) => {
+  const renderChatMessage = useCallback(({
+    item,
+    isGrouped,
+    isGroupEnd,
+  }: {
+    item: ChatMessage;
+    isGrouped: boolean;
+    isGroupEnd: boolean;
+  }) => {
     const isMe = currentUserId === item.userId;
+    const showAvatar = !isMe && isGroupEnd;
+    const showName = !isMe && !isGrouped;
+    const showTime = isGroupEnd;
+
     return (
-      <View style={[styles.chatRow, isMe ? styles.chatRowMe : styles.chatRowOther]}>
-        {!isMe && <Avatar name={item.displayName} color={item.avatarColor} size={32} />}
-        <View style={[styles.chatBubble, { backgroundColor: isMe ? theme.primary : theme.surfaceElevated, borderColor: theme.border }]}>
-          <PremiumDisplayName
-            text={item.displayName}
-            premium={false}
-            color={isMe ? '#FFFFFF' : theme.text}
-            fontSize={12}
-            fontWeight="700"
-          />
+      <View
+        style={[
+          styles.chatRow,
+          isMe ? styles.chatRowMe : styles.chatRowOther,
+          isGrouped && styles.chatRowGrouped,
+        ]}
+      >
+        {!isMe && (
+          showAvatar
+            ? <Avatar name={item.displayName} color={item.avatarColor} size={30} />
+            : <View style={styles.chatAvatarSpacer} />
+        )}
+        <View
+          style={[
+            styles.chatBubble,
+            isGrouped && (isMe ? styles.chatBubbleMeContinue : styles.chatBubbleOtherContinue),
+            !isGroupEnd && (isMe ? styles.chatBubbleMeSoftEnd : styles.chatBubbleOtherSoftEnd),
+            isGroupEnd && (isMe ? styles.chatBubbleMeTail : styles.chatBubbleOtherTail),
+            {
+              backgroundColor: isMe ? theme.primary : theme.surfaceElevated,
+              borderColor: isMe ? theme.primary : theme.border,
+            },
+          ]}
+        >
+          {showName && (
+            <View style={styles.chatName}>
+              <PremiumDisplayName
+                text={item.displayName}
+                premium={false}
+                color={theme.primary}
+                fontSize={12}
+                fontWeight="700"
+              />
+            </View>
+          )}
           <Text style={[styles.chatMessage, { color: isMe ? '#FFFFFF' : theme.text }]}>{item.message}</Text>
-          <Text style={[styles.chatTime, { color: isMe ? 'rgba(255,255,255,0.75)' : theme.textTertiary }]}>{timeAgo(item.createdAt)}</Text>
+          {showTime && (
+            <Text style={[styles.chatTime, { color: isMe ? 'rgba(255,255,255,0.72)' : theme.textTertiary }]}>
+              {timeAgo(item.createdAt)}
+            </Text>
+          )}
         </View>
       </View>
     );
   }, [currentUserId, theme]);
-
-  const keyExtractor = useCallback((item: FoodPost) => item.id, []);
 
   const activeGroupPosts = useMemo(() => {
     if (!activeGroup) return [];
@@ -456,7 +742,7 @@ export default function CommunityScreen() {
     return [...postItems, ...chatItems].sort((a, b) => a.createdAt - b.createdAt);
   }, [activeGroupPosts, chatMessages]);
 
-  const renderTimelineItem = useCallback(({ item }: { item: TimelineItem }) => {
+  const renderTimelineItem = useCallback(({ item, index }: { item: TimelineItem; index: number }) => {
     if (item.type === 'post') {
       return (
         <PostCard
@@ -470,8 +756,22 @@ export default function CommunityScreen() {
         />
       );
     }
-    return renderChatMessage({ item: item.chat });
-  }, [handleLike, handleComment, deletePost, currentUserId, theme, l, renderChatMessage]);
+
+    const prev = timelineItems[index - 1];
+    const next = timelineItems[index + 1];
+    const isGrouped = prev?.type === 'chat' && prev.chat.userId === item.chat.userId;
+    const isGroupEnd = !(next?.type === 'chat' && next.chat.userId === item.chat.userId);
+
+    return renderChatMessage({
+      item: item.chat,
+      isGrouped,
+      isGroupEnd,
+    });
+  }, [handleLike, handleComment, deletePost, currentUserId, theme, l, renderChatMessage, timelineItems]);
+
+  const renderGoalRow = useCallback(({ item }: { item: MemberGoalRow }) => (
+    <MemberGoalCard row={item} theme={theme} l={l} />
+  ), [theme, l]);
 
   const GroupPickerDropdown = showGroupPicker ? (
     <View style={[styles.groupPickerOverlay]}>
@@ -690,33 +990,41 @@ export default function CommunityScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={[styles.container, { backgroundColor: theme.background }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
-          <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-            {joinedGroups.length > 1 ? (
-              <TouchableOpacity
-                style={styles.groupSwitcher}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowGroupPicker(!showGroupPicker);
-                }}
-                activeOpacity={0.7}
-                testID="group-switcher"
-              >
-                <Text style={[styles.headerTitle, { color: theme.text }]}>
-                  {activeGroup?.name || l('Komunitas', 'Community')}
-                </Text>
-                <ChevronDown size={20} color={theme.textSecondary} />
-              </TouchableOpacity>
-            ) : (
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          {joinedGroups.length > 1 ? (
+            <TouchableOpacity
+              style={styles.groupSwitcher}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowGroupPicker(!showGroupPicker);
+              }}
+              activeOpacity={0.7}
+              testID="group-switcher"
+            >
               <Text style={[styles.headerTitle, { color: theme.text }]}>
                 {activeGroup?.name || l('Komunitas', 'Community')}
               </Text>
-            )}
-            {activeGroup && (
+              <ChevronDown size={20} color={theme.textSecondary} />
+            </TouchableOpacity>
+          ) : (
+            <Text style={[styles.headerTitle, { color: theme.text }]}>
+              {activeGroup?.name || l('Komunitas', 'Community')}
+            </Text>
+          )}
+          {activeGroup && (
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={[styles.settingsIconBtn, { backgroundColor: theme.success }]}
+                onPress={handleShareGroup}
+                activeOpacity={0.8}
+                testID="community-share-group"
+              >
+                <Share2 size={18} color="#FFFFFF" strokeWidth={2.5} />
+              </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.settingsIconBtn, { backgroundColor: theme.primary }]}
                 onPress={handleSettings}
@@ -725,61 +1033,139 @@ export default function CommunityScreen() {
               >
                 <Settings size={18} color="#FFFFFF" strokeWidth={2.5} />
               </TouchableOpacity>
-            )}
-          </View>
+            </View>
+          )}
+        </View>
 
-          {GroupPickerDropdown}
+        <View style={styles.tabRow}>
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              {
+                backgroundColor: communityView === 'feed' ? theme.primary : theme.card,
+                borderColor: communityView === 'feed' ? theme.primary : theme.border,
+              },
+            ]}
+            onPress={() => handleSelectView('feed')}
+            activeOpacity={0.8}
+            testID="community-tab-feed"
+          >
+            <Text style={[styles.tabLabel, { color: communityView === 'feed' ? '#FFFFFF' : theme.textSecondary }]}>
+              {l('Feed', 'Feed')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              {
+                backgroundColor: communityView === 'goals' ? theme.primary : theme.card,
+                borderColor: communityView === 'goals' ? theme.primary : theme.border,
+              },
+            ]}
+            onPress={() => handleSelectView('goals')}
+            activeOpacity={0.8}
+            testID="community-tab-goals"
+          >
+            <Text style={[styles.tabLabel, { color: communityView === 'goals' ? '#FFFFFF' : theme.textSecondary }]}>
+              {l('Target Bersama', 'Shared Goals')}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
+        {GroupPickerDropdown}
+
+        {communityView === 'feed' ? (
+          <>
+            <FlatList
+              ref={timelineListRef}
+              style={styles.listFlex}
+              data={timelineItems}
+              renderItem={renderTimelineItem}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={[styles.listContent, { paddingBottom: 16 }]}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              onContentSizeChange={() => {
+                if (Date.now() < snapToBottomUntilRef.current) {
+                  scrollTimelineToLatest();
+                }
+              }}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.primary} />
+              }
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <MessageCircle size={48} color={theme.textTertiary} />
+                  <Text style={[styles.emptyTitle, { color: theme.text }]}>{l('Belum Ada Aktivitas', 'No Activity Yet')}</Text>
+                  <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+                    {l('Kirim chat atau upload post makanan pertama di grup ini.', 'Send a chat or upload the first meal post in this group.')}
+                  </Text>
+                </View>
+              }
+            />
+
+            <View style={[styles.chatInputWrap, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <TouchableOpacity
+                style={[styles.chatSend, { backgroundColor: theme.surfaceElevated, borderColor: theme.border, borderWidth: 1 }]}
+                onPress={handleCreatePost}
+                activeOpacity={0.8}
+                testID="community-create-post-quick"
+              >
+                <Plus size={16} color={theme.primary} />
+              </TouchableOpacity>
+              <TextInput
+                style={[styles.chatInput, { color: theme.text }]}
+                placeholder=""
+                placeholderTextColor={theme.textTertiary}
+                value={chatInput}
+                onChangeText={setChatInput}
+                testID="community-chat-input"
+                returnKeyType="send"
+                onSubmitEditing={handleSendChat}
+                blurOnSubmit={false}
+              />
+              <TouchableOpacity
+                style={[styles.chatSend, { backgroundColor: theme.primary }]}
+                onPress={handleSendChat}
+                activeOpacity={0.8}
+                testID="community-chat-send"
+              >
+                <Send size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
           <FlatList
             style={styles.listFlex}
-            data={timelineItems}
-            renderItem={renderTimelineItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={[styles.listContent, { paddingBottom: 120 }]}
+            data={memberGoalRows}
+            renderItem={renderGoalRow}
+            keyExtractor={(item) => item.member.userId}
+            contentContainerStyle={styles.goalProgressList}
             showsVerticalScrollIndicator={false}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.primary} />
             }
+            ListHeaderComponent={
+              <Text style={[styles.goalTabHint, { color: theme.textSecondary }]}>
+                {l(
+                  'Status kalori harian anggota grup. Goal tercapai di 90–110% target.',
+                  'Group members’ daily calorie status. Goal hit means 90–110% of target.'
+                )}
+              </Text>
+            }
             ListEmptyComponent={
               <View style={styles.emptyState}>
-                <MessageCircle size={48} color={theme.textTertiary} />
-                <Text style={[styles.emptyTitle, { color: theme.text }]}>{l('Belum Ada Aktivitas', 'No Activity Yet')}</Text>
+                <Target size={48} color={theme.textTertiary} />
+                <Text style={[styles.emptyTitle, { color: theme.text }]}>{l('Belum Ada Anggota', 'No Members Yet')}</Text>
                 <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-                  {l('Kirim chat atau upload post makanan pertama di grup ini.', 'Send a chat or upload the first meal post in this group.')}
+                  {l('Undang teman ke grup untuk melihat progress goal hari ini.', "Invite friends to see today’s goal progress.")}
                 </Text>
               </View>
             }
           />
-
-          <View style={[styles.chatInputWrap, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <TouchableOpacity
-              style={[styles.chatSend, { backgroundColor: theme.surfaceElevated, borderColor: theme.border, borderWidth: 1 }]}
-              onPress={handleCreatePost}
-              activeOpacity={0.8}
-              testID="community-create-post-quick"
-            >
-              <Plus size={16} color={theme.primary} />
-            </TouchableOpacity>
-            <TextInput
-              style={[styles.chatInput, { color: theme.text }]}
-            placeholder=""
-              placeholderTextColor={theme.textTertiary}
-              value={chatInput}
-              onChangeText={setChatInput}
-              testID="community-chat-input"
-            />
-            <TouchableOpacity
-              style={[styles.chatSend, { backgroundColor: theme.primary }]}
-              onPress={handleSendChat}
-              activeOpacity={0.8}
-              testID="community-chat-send"
-            >
-              <Send size={16} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
+        )}
       </KeyboardAvoidingView>
     </>
   );
 }
-

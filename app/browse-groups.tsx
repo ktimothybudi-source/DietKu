@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,23 +8,36 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCommunity } from '@/contexts/CommunityContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { supabase } from '@/lib/supabase';
+import { normalizeGroupInviteCode } from '@/lib/groupInviteLink';
+import {
+  stashPendingGroupInviteCode,
+  consumePendingGroupInviteCode,
+  peekPendingGroupInviteCode,
+} from '@/lib/pendingGroupInviteCode';
 import { Ticket, ArrowRight } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 export default function BrowseGroupsScreen() {
   const { theme } = useTheme();
   const { l } = useLanguage();
-  const { joinGroupAsync, hasProfile } = useCommunity();
-  const { authState } = useNutrition();
+  const { joinGroupAsync, hasProfile, isLoading: communityLoading } = useCommunity();
+  const { authState, authInitialized } = useNutrition();
+  const headerHeight = useHeaderHeight();
+  const params = useLocalSearchParams<{ code?: string | string[] }>();
   const [inviteCode, setInviteCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
+  const shouldAutoJoinRef = useRef(false);
+  const autoJoinAttemptedRef = useRef(false);
+  const redirectedForGateRef = useRef(false);
 
   const handleBack = useCallback(() => {
     if (router.canGoBack()) {
@@ -34,19 +47,75 @@ export default function BrowseGroupsScreen() {
     router.replace('/(tabs)/community');
   }, []);
 
-  const handleJoinByCode = useCallback(async () => {
-    const code = inviteCode.trim().toUpperCase();
+  // Prefill from deep link or a stored pending code
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const rawParam = typeof params.code === 'string' ? params.code : params.code?.[0];
+      const fromParam = normalizeGroupInviteCode(rawParam ?? '');
+      if (fromParam) {
+        shouldAutoJoinRef.current = true;
+        try {
+          await stashPendingGroupInviteCode(fromParam);
+        } catch {
+          // ignore storage failures
+        }
+        if (!cancelled) setInviteCode(fromParam);
+        return;
+      }
+
+      try {
+        const pending = await peekPendingGroupInviteCode();
+        if (pending && !cancelled) {
+          shouldAutoJoinRef.current = true;
+          setInviteCode(pending);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [params.code]);
+
+  const joinWithCode = useCallback(async (codeRaw: string) => {
+    const code = normalizeGroupInviteCode(codeRaw);
     if (!code) {
       Alert.alert(l('Kode Kosong', 'Empty Code'), l('Masukkan kode undangan grup.', 'Enter the group invite code.'));
       return;
     }
     if (!authState.isSignedIn) {
-      Alert.alert(l('Masuk Diperlukan', 'Sign In Required'), l('Silakan masuk terlebih dahulu.', 'Please sign in first.'));
+      try {
+        await stashPendingGroupInviteCode(code);
+      } catch {
+        // ignore
+      }
+      if (!redirectedForGateRef.current) {
+        redirectedForGateRef.current = true;
+        Alert.alert(
+          l('Masuk Diperlukan', 'Sign In Required'),
+          l('Silakan masuk terlebih dahulu untuk bergabung ke grup.', 'Please sign in first to join the group.'),
+          [{ text: 'OK', onPress: () => router.push('/sign-in') }]
+        );
+      }
       return;
     }
+    if (communityLoading) return;
     if (!hasProfile) {
-      Alert.alert(l('Profil Komunitas', 'Community Profile'), l('Silakan lengkapi profil komunitas terlebih dahulu.', 'Please complete your community profile first.'));
-      router.push('/setup-community-profile');
+      try {
+        await stashPendingGroupInviteCode(code);
+      } catch {
+        // ignore
+      }
+      if (!redirectedForGateRef.current) {
+        redirectedForGateRef.current = true;
+        Alert.alert(
+          l('Profil Komunitas', 'Community Profile'),
+          l('Silakan lengkapi profil komunitas terlebih dahulu.', 'Please complete your community profile first.'),
+          [{ text: 'OK', onPress: () => router.push('/setup-community-profile') }]
+        );
+      }
       return;
     }
 
@@ -65,6 +134,11 @@ export default function BrowseGroupsScreen() {
       }
 
       await joinGroupAsync(data.id);
+      try {
+        await consumePendingGroupInviteCode();
+      } catch {
+        // ignore
+      }
       Alert.alert(l('Berhasil', 'Success'), l('Kamu berhasil bergabung ke grup.', 'You joined the group successfully.'));
       handleBack();
     } catch (error) {
@@ -77,7 +151,47 @@ export default function BrowseGroupsScreen() {
     } finally {
       setIsJoining(false);
     }
-  }, [inviteCode, authState.isSignedIn, hasProfile, joinGroupAsync, handleBack, l]);
+  }, [authState.isSignedIn, communityLoading, hasProfile, joinGroupAsync, handleBack, l]);
+
+  const handleJoinByCode = useCallback(async () => {
+    await joinWithCode(inviteCode);
+  }, [inviteCode, joinWithCode]);
+
+  // Auto-join when opened via invite link (or resumed pending code)
+  useEffect(() => {
+    if (!shouldAutoJoinRef.current || autoJoinAttemptedRef.current) return;
+    if (!authInitialized || communityLoading || isJoining) return;
+    const code = normalizeGroupInviteCode(inviteCode);
+    if (!code) return;
+
+    // Wait until gated user completes sign-in / community profile before joining
+    if (!authState.isSignedIn) {
+      if (!redirectedForGateRef.current) {
+        redirectedForGateRef.current = true;
+        void joinWithCode(code);
+      }
+      return;
+    }
+
+    if (!hasProfile) {
+      if (!redirectedForGateRef.current) {
+        redirectedForGateRef.current = true;
+        void joinWithCode(code);
+      }
+      return;
+    }
+
+    autoJoinAttemptedRef.current = true;
+    void joinWithCode(code);
+  }, [
+    authInitialized,
+    communityLoading,
+    isJoining,
+    inviteCode,
+    authState.isSignedIn,
+    hasProfile,
+    joinWithCode,
+  ]);
 
   return (
     <>
@@ -98,21 +212,30 @@ export default function BrowseGroupsScreen() {
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: theme.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={headerHeight}
       >
-        <View style={styles.codeSection}>
+        <ScrollView
+          contentContainerStyle={styles.codeSection}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          bounces={false}
+        >
           <View style={[styles.codeCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={[styles.codeIconWrap, { backgroundColor: theme.primary + '12' }]}>
               <Ticket size={34} color={theme.primary} />
             </View>
             <Text style={[styles.codeTitle, { color: theme.text }]}>{l('Gabung Dengan Kode', 'Join With Code')}</Text>
             <Text style={[styles.codeDesc, { color: theme.textSecondary }]}>
-              {l('Masukkan kode undangan dari admin grup untuk langsung bergabung ke grup privat.', 'Enter the invite code from the group admin to join a private group directly.')}
+              {l(
+                'Masukkan kode undangan atau buka link undangan dari admin grup untuk bergabung.',
+                'Enter an invite code or open an invite link from the group admin to join.'
+              )}
             </Text>
             <View style={[styles.codeInputWrap, { borderColor: theme.border }]}>
               <TextInput
                 style={[styles.codeInput, { color: theme.text }]}
                 value={inviteCode}
-                onChangeText={(text) => setInviteCode(text.replace(/[^A-Za-z0-9]/g, '').toUpperCase())}
+                onChangeText={(text) => setInviteCode(normalizeGroupInviteCode(text))}
                 placeholder={l('ABC123', 'ABC123')}
                 placeholderTextColor={theme.textTertiary}
                 autoCapitalize="characters"
@@ -133,7 +256,7 @@ export default function BrowseGroupsScreen() {
               {!isJoining ? <ArrowRight size={18} color="#FFFFFF" /> : null}
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </>
   );
@@ -252,9 +375,10 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   codeSection: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 16,
     paddingTop: 20,
+    paddingBottom: 24,
   },
   codeCard: {
     borderRadius: 16,

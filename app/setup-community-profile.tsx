@@ -11,19 +11,21 @@ import {
   Platform,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCommunity } from '@/contexts/CommunityContext';
 import { useNutrition } from '@/contexts/NutritionContext';
 import { AVATAR_COLORS, CommunityProfile } from '@/types/community';
+import { peekPendingGroupInviteCode } from '@/lib/pendingGroupInviteCode';
 import { Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-
 export default function SetupCommunityProfileScreen() {
   const { theme } = useTheme();
   const { l } = useLanguage();
   const { saveCommunityProfile, communityProfile } = useCommunity();
   const { authState } = useNutrition();
+  const headerHeight = useHeaderHeight();
 
   const [username, setUsername] = useState(communityProfile?.username || '');
   const [selectedColor, setSelectedColor] = useState(communityProfile?.avatarColor || AVATAR_COLORS[0]);
@@ -36,7 +38,7 @@ export default function SetupCommunityProfileScreen() {
     .toUpperCase()
     .slice(0, 2) || '?';
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmedUsername = username.trim().toLowerCase().replace(/[^a-z0-9._]/g, '');
     if (!trimmedUsername || trimmedUsername.length < 3) {
       Alert.alert(l('Username Invalid', 'Invalid Username'), l('Username harus minimal 3 karakter (huruf, angka, titik, underscore).', 'Username must be at least 3 characters (letters, numbers, dots, underscore).'));
@@ -52,9 +54,26 @@ export default function SetupCommunityProfileScreen() {
       joinedAt: communityProfile?.joinedAt || Date.now(),
     };
 
-    saveCommunityProfile(newProfile);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.replace('/(tabs)/community');
+    try {
+      await saveCommunityProfile(newProfile);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      try {
+        const pendingGroupCode = await peekPendingGroupInviteCode();
+        if (pendingGroupCode) {
+          router.replace(`/browse-groups?code=${encodeURIComponent(pendingGroupCode)}`);
+          return;
+        }
+      } catch {
+        // fall through
+      }
+      router.replace('/(tabs)/community');
+    } catch (error) {
+      console.error('Save community profile error:', error);
+      Alert.alert(
+        l('Gagal', 'Failed'),
+        l('Gagal menyimpan profil. Coba lagi.', 'Failed to save profile. Please try again.')
+      );
+    }
   };
 
   return (
@@ -71,11 +90,13 @@ export default function SetupCommunityProfileScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={headerHeight}
       >
         <ScrollView
           style={[styles.container, { backgroundColor: theme.background }]}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
         >
           {!communityProfile ? (
             <Text style={[styles.stepText, { color: theme.primary }]}>

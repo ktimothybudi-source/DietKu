@@ -8,6 +8,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNutrition } from "@/contexts/NutritionContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { FREE_FOR_NOW } from "@/lib/appAccess";
 
 const fallbackTheme: Theme = {
   background: "#FFFFFF",
@@ -36,6 +37,7 @@ export default function TabLayout() {
   const { isPremium, isLoading: subscriptionLoading } = useSubscription();
 
   useEffect(() => {
+    if (FREE_FOR_NOW) return;
     if (!authState.isSignedIn) return;
     if (subscriptionLoading) return;
     if (isPremium) return;
@@ -78,6 +80,7 @@ export default function TabLayout() {
           shadowRadius: 8,
           elevation: 4,
         },
+        tabBarHideOnKeyboard: true,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: "600" as const,

@@ -13,6 +13,7 @@ ALTER TABLE community_group_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE community_posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE community_post_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE community_comments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE daily_progress_shares ENABLE ROW LEVEL SECURITY;
 ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recent_meals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE water_tracking ENABLE ROW LEVEL SECURITY;
@@ -129,6 +130,17 @@ CREATE POLICY "Users can create groups"
 CREATE POLICY "Group creators can update their groups"
   ON community_groups FOR UPDATE
   USING (auth.uid() = created_by);
+
+CREATE POLICY "Group members can update their groups"
+  ON community_groups FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM community_group_members m
+      WHERE m.group_id = community_groups.id
+        AND m.user_id = auth.uid()
+    )
+  );
 
 -- Community group members policies
 CREATE OR REPLACE FUNCTION public.is_member_of_group(p_group_id uuid, p_user_id uuid)
@@ -267,6 +279,34 @@ CREATE POLICY "Users can update their own comments"
 
 CREATE POLICY "Users can delete their own comments"
   ON community_comments FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Daily progress shares (group-visible day aggregates)
+CREATE POLICY "Users can view own or groupmate daily progress"
+  ON daily_progress_shares FOR SELECT
+  USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1
+      FROM community_group_members me
+      INNER JOIN community_group_members them
+        ON them.group_id = me.group_id
+      WHERE me.user_id = auth.uid()
+        AND them.user_id = daily_progress_shares.user_id
+    )
+  );
+
+CREATE POLICY "Users can upsert own daily progress"
+  ON daily_progress_shares FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own daily progress"
+  ON daily_progress_shares FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own daily progress"
+  ON daily_progress_shares FOR DELETE
   USING (auth.uid() = user_id);
 
 -- Favorites policies
